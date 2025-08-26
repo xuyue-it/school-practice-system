@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>管理审核 - 福源堂器材外借</title>
+
+<!-- 禁用缓存，避免回退看到旧页 -->
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0"/>
+<meta http-equiv="Pragma" content="no-cache"/>
+<meta http-equiv="Expires" content="0"/>
+
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#ffffff; --line:#e8ecf2; --text:#111827; --muted:#6b7280;
+    --primary:#2563eb; --primary-600:#1d4ed8;
+    --green:#22c55e; --green-600:#16a34a;
+    --red:#ef4444; --red-600:#dc2626;
+    --amber:#f59e0b; --amber-600:#d97706;
+    --indigo:#6366f1; --indigo-600:#4f46e5;
+  }
+  *{ box-sizing: border-box; }
+  body { font-family: "Microsoft YaHei", sans-serif; background:var(--bg); padding:24px; color:var(--text); }
+  .wrap { max-width: 100%; margin: 0 auto; }
+  .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:10px; }
+  h1 { margin:0; font-size:24px; font-weight:900; }
+  .topbar-actions{ display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
+  .topbar-actions a,
+  .topbar-actions button{
+    display:inline-flex; align-items:center; gap:6px;
+    text-decoration:none; cursor:pointer;
+    padding:8px 12px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card); color:var(--text);
+    box-shadow:0 3px 0 #d7def0, 0 8px 16px rgba(17,24,39,.06);
+    transition:.12s transform ease, .12s box-shadow ease;
+  }
+  .topbar-actions a:hover, .topbar-actions button:hover{ transform: translateY(-1px); box-shadow:0 4px 0 #cbd6f2, 0 10px 18px rgba(17,24,39,.08);}
+  .topbar-actions a:active, .topbar-actions button:active{ transform: translateY(1px); }
+
+  .autorefresh{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px dashed var(--line); border-radius:10px; background:#fff; }
+
+  .scroll-x { width:100%; overflow-x:auto; overflow-y:hidden; border:1px solid var(--line); border-radius:14px; background:var(--card); box-shadow:0 6px 18px rgba(17,24,39,.05); }
+
+  table { border-collapse: separate; border-spacing:0; white-space: nowrap; }
+  thead th{ position:sticky; top:0; background:#f3f4f6; z-index:1; font-weight:700; font-size:14px; text-align:left; padding:14px 12px; border-bottom:1px solid var(--line); }
+  tbody td{ font-size:15px; padding:14px 12px; border-bottom:1px solid var(--line); vertical-align:top; max-width: 420px; overflow:hidden; text-overflow: ellipsis; }
+  tbody tr:nth-child(odd){ background:#fbfdff; }
+  tbody tr:hover{ background:#f8fafc; }
+
+  /* ✅ 器材列：每行一条，且“名称 x数量”不拆开 */
+  .td-equipment { white-space: normal; max-width: 360px; line-height: 1.45; min-width: 180px; }
+  .equip-lines{ display:block; }
+  .equip-line{
+    display:block;
+    white-space: nowrap;
+    word-break: keep-all;
+  }
+
+  .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid transparent; }
+  .badge-pending { background:#fff7e6; border-color:#ffcc80; }
+  .badge-approved { background:#e8f5e9; border-color:#a5d6a7; }
+  .badge-rejected { background:#ffebee; border-color:#ef9a9a; }
+
+  .actions { min-width: 520px; }
+  .stack { display:flex; gap:8px; align-items:center; }
+  .comment-input { width: 260px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; }
+
+  .btn{ appearance:none; border:none; cursor:pointer; padding:8px 12px; border-radius:10px; color:#fff; font-size:14px; line-height:1; box-shadow:0 2px 8px rgba(17,24,39,.08); transition:.15s transform ease, .15s opacity ease, .15s background ease; }
+  .btn:hover{ transform: translateY(-1px); opacity:.95; }
+  .btn:active{ transform:none; }
+  .btn[disabled]{ opacity:.6; cursor:not-allowed; }
+
+  .btn-approve{ background:var(--green); } .btn-approve:hover{ background:var(--green-600); }
+  .btn-reject{ background:var(--red); } .btn-reject:hover{ background:var(--red-600); }
+  .btn-mail{ background:var(--indigo); } .btn-mail:hover{ background:var(--indigo-600); }
+  .btn-delete{ background:var(--amber); color:#111; } .btn-delete:hover{ background:var(--amber-600); color:#fff; }
+
+  .muted { color:var(--muted); font-size:12px; }
+  a.link { color:var(--primary); text-decoration:none; }
+  a.link:hover { color:var(--primary-600); text-decoration:underline; }
+
+  .inline-tip { margin-top:6px; font-size:12px; color:#065f46; }
+  .inline-tip.error { color:#b91c1c; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topbar">
+      <h1>管理审核</h1>
+      <div class="topbar-actions">
+        <button type="button" onclick="hardReload()">刷新</button>
+        <label class="autorefresh">
+          <input type="checkbox" id="autoRefreshToggle" checked>
+          自动刷新（30 秒）
+        </label>
+        <a href="/" target="_self">返回首页</a>
+        <a href="/logout" target="_self">退出登录</a>
+      </div>
+    </div>
+
+    <div class="scroll-x">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>姓名</th><th>电话</th><th>邮箱</th><th>团体名称</th><th>活动名称</th>
+            <th>开始</th><th>结束</th><th>地点</th><th>性质</th><th>人数</th>
+            <th>器材</th><th>特别需求</th><th>捐款</th><th>方式</th><th>备注</th>
+            <th>紧急联系人</th><th>紧急电话</th><th>状态（含审核说明）</th>
+            <th>操作</th><th>导出</th><th>发送邮件</th><th>删除</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-root">
+          {% for s in submissions %}
+          <tr id="row-{{ s[0] }}" data-id="{{ s[0] }}">
+            <!-- ✅ 显示连续编号：loop.index ；但整行仍用真实ID做操作 -->
+            <td>{{ loop.index }}</td>
+
+            <td>{{ s[1] }}</td>
+            <td>{{ s[2] }}</td>
+            <td>{{ s[3] }}</td>
+            <td>{{ s[4] }}</td>
+            <td>{{ s[5] }}</td>
+            <td>{{ s[6] }} {{ s[7] }}</td>
+            <td>{{ s[8] }} {{ s[9] }}</td>
+            <td>{{ s[10] }}</td>
+            <td>{{ s[11] }}</td>
+            <td>{{ s[12] }}</td>
+
+            <!-- 原始器材文本，JS 美化为“名称 x数量”，每条独占一行 -->
+            <td class="td-equipment raw-equip">
+              {{ (s[13] if s|length>13 else '') | default('', true) }}
+            </td>
+
+            <td>{{ s[14] }}</td>
+            <td>{{ s[15] }}</td>
+            <td>{{ s[16] }}</td>
+            <td>{{ s[17] }}</td>
+            <td>{{ s[18] }}</td>
+            <td>{{ s[19] }}</td>
+
+            <!-- 🔧 修正索引：status = s[20], review_comment = s[21] -->
+            <td class="status-cell" title="审核说明：{% if s|length>21 and s[21] %}{{ s[21] }}{% else %}{% endif %}">
+              {% set st = (s[20] if s|length>20 and s[20] else '待审核') %}
+              <span class="badge
+                {% if '待' in st %}badge-pending{% elif '通' in st %}badge-approved{% elif '拒' in st %}badge-rejected{% endif %}
+              ">{{ st }}</span>
+              {% if s|length>21 and s[21] %} | <span class="muted">说明：{{ s[21] }}</span>{% endif %}
+              <div id="tip-{{ s[0] }}" class="inline-tip" style="display:none;"></div>
+            </td>
+
+            <td class="actions">
+              <div class="stack">
+                <input type="text" id="comment-{{ s[0] }}" class="comment-input" placeholder="审核说明">
+                <button class="btn btn-approve" onclick="updateStatus({{ s[0] }}, '通过')">通过</button>
+                <button class="btn btn-reject" onclick="updateStatus({{ s[0] }}, '不通过')">不通过</button>
+              </div>
+            </td>
+            <td><a class="link" href="/download/{{ s[0] }}" target="_blank">Word</a></td>
+            <td>
+              <button id="mailbtn-{{ s[0] }}" class="btn btn-mail" onclick="sendReviewEmail({{ s[0] }})">发送邮件</button>
+            </td>
+            <td><button class="btn btn-delete" onclick="deleteSubmission({{ s[0] }})">删除</button></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<script>
+async function handleJsonResponse(resp) {
+  const text = await resp.text();
+  try { return JSON.parse(text); } catch (_) { return { success:false, message: text || '非JSON响应' }; }
+}
+function setTip(id, msg, isError=false){
+  const tip = document.getElementById(`tip-${id}`);
+  if (!tip) return;
+  tip.textContent = msg;
+  tip.classList.toggle('error', !!isError);
+  tip.style.display = 'block';
+}
+function formatNow(){
+  const d = new Date();
+  const pad = n=> String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+function renderStatusCell(cell, id, status, review_comment){
+  let cls = 'badge';
+  const st = status || '待审核';
+  if (st.includes('待') || st.toLowerCase() === 'pending') cls += ' badge-pending';
+  else if (st.includes('通') || st.toLowerCase() === 'approved') cls += ' badge-approved';
+  else if (st.includes('拒') || st.toLowerCase() === 'rejected') cls += ' badge-rejected';
+  const comment = review_comment ? ` | <span class="muted">说明：${review_comment}</span>` : '';
+  const oldTip = cell.querySelector('.inline-tip');
+  const tipHTML = oldTip ? oldTip.outerHTML : `<div id="tip-${id}" class="inline-tip" style="display:none;"></div>`;
+  cell.innerHTML = `<span class="${cls}">${st}</span>${comment}${tipHTML}`;
+}
+
+/* 行状态回填：以数据库最终值为准（/api/submission 返回字段与索引一致） */
+function refreshRowStatus(id){
+  fetch(`/api/submission/${id}`, { credentials: "same-origin" })
+    .then(handleJsonResponse)
+    .then(data => {
+      if (!data.success) return;
+      const row = document.getElementById(`row-${id}`);
+      const cell = row && row.querySelector('.status-cell');
+      if (!cell) return;
+      renderStatusCell(cell, id, data.data.status, data.data.review_comment);
+    })
+    .catch(()=>{});
+}
+function hydrateAllRows(){
+  const rows = document.querySelectorAll('tr[id^="row-"]');
+  rows.forEach(tr => {
+    const id = tr.id.replace('row-','');
+    refreshRowStatus(id);
+  });
+}
+
+/* ✅ 器材列：每行一条，名称与“x数量”之间有空格，且不拆开 */
+function beautifyEquipment(){
+  const cells = document.querySelectorAll('.raw-equip');
+  cells.forEach(td=>{
+    const raw = (td.textContent || '').trim();
+    if (!raw){ td.innerHTML = ''; return; }
+    const parts = raw.split(/[,，\n]+/).map(s=>s.trim()).filter(Boolean);
+    const lines = parts.map(p=>{
+      const m = p.match(/^(.+?)x\s*(\d+)$/i);
+      if (m){
+        return `<div class="equip-line">${m[1]} x${m[2]}</div>`;
+      }
+      return `<div class="equip-line">${p}</div>`;
+    }).join('');
+    td.classList.remove('raw-equip');
+    td.innerHTML = `<div class="equip-lines">${lines}</div>`;
+  });
+}
+
+/* 审核、发邮件、删除：保持原逻辑 */
+function updateStatus(id, statusText) {
+  const comment = document.getElementById(`comment-${id}`).value || "";
+  if (!confirm(`确认将编号 ${id} 设置为「${statusText}」吗？`)) return;
+
+  fetch(`/update_status/${id}/${encodeURIComponent(statusText)}`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ comment: comment })
+    })
+    .then(async r => {
+      const data = await handleJsonResponse(r);
+      if (!r.ok || !data.success) {
+        setTip(id, data.message || `更新失败（HTTP ${r.status})`, true);
+        alert(data.message || `更新失败（HTTP ${r.status})`);
+        return;
+      }
+      refreshRowStatus(id);
+      setTip(id, `已更新为「${data.status}」 ${formatNow()}`);
+    })
+    .catch(err => {
+      console.error(err);
+      setTip(id, "网络或服务器异常", true);
+      alert("网络或服务器异常");
+    });
+}
+
+function sendReviewEmail(id) {
+  if (!confirm(`确认向该申请的邮箱发送当前审核结果和说明吗？`)) return;
+  const btn = document.getElementById(`mailbtn-${id}`);
+  if (btn) btn.disabled = true;
+
+  fetch(`/send_review_email/${id}`, { method: "POST", credentials: "same-origin" })
+    .then(async r => {
+      const data = await handleJsonResponse(r);
+      if (!r.ok || !data.success) {
+        setTip(id, data.message || `发送失败（HTTP ${r.status})`, true);
+        if (btn) btn.disabled = false;
+        alert(data.message || `发送失败（HTTP ${r.status})`);
+        return;
+      }
+      setTip(id, `${data.message}（${formatNow()}）`);
+    })
+    .catch(err => {
+      console.error(err);
+      setTip(id, "网络或服务器异常", true);
+      if (btn) btn.disabled = false;
+      alert("网络或服务器异常");
+    });
+}
+
+function deleteSubmission(id){
+  if (!confirm(`确认删除编号 ${id} 这条记录吗？此操作不可撤销。`)) return;
+  fetch(`/delete_submission/${id}`, { method: "POST", credentials: "same-origin" })
+    .then(async r => {
+      const data = await handleJsonResponse(r);
+      if (!r.ok || !data.success) {
+        setTip(id, data.message || `删除失败（HTTP ${r.status})`, true);
+        alert(data.message || `删除失败（HTTP ${r.status})`);
+        return;
+      }
+      const row = document.getElementById(`row-${id}`);
+      if (row) row.remove();
+      alert(`已删除记录 ID: ${id}`);
+    })
+    .catch(err => {
+      console.error(err);
+      setTip(id, "网络或服务器异常", true);
+      alert("网络或服务器异常");
+    });
+}
+
+/* 强制刷新（带时间戳） */
+function hardReload(){
+  const url = new URL(window.location.href);
+  url.searchParams.set('ts', Date.now().toString());
+  window.location.replace(url.toString());
+}
+
+/* 自动刷新 */
+let autoTimer = null;
+function startAutoRefresh(){ stopAutoRefresh(); autoTimer = setInterval(()=>hardReload(), 30000); }
+function stopAutoRefresh(){ if (autoTimer){ clearInterval(autoTimer); autoTimer = null; } }
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  beautifyEquipment();
+  hydrateAllRows();
+
+  const toggle = document.getElementById('autoRefreshToggle');
+  if (toggle){
+    if (toggle.checked) startAutoRefresh();
+    toggle.addEventListener('change', ()=> toggle.checked ? startAutoRefresh() : stopAutoRefresh());
+  }
+});
+window.addEventListener('pageshow', function (e) { if (e.persisted) { hardReload(); } });
+</script>
+</body>
+</html>

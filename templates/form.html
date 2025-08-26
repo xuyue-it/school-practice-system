@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>福源堂器材外借申请</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            color: #000;
+            padding: 20px;
+            background-color: #f7f7f7;
+        }
+
+        h1, h3 {
+            text-align: center;
+            font-weight: bold;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        h3 {
+            font-size: 18px;
+        }
+
+        form {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        fieldset {
+            border: 2px solid #ccc;
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+        }
+
+        legend {
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .form-row label {
+            flex: 0 0 160px;
+            font-weight: bold;
+        }
+
+        .form-row input,
+        .form-row select,
+        .form-row textarea {
+            flex: 1;
+            font-family: "Microsoft YaHei", sans-serif;
+            padding: 6px;
+            border: 2px solid #aaa;
+            border-radius: 5px;
+        }
+
+        textarea {
+            resize: vertical;
+        }
+
+        .checkbox-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            font-weight: normal;
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            margin-right: 6px;
+        }
+
+        .equipment-select-all {
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .equipment-select-all label {
+            display: flex;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            font-family: "Microsoft YaHei", sans-serif;
+            border-radius: 6px;
+            border: none;
+            background-color: #0078D7;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #005ea6;
+        }
+
+        .tabs {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .tabs button {
+            margin: 0 10px;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        legend::before {
+            content: "📌 ";
+        }
+    </style>
+</head>
+<body>
+    <h1>福源堂器材外借申请</h1>
+    <h3>Masland Methodist Church 资讯委员会</h3>
+
+    <div class="tabs">
+        <button onclick="window.location.href='/'">申请表格</button>
+        <button onclick="window.location.href='/status'">查询状态</button>
+    </div>
+
+    <form action="/submit" method="post" onsubmit="return validateForm()">
+        <fieldset>
+            <legend>申请人信息</legend>
+            <div class="form-row"><label>姓名 *</label><input name="name" id="name" required></div>
+            <div class="form-row"><label>联系电话 *</label><input name="phone" id="phone" required></div>
+            <div class="form-row"><label>电子邮箱</label><input name="email"></div>
+            <div class="form-row"><label>所属团契/小组</label><input name="group"></div>
+        </fieldset>
+
+        <fieldset>
+            <legend>活动信息</legend>
+            <div class="form-row"><label>活动名称 *</label><input name="event_name" required></div>
+            <div class="form-row"><label>开始日期 *</label><input type="date" name="start_date" required></div>
+            <div class="form-row"><label>开始时间 *</label><input type="time" name="start_time" required></div>
+            <div class="form-row"><label>结束日期 *</label><input type="date" name="end_date" required></div>
+            <div class="form-row"><label>结束时间 *</label><input type="time" name="end_time" required></div>
+            <div class="form-row"><label>活动地点 *</label><input name="location" required></div>
+            <div class="form-row"><label>活动性质 *</label>
+                <select name="event_type" required>
+                    <option value="">请选择活动性质</option>
+                    <option value="内部">内部</option>
+                    <option value="外借">外借</option>
+                </select>
+            </div>
+            <div class="form-row"><label>预计参与人数 *</label><input name="participants" required></div>
+        </fieldset>
+
+        <fieldset>
+            <legend>器材需求</legend>
+            <div class="equipment-select-all">
+                <label><input type="checkbox" id="selectAll" onchange="toggleAllEquipment(this)"> 全选器材</label>
+            </div>
+
+            <div class="checkbox-group">
+                <label><input type="checkbox" name="equipment" value="麦克风">麦克风</label>
+                <label><input type="checkbox" name="equipment" value="扩音器">扩音器</label>
+                <label><input type="checkbox" name="equipment" value="音响系统">音响系统</label>
+                <label><input type="checkbox" name="equipment" value="投影机">投影机</label>
+                <label><input type="checkbox" name="equipment" value="投影屏幕">投影屏幕</label>
+                <label><input type="checkbox" name="equipment" value="延长线">延长线</label>
+                <label><input type="checkbox" name="equipment" value="桌子">桌子</label>
+                <label><input type="checkbox" name="equipment" value="椅子">椅子</label>
+                <label><input type="checkbox" name="equipment" value="讲台">讲台</label>
+                <label><input type="checkbox" name="equipment" value="HDMI线">HDMI线</label>
+            </div>
+
+            <div class="form-row">
+                <label>特殊需求</label>
+                <textarea name="special_request" placeholder="如有特殊器材需求或使用要求，请在此说明"></textarea>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>感恩奉献（可选）</legend>
+            <label>
+                <input type="checkbox" name="donation" value="yes" id="donationCheckbox" onchange="toggleDonationMethod()">
+                我愿意为此次器材使用献上感恩奉献
+            </label>
+
+            <div id="donationMethodContainer" style="margin-top: 10px; display: none;">
+                <label for="donation_method" style="display: block; margin-bottom: 5px; font-weight: bold;">请选择奉献方式</label>
+                <select name="donation_method" id="donation_method" style="padding: 6px; border: 2px solid #aaa; border-radius: 5px; font-family: 'Microsoft YaHei', sans-serif;">
+                    <option value="">-- 请选择 --</option>
+                    <option value="现金">现金</option>
+                    <option value="银行转账">银行转账</option>
+                </select>
+            </div>
+        </fieldset>
+
+        <fieldset>
+            <legend>其他信息</legend>
+            <div class="form-row"><label>备注</label>
+                <textarea name="remarks" placeholder="如有其他需要说明的事项，请在此填写"></textarea>
+            </div>
+            <div class="form-row"><label>紧急联系人姓名</label><input name="emergency_name" id="emergency_name"></div>
+            <div class="form-row"><label>紧急联系人电话</label><input name="emergency_phone" id="emergency_phone"></div>
+        </fieldset>
+
+        <div style="text-align: center;">
+            <button type="submit">提交申请</button>
+        </div>
+    </form>
+
+    <script>
+        function toggleAllEquipment(source) {
+            const checkboxes = document.querySelectorAll('input[name="equipment"]');
+            checkboxes.forEach(cb => cb.checked = source.checked);
+        }
+
+        function validateForm() {
+            const name = document.getElementById("name").value.trim();
+            const phone = document.getElementById("phone").value.trim();
+            const emergencyName = document.getElementById("emergency_name").value.trim();
+            const emergencyPhone = document.getElementById("emergency_phone").value.trim();
+
+            if (emergencyName && emergencyName === name) {
+                alert("⚠️ 紧急联系人姓名要与申请人姓名不一致");
+                return false;
+            }
+
+            if (emergencyPhone && emergencyPhone === phone) {
+                alert("⚠️ 紧急联系人电话要与申请人联系电话不一致");
+                return false;
+            }
+
+            return true;
+        }
+
+        function toggleDonationMethod() {
+            const checkbox = document.getElementById('donationCheckbox');
+            const container = document.getElementById('donationMethodContainer');
+            container.style.display = checkbox.checked ? 'block' : 'none';
+        }
+    </script>
+</body>
+</html>

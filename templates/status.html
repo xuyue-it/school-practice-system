@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>查询审核状态</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        body {
+            font-family: "Microsoft YaHei", sans-serif;
+            padding: 20px;
+            background-color: #f7f7f7;
+        }
+        h1 {
+            text-align: center;
+            font-weight: bold;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #0078D7;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #005ea6;
+        }
+        .result {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .approved { color: green; }
+        .rejected { color: red; }
+        .pending { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>查询审核状态</h1>
+    <div class="container">
+        <label>请输入姓名：</label>
+        <input type="text" id="name" placeholder="输入申请时填写的姓名">
+        <button onclick="checkStatus()">查询</button>
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        async function checkStatus() {
+            const name = document.getElementById("name").value.trim();
+            const resultDiv = document.getElementById("result");
+
+            if (!name) {
+                resultDiv.innerHTML = "⚠️ 请输入姓名";
+                resultDiv.className = "result";
+                return;
+            }
+
+            try {
+                const response = await fetch(`/check_status_api?name=${encodeURIComponent(name)}`);
+                const data = await response.json();
+
+                if (data.status === "approved") {
+                    resultDiv.innerHTML = "✅ 审核已通过";
+                    resultDiv.className = "result approved";
+                } else if (data.status === "rejected") {
+                    resultDiv.innerHTML = "❌ 审核未通过";
+                    resultDiv.className = "result rejected";
+                } else if (data.status === "pending") {
+                    resultDiv.innerHTML = "⌛ 审核中";
+                    resultDiv.className = "result pending";
+                } else {
+                    resultDiv.innerHTML = "⚠️ 没有找到相关记录";
+                    resultDiv.className = "result";
+                }
+            } catch (error) {
+                resultDiv.innerHTML = "❌ 查询失败，请稍后再试";
+                resultDiv.className = "result";
+            }
+        }
+    </script>
+</body>
+</html>
