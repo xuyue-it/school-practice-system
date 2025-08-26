@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8" />
-  <title>福源堂器材外借申请</title>
+  <title>通用申请表单</title>
   <link rel="stylesheet" href="/static/style.css">
   <style>
     :root{
@@ -27,23 +27,13 @@
     .card h2{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:900;margin:0 0 12px}
     .icon{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
     .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
     .row{display:flex;flex-direction:column;gap:6px}
     .row label{font-weight:800}
-    input[type="text"],input[type="email"],input[type="tel"],input[type="date"],
-    input[type="time"],input[type="number"],select,textarea{
+    input,select,textarea{
       padding:10px;border:1px solid var(--bd);border-radius:10px;background:#fff;outline:none;
       font-family:inherit;
     }
     textarea{resize:vertical;min-height:90px}
-    .equip-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-    .select-all{display:flex;align-items:center;gap:8px;font-weight:800}
-    .equip-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-    .equip-item{border:1px solid var(--bd);border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:space-between;background:#fff}
-    .equip-left{display:flex;align-items:center;gap:8px}
-    .qty{display:none;align-items:center;gap:6px}
-    .qty input{width:72px;text-align:center}
-    .muted{color:var(--muted);font-size:13px}
     .submit-wrap{text-align:center;margin-top:14px}
     .btn-submit{
       padding:12px 22px;border:none;border-radius:12px;background:var(--primary);color:#fff;
@@ -60,8 +50,8 @@
   </style>
 </head>
 <body>
-  <h1 class="nav-title">福源堂器材外借申请</h1>
-  <h3>Masland Methodist Church 资讯委员会</h3>
+  <h1 class="nav-title">通用申请表单</h1>
+  <h3>适用于各类活动/资源申请</h3>
 
   <div class="tabs">
     <button class="btn-tab" onclick="window.location.href='/'">申请表格</button>
@@ -88,95 +78,36 @@
         <div class="row"><label>姓名 *</label><input type="text" name="name" required></div>
         <div class="row"><label>联系电话 *</label><input type="tel" name="phone" required></div>
         <div class="row"><label>电子邮箱 *</label><input type="email" name="email" required></div>
-        <div class="row"><label>所属团契/小组 *</label><input type="text" name="group" required></div>
+        <div class="row"><label>所属团体/组织</label><input type="text" name="group"></div>
       </div>
     </section>
 
     <!-- 活动信息 -->
     <section class="card">
-      <h2><span class="icon">📅</span>活动信息</h2>
+      <h2><span class="icon">📅</span>事项信息</h2>
       <div class="grid-2">
-        <div class="row"><label>活动名称 *</label><input type="text" name="event_name" required></div>
-        <div class="row"><label>活动地点 *</label><input type="text" name="location" required></div>
+        <div class="row"><label>事项/活动名称 *</label><input type="text" name="event_name" required></div>
+        <div class="row"><label>地点 *</label><input type="text" name="location" required></div>
         <div class="row"><label>开始日期 *</label><input type="date" name="start_date" required></div>
         <div class="row"><label>开始时间 *</label><input type="time" name="start_time" required></div>
         <div class="row"><label>结束日期 *</label><input type="date" name="end_date" required></div>
         <div class="row"><label>结束时间 *</label><input type="time" name="end_time" required></div>
-        <div class="row"><label>活动性质 *</label>
+        <div class="row"><label>类别 *</label>
           <select name="event_type" required>
-            <option value="">请选择活动性质</option>
-            <option value="内部">内部</option>
-            <option value="外借">外借</option>
+            <option value="">请选择类别</option>
+            <option value="活动">活动</option>
+            <option value="资源申请">资源申请</option>
+            <option value="其他">其他</option>
           </select>
         </div>
         <div class="row"><label>预计参与人数 *</label><input type="number" name="participants" min="1" step="1" required></div>
       </div>
     </section>
 
-    <!-- 器材需求 -->
+    <!-- 申请说明 -->
     <section class="card">
-      <h2><span class="icon">🛠</span>器材需求</h2>
-      <div class="equip-head">
-        <div class="muted">请选择需要的器材，勾选后可填写数量</div>
-        <label class="select-all"><input type="checkbox" id="equip_select_all">全选器材</label>
-      </div>
-      <div class="equip-grid">
-        <!-- 无线麦克风 -->
-        <div class="equip-item">
-          <div class="equip-left">
-            <input type="checkbox" id="equip_mic_wireless" name="equip_mic_wireless">
-            <label for="equip_mic_wireless">无线麦克风</label>
-          </div>
-          <div class="qty" id="qty_mic_wireless">
-            <span class="muted">数量</span>
-            <input type="number" name="equip_mic_wireless_qty" min="1" step="1" value="1">
-          </div>
-        </div>
-        <!-- 有线麦克风 -->
-        <div class="equip-item">
-          <div class="equip-left">
-            <input type="checkbox" id="equip_mic_wired" name="equip_mic_wired">
-            <label for="equip_mic_wired">有线麦克风</label>
-          </div>
-          <div class="qty" id="qty_mic_wired">
-            <span class="muted">数量</span>
-            <input type="number" name="equip_mic_wired_qty" min="1" step="1" value="1">
-          </div>
-        </div>
-        <!-- 其他器材 -->
-        {% for key, cname in equip_map.items() %}
-        <div class="equip-item">
-          <div class="equip-left">
-            <input type="checkbox" id="equip_{{key}}" name="equip_{{key}}">
-            <label for="equip_{{key}}">{{ cname }}</label>
-          </div>
-          <div class="qty" id="qty_{{key}}">
-            <span class="muted">数量</span>
-            <input type="number" name="equip_{{key}}_qty" min="1" step="1" value="1">
-          </div>
-        </div>
-        {% endfor %}
-      </div>
-      <div class="row" style="margin-top:12px"><label>特殊需求</label><textarea name="special_request"></textarea></div>
-    </section>
-
-    <!-- 感恩奉献 -->
-    <section class="card">
-      <h2><span class="icon">❤️</span>感恩奉献（可选）</h2>
-      <label style="display:flex;align-items:center;gap:8px;font-weight:800">
-        <input type="checkbox" id="donation_consent" name="donation_consent">我愿意为此次器材使用献上感恩奉献
-      </label>
-      <div class="grid-3" id="donation_block" style="margin-top:10px;display:none">
-        <div class="row"><label>奉献金额（RM） *</label><input type="number" id="donation_amount" name="donation_amount" min="1" step="1"></div>
-        <div class="row"><label>奉献方式 *</label>
-          <select id="donation_method" name="donation_method">
-            <option value="">-- 请选择 --</option>
-            <option value="现金">现金</option>
-            <option value="银行转账">银行转账</option>
-          </select>
-        </div>
-        <div class="row"><span class="muted">（未勾选上方复选框则无需填写）</span></div>
-      </div>
+      <h2><span class="icon">📝</span>申请说明</h2>
+      <div class="row"><label>说明 *</label><textarea name="special_request" required></textarea></div>
     </section>
 
     <!-- 其他信息 -->
@@ -184,8 +115,8 @@
       <h2><span class="icon">ℹ️</span>其他信息</h2>
       <div class="grid-2">
         <div class="row"><label>备注</label><textarea name="remarks"></textarea></div>
-        <div class="row"><label>紧急联系人姓名</label><input type="text" name="emergency_name" id="emergency_name"></div>
-        <div class="row"><label>紧急联系人电话</label><input type="text" name="emergency_phone" id="emergency_phone"></div>
+        <div class="row"><label>紧急联系人姓名</label><input type="text" name="emergency_name"></div>
+        <div class="row"><label>紧急联系人电话</label><input type="text" name="emergency_phone"></div>
       </div>
     </section>
     <div class="submit-wrap"><button class="btn-submit" type="submit">提交申请</button></div>
@@ -210,48 +141,11 @@ async function doLookup(){
     const s=data.data.review_status||'';
     box.innerHTML=
       `<div class="status-row"><span class="muted">姓名</span><b>${data.data.name}</b></div>
-       <div class="status-row"><span class="muted">活动名称</span><b>${data.data.event_name||'-'}</b></div>
+       <div class="status-row"><span class="muted">事项</span><b>${data.data.event_name||'-'}</b></div>
        <div class="status-row"><span class="muted">审核状态</span><span class="badge">${s}</span></div>
        <div class="status-row"><span class="muted">审核说明</span><b>${data.data.review_comment||'无'}</b></div>`;
   }catch(e){ box.textContent='网络或服务器异常'; }
 }
-(function initEquip(){
-  const ids={{ equip_map.keys()|list|tojson }};
-  const allBox=document.getElementById('equip_select_all');
-  function syncOne(k){
-    const cb=document.getElementById(`equip_${k}`);
-    const box=document.getElementById(`qty_${k}`);
-    const qty=document.querySelector(`input[name="equip_${k}_qty"]`);
-    if(!cb||!box||!qty) return;
-    if(cb.checked){ box.style.display='flex'; qty.required=true; if(!qty.value) qty.value=1;}
-    else{ box.style.display='none'; qty.required=false; }
-  }
-  ids.forEach(k=>{const cb=document.getElementById(`equip_${k}`);if(cb){cb.addEventListener('change',()=>syncOne(k));syncOne(k);}});
-  if(allBox){allBox.addEventListener('change',()=>{const on=allBox.checked;ids.forEach(k=>{const cb=document.getElementById(`equip_${k}`);if(cb){cb.checked=on;syncOne(k);}});});}
-  // 同步麦克风两个单独的
-  ["mic_wireless","mic_wired"].forEach(k=>{
-    const cb=document.getElementById(`equip_${k}`);
-    const box=document.getElementById(`qty_${k}`);
-    const qty=document.querySelector(`input[name="equip_${k}_qty"]`);
-    if(cb){cb.addEventListener('change',()=>{if(cb.checked){box.style.display='flex'; qty.required=true;}else{box.style.display='none'; qty.required=false;}});}
-  });
-})();
-(function initDonation(){
-  const consent=document.getElementById('donation_consent');
-  const block=document.getElementById('donation_block');
-  const amount=document.getElementById('donation_amount');
-  const method=document.getElementById('donation_method');
-  const sync=()=>{const on=consent.checked;block.style.display=on?'grid':'none';amount.required=on;method.required=on;if(!on){amount.value='';method.value='';}};
-  consent.addEventListener('change',sync); sync();
-})();
-document.getElementById('mainForm').addEventListener('submit',function(e){
-  const name=(this.querySelector('input[name="name"]').value||'').trim();
-  const phone=(this.querySelector('input[name="phone"]').value||'').trim();
-  const en=(document.getElementById('emergency_name').value||'').trim();
-  const ep=(document.getElementById('emergency_phone').value||'').trim();
-  if(en&&en===name){ e.preventDefault(); alert("⚠️ 紧急联系人姓名要与申请人姓名不一致"); }
-  else if(ep&&ep===phone){ e.preventDefault(); alert("⚠️ 紧急联系人电话要与申请人联系电话不一致"); }
-});
 </script>
 </body>
 </html>
