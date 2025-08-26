@@ -1,4 +1,5 @@
-flask
-gunicorn
-python-docx
+Flask
 python-dotenv
+python-docx
+gunicorn
+psycopg2-binary
