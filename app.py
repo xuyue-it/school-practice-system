@@ -17,9 +17,9 @@ app = Flask(__name__)
 # ========== 基本配置 ==========
 app.secret_key = os.getenv("SECRET_KEY", "replace-this-in-prod")
 
-# 管理员密码
-ADMIN_PASSWORD = "maslandit339188"
-print(">>> ADMIN_PASSWORD source: CODE")
+# 管理员密码（优先环境变量）
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "maslandit339188")
+print(">>> ADMIN_PASSWORD source:", "ENV" if os.getenv("ADMIN_PASSWORD") else "DEFAULT")
 
 # ========== 邮件配置 ==========
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
@@ -29,7 +29,7 @@ SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "nkxp hwba oagf vgyq")
 ADMIN_EMAIL     = os.getenv("ADMIN_EMAIL", "jameslau32@gmail.com")
 
 # ========== 数据库配置（Neon PostgreSQL） ==========
-DB_URL = os.getenv("DATABASE_URL")
+DB_URL = os.getenv("DB_URL")   # ⚠️ 用 DB_URL，和 .env 对齐
 
 def get_conn():
     return psycopg2.connect(DB_URL)
@@ -40,7 +40,7 @@ EQUIP_MAP = {
     "ext": "延长线","table": "桌子","chair": "椅子","podium": "讲台","hdmi": "HDMI线",
     "signal": "信号线"
 }
-# 注意：麦克风在表单里单独处理（无线/有线）
+# 麦克风单独处理（无线/有线）
 
 # ===== 邮件发送 =====
 def send_email(subject, content, to_email):
