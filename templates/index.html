@@ -104,6 +104,29 @@
       </div>
     </section>
 
+    <!-- 器材申请 -->
+    <section class="card">
+      <h2><span class="icon">🎤</span>器材申请</h2>
+      <div class="grid-2">
+        <div class="row">
+          <label><input type="checkbox" name="equip_projector"> 投影机</label>
+          <input type="number" name="equip_projector_qty" min="1" placeholder="数量">
+        </div>
+        <div class="row">
+          <label><input type="checkbox" name="equip_screen"> 投影屏幕</label>
+          <input type="number" name="equip_screen_qty" min="1" placeholder="数量">
+        </div>
+        <div class="row">
+          <label><input type="checkbox" name="equip_mic_wireless"> 无线麦克风</label>
+          <input type="number" name="equip_mic_wireless_qty" min="1" placeholder="数量">
+        </div>
+        <div class="row">
+          <label><input type="checkbox" name="equip_mic_wired"> 有线麦克风</label>
+          <input type="number" name="equip_mic_wired_qty" min="1" placeholder="数量">
+        </div>
+      </div>
+    </section>
+
     <!-- 申请说明 -->
     <section class="card">
       <h2><span class="icon">📝</span>申请说明</h2>
@@ -119,6 +142,7 @@
         <div class="row"><label>紧急联系人电话</label><input type="text" name="emergency_phone"></div>
       </div>
     </section>
+
     <div class="submit-wrap"><button class="btn-submit" type="submit">提交申请</button></div>
   </form>
 
@@ -146,6 +170,29 @@ async function doLookup(){
        <div class="status-row"><span class="muted">审核说明</span><b>${data.data.review_comment||'无'}</b></div>`;
   }catch(e){ box.textContent='网络或服务器异常'; }
 }
+
+// ✅ 提交拦截：提示并跳转
+document.getElementById("mainForm").addEventListener("submit", async function(e){
+  e.preventDefault();
+  const form = e.target;
+  const formData = new FormData(form);
+  // 校验结束时间 >= 开始时间
+  const startDate=new Date(formData.get("start_date")+" "+formData.get("start_time"));
+  const endDate=new Date(formData.get("end_date")+" "+formData.get("end_time"));
+  if(endDate<startDate){ alert("结束时间不能早于开始时间！"); return; }
+  try {
+    const res = await fetch(form.action, {method:"POST", body: formData});
+    if(res.ok){
+      alert("✅ 提交成功！请返回首页查询审核状态。");
+      form.reset();
+      window.location.href="/";
+    }else{
+      alert("❌ 提交失败，请稍后再试。");
+    }
+  } catch(err){
+    alert("⚠️ 网络异常："+err);
+  }
+});
 </script>
 </body>
 </html>
