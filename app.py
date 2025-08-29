@@ -24,9 +24,9 @@ print(">>> ADMIN_PASSWORD source:", "ENV" if os.getenv("ADMIN_PASSWORD") else "D
 # ========== 邮件配置 ==========
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT   = int(os.getenv("SMTP_PORT", "587"))
-SENDER_EMAIL    = os.getenv("SENDER_EMAIL", "lausukyork9@gmail.com")
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "ejln rpkv vwot xlzj")
-ADMIN_EMAIL     = os.getenv("ADMIN_EMAIL", "lausukyork@gmail.com")
+SENDER_EMAIL    = os.getenv("SENDER_EMAIL", "lausukyork8@gmail.com")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "ejlnrpkvvwotxlzj")
+ADMIN_EMAIL     = os.getenv("ADMIN_EMAIL", "lausukyork8@gmail.com")
 
 # ========== 数据库配置（Neon PostgreSQL） ==========
 DB_URL = os.getenv("DB_URL")
@@ -44,7 +44,7 @@ EQUIP_MAP = {
 # ===== 邮件发送 =====
 def send_email(subject, content, to_email):
     msg = MIMEMultipart()
-    msg['From'] = formataddr(("福源堂器材外借系统", SENDER_EMAIL))
+    msg['From'] = formataddr(("通用申请审核系统", SENDER_EMAIL))
     msg['To'] = to_email
     msg['Subject'] = Header(subject, "utf-8")
     msg.attach(MIMEText(content, "plain", "utf-8"))
@@ -168,7 +168,7 @@ def submit():
     ))
     conn.commit(); conn.close()
 
-    send_email("【新申请】福源堂器材外借",
+    send_email("【新申请】通用申请",
                f"申请人：{data.get('name')}\n活动：{data.get('event_name')}\n电话：{data.get('phone')}\n邮箱：{data.get('email')}",
                ADMIN_EMAIL)
 
@@ -218,7 +218,7 @@ def update_status(submission_id, new_status):
 
         if row and row[1]:
             try:
-                send_email("【审核结果】福源堂器材外借申请",
+                send_email("【审核结果】通用申请审核系统",
                            f"您好 {row[0]}，您的申请已被审核为：{row[2]}\n审核说明：{comment or '无'}",
                            row[1])
             except Exception as mail_err:
