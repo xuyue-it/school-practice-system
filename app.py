@@ -18,21 +18,20 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "replace-this-in-prod")
 
 # 管理员密码（优先环境变量）
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "maslandit339188")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "ahyork339188")
 print(">>> ADMIN_PASSWORD source:", "ENV" if os.getenv("ADMIN_PASSWORD") else "DEFAULT")
 
 # ========== 邮件配置 ==========
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT   = int(os.getenv("SMTP_PORT", "587"))
-SENDER_EMAIL    = os.getenv("SENDER_EMAIL", "jameslau32@gmail.com")
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "nkxp hwba oagf vgyq")
-ADMIN_EMAIL     = os.getenv("ADMIN_EMAIL", "jameslau32@gmail.com")
+SENDER_EMAIL    = os.getenv("SENDER_EMAIL", "lausukyork9@gmail.com")
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "ejln rpkv vwot xlzj")
+ADMIN_EMAIL     = os.getenv("ADMIN_EMAIL", "lausukyork@gmail.com")
 
 # ========== 数据库配置（Neon PostgreSQL） ==========
-DB_URL = os.getenv("DB_URL")   # ⚠️ 用 DB_URL，和 .env 对齐
-
+DB_URL = os.getenv("DB_URL")
 def get_conn():
-    return psycopg2.connect(DB_URL)
+    return psycopg2.connect(DB_URL, connect_timeout=10)
 
 # ========== 器材清单 ==========
 EQUIP_MAP = {
