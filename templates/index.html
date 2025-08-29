@@ -70,7 +70,7 @@
   </form>
 
   <!-- 主表单 -->
-  <form action="/submit" method="post" id="mainForm">
+  <form action="/submit" method="post" id="mainForm" enctype="multipart/form-data">
     <!-- 申请人信息 -->
     <section class="card">
       <h2><span class="icon">👤</span>申请人信息</h2>
@@ -133,6 +133,13 @@
       <div class="row"><label>说明 *</label><textarea name="special_request" required></textarea></div>
     </section>
 
+    <!-- 上传附件 -->
+    <section class="card">
+      <h2><span class="icon">📎</span>上传附件</h2>
+      <div class="row"><input type="file" name="attachment" accept=".pdf,.doc,.docx,.jpg,.png,.jpeg"></div>
+      <p class="muted">（可选：上传活动方案、预算、相关证明等）</p>
+    </section>
+
     <!-- 其他信息 -->
     <section class="card">
       <h2><span class="icon">ℹ️</span>其他信息</h2>
@@ -170,29 +177,6 @@ async function doLookup(){
        <div class="status-row"><span class="muted">审核说明</span><b>${data.data.review_comment||'无'}</b></div>`;
   }catch(e){ box.textContent='网络或服务器异常'; }
 }
-
-// ✅ 提交拦截：提示并跳转
-document.getElementById("mainForm").addEventListener("submit", async function(e){
-  e.preventDefault();
-  const form = e.target;
-  const formData = new FormData(form);
-  // 校验结束时间 >= 开始时间
-  const startDate=new Date(formData.get("start_date")+" "+formData.get("start_time"));
-  const endDate=new Date(formData.get("end_date")+" "+formData.get("end_time"));
-  if(endDate<startDate){ alert("结束时间不能早于开始时间！"); return; }
-  try {
-    const res = await fetch(form.action, {method:"POST", body: formData});
-    if(res.ok){
-      alert("✅ 提交成功！请返回首页查询审核状态。");
-      form.reset();
-      window.location.href="/";
-    }else{
-      alert("❌ 提交失败，请稍后再试。");
-    }
-  } catch(err){
-    alert("⚠️ 网络异常："+err);
-  }
-});
 </script>
 </body>
 </html>

@@ -89,7 +89,8 @@
             <th>ID</th><th>姓名</th><th>电话</th><th>邮箱</th><th>团体名称</th><th>活动名称</th>
             <th>开始</th><th>结束</th><th>地点</th><th>性质</th><th>人数</th>
             <th>器材</th><th>特别需求</th><th>捐款</th><th>方式</th><th>备注</th>
-            <th>紧急联系人</th><th>紧急电话</th><th>附件</th><th>状态（含审核说明）</th>
+            <th>紧急联系人</th><th>紧急电话</th><th>附件</th>
+            <th>状态（含审核说明）</th>
             <th>操作</th><th>导出</th><th>发送邮件</th><th>删除</th>
           </tr>
         </thead>
@@ -146,7 +147,6 @@
   </div>
 
 <script>
-/* === JS 同之前版本，无需改动，保持刷新/操作逻辑 === */
 async function handleJsonResponse(resp) {
   const text = await resp.text();
   try { return JSON.parse(text); } catch (_) { return { success:false, message: text || '非JSON响应' }; }
