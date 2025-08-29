@@ -90,7 +90,7 @@
             <th>开始</th><th>结束</th><th>地点</th><th>性质</th><th>人数</th>
             <th>器材</th><th>特别需求</th><th>捐款</th><th>方式</th><th>备注</th>
             <th>紧急联系人</th><th>紧急电话</th><th>附件</th>
-            <th>状态（含审核说明）</th>
+            <th>状态</th><th>审核说明</th>
             <th>操作</th><th>导出</th><th>发送邮件</th><th>删除</th>
           </tr>
         </thead>
@@ -121,14 +121,13 @@
                 <span class="muted">无</span>
               {% endif %}
             </td>
-            <td class="status-cell" title="审核说明：{% if s|length>21 and s[21] %}{{ s[21] }}{% else %}{% endif %}">
+            <td>
               {% set st = (s[20] if s|length>20 and s[20] else '待审核') %}
               <span class="badge
                 {% if '待' in st %}badge-pending{% elif '通' in st %}badge-approved{% elif '拒' in st %}badge-rejected{% endif %}
               ">{{ st }}</span>
-              {% if s|length>21 and s[21] %} | <span class="muted">说明：{{ s[21] }}</span>{% endif %}
-              <div id="tip-{{ s[0] }}" class="inline-tip" style="display:none;"></div>
             </td>
+            <td>{{ s[21] or '' }}</td>
             <td class="actions">
               <div class="stack">
                 <input type="text" id="comment-{{ s[0] }}" class="comment-input" placeholder="审核说明">
@@ -163,53 +162,6 @@ function formatNow(){
   const pad = n=> String(n).padStart(2,'0');
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
-function renderStatusCell(cell, id, status, review_comment){
-  let cls = 'badge';
-  const st = status || '待审核';
-  if (st.includes('待') || st.toLowerCase() === 'pending') cls += ' badge-pending';
-  else if (st.includes('通') || st.toLowerCase() === 'approved') cls += ' badge-approved';
-  else if (st.includes('拒') || st.toLowerCase() === 'rejected') cls += ' badge-rejected';
-  const comment = review_comment ? ` | <span class="muted">说明：${review_comment}</span>` : '';
-  const oldTip = cell.querySelector('.inline-tip');
-  const tipHTML = oldTip ? oldTip.outerHTML : `<div id="tip-${id}" class="inline-tip" style="display:none;"></div>`;
-  cell.innerHTML = `<span class="${cls}">${st}</span>${comment}${tipHTML}`;
-}
-function refreshRowStatus(id){
-  fetch(`/api/submission/${id}`, { credentials: "same-origin" })
-    .then(handleJsonResponse)
-    .then(data => {
-      if (!data.success) return;
-      const row = document.getElementById(`row-${id}`);
-      const cell = row && row.querySelector('.status-cell');
-      if (!cell) return;
-      renderStatusCell(cell, id, data.data.status, data.data.review_comment);
-    })
-    .catch(()=>{});
-}
-function hydrateAllRows(){
-  const rows = document.querySelectorAll('tr[id^="row-"]');
-  rows.forEach(tr => {
-    const id = tr.id.replace('row-','');
-    refreshRowStatus(id);
-  });
-}
-function beautifyEquipment(){
-  const cells = document.querySelectorAll('.raw-equip');
-  cells.forEach(td=>{
-    const raw = (td.textContent || '').trim();
-    if (!raw){ td.innerHTML = ''; return; }
-    const parts = raw.split(/[,，\n]+/).map(s=>s.trim()).filter(Boolean);
-    const lines = parts.map(p=>{
-      const m = p.match(/^(.+?)x\s*(\d+)$/i);
-      if (m){
-        return `<div class="equip-line">${m[1]} x${m[2]}</div>`;
-      }
-      return `<div class="equip-line">${p}</div>`;
-    }).join('');
-    td.classList.remove('raw-equip');
-    td.innerHTML = `<div class="equip-lines">${lines}</div>`;
-  });
-}
 function updateStatus(id, statusText) {
   const comment = document.getElementById(`comment-${id}`).value || "";
   if (!confirm(`确认将编号 ${id} 设置为「${statusText}」吗？`)) return;
@@ -226,12 +178,10 @@ function updateStatus(id, statusText) {
         alert(data.message || `更新失败（HTTP ${r.status})`);
         return;
       }
-      refreshRowStatus(id);
-      setTip(id, `已更新为「${data.status}」 ${formatNow()}`);
+      alert(`已更新为 ${data.status}`);
     })
     .catch(err => {
       console.error(err);
-      setTip(id, "网络或服务器异常", true);
       alert("网络或服务器异常");
     });
 }
@@ -243,16 +193,14 @@ function sendReviewEmail(id) {
     .then(async r => {
       const data = await handleJsonResponse(r);
       if (!r.ok || !data.success) {
-        setTip(id, data.message || `发送失败（HTTP ${r.status})`, true);
         if (btn) btn.disabled = false;
         alert(data.message || `发送失败（HTTP ${r.status})`);
         return;
       }
-      setTip(id, `${data.message}（${formatNow()}）`);
+      alert(`${data.message}`);
     })
     .catch(err => {
       console.error(err);
-      setTip(id, "网络或服务器异常", true);
       if (btn) btn.disabled = false;
       alert("网络或服务器异常");
     });
@@ -263,7 +211,6 @@ function deleteSubmission(id){
     .then(async r => {
       const data = await handleJsonResponse(r);
       if (!r.ok || !data.success) {
-        setTip(id, data.message || `删除失败（HTTP ${r.status})`, true);
         alert(data.message || `删除失败（HTTP ${r.status})`);
         return;
       }
@@ -273,7 +220,6 @@ function deleteSubmission(id){
     })
     .catch(err => {
       console.error(err);
-      setTip(id, "网络或服务器异常", true);
       alert("网络或服务器异常");
     });
 }
@@ -286,8 +232,6 @@ let autoTimer = null;
 function startAutoRefresh(){ stopAutoRefresh(); autoTimer = setInterval(()=>hardReload(), 30000); }
 function stopAutoRefresh(){ if (autoTimer){ clearInterval(autoTimer); autoTimer = null; } }
 document.addEventListener('DOMContentLoaded', ()=>{
-  beautifyEquipment();
-  hydrateAllRows();
   const toggle = document.getElementById('autoRefreshToggle');
   if (toggle){
     if (toggle.checked) startAutoRefresh();
