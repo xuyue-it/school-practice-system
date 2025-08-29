@@ -89,7 +89,7 @@
             <th>ID</th><th>姓名</th><th>电话</th><th>邮箱</th><th>团体名称</th><th>活动名称</th>
             <th>开始</th><th>结束</th><th>地点</th><th>性质</th><th>人数</th>
             <th>器材</th><th>特别需求</th><th>捐款</th><th>方式</th><th>备注</th>
-            <th>紧急联系人</th><th>紧急电话</th><th>状态（含审核说明）</th>
+            <th>紧急联系人</th><th>紧急电话</th><th>附件</th><th>状态（含审核说明）</th>
             <th>操作</th><th>导出</th><th>发送邮件</th><th>删除</th>
           </tr>
         </thead>
@@ -113,7 +113,13 @@
             <td>{{ s[16] }}</td>
             <td>{{ s[17] }}</td>
             <td>{{ s[18] }}</td>
-            <td>{{ s[19] }}</td>
+            <td>
+              {% if s|length > 22 and s[22] %}
+                <a class="link" href="/uploads/{{ s[22] }}" target="_blank">{{ s[22] }}</a>
+              {% else %}
+                <span class="muted">无</span>
+              {% endif %}
+            </td>
             <td class="status-cell" title="审核说明：{% if s|length>21 and s[21] %}{{ s[21] }}{% else %}{% endif %}">
               {% set st = (s[20] if s|length>20 and s[20] else '待审核') %}
               <span class="badge
@@ -140,6 +146,7 @@
   </div>
 
 <script>
+/* === JS 同之前版本，无需改动，保持刷新/操作逻辑 === */
 async function handleJsonResponse(resp) {
   const text = await resp.text();
   try { return JSON.parse(text); } catch (_) { return { success:false, message: text || '非JSON响应' }; }

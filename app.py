@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify, session
+from werkzeug.utils import secure_filename
 from docx import Document
 import smtplib
 from email.mime.text import MIMEText
@@ -13,6 +14,11 @@ from functools import wraps
 import psycopg2
 
 app = Flask(__name__)
+
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
 
 # ========== 基本配置 ==========
 app.secret_key = os.getenv("SECRET_KEY", "replace-this-in-prod")
@@ -84,7 +90,7 @@ def init_db():
         location TEXT, event_type TEXT, participants TEXT, equipment TEXT,
         special_request TEXT, donation TEXT, donation_method TEXT,
         remarks TEXT, emergency_name TEXT, emergency_phone TEXT,
-        status TEXT DEFAULT '待审核', review_comment TEXT
+        status TEXT DEFAULT '待审核', review_comment TEXT, attachment TEXT
     )''')
     conn.commit(); conn.close()
 
@@ -126,6 +132,12 @@ def index():
 @app.route("/submit", methods=["POST"])
 def submit():
     data = request.form.to_dict(flat=True)
+    file = request.files.get("attachment")
+    filename = None
+    if file and file.filename:
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+
     equip_items = []
 
     # ✅ 特殊处理：无线麦克风
@@ -151,21 +163,23 @@ def submit():
 
     conn = get_conn(); c = conn.cursor()
     c.execute('''
-        INSERT INTO submissions (
-            name, phone, email, group_name, event_name,
-            start_date, start_time, end_date, end_time,
-            location, event_type, participants, equipment,
-            special_request, donation, donation_method,
-            remarks, emergency_name, emergency_phone
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    ''', (
-        data.get('name'), data.get('phone'), data.get('email'), data.get('group'),
-        data.get('event_name'), data.get('start_date'), data.get('start_time'),
-        data.get('end_date'), data.get('end_time'), data.get('location'),
-        data.get('event_type'), data.get('participants'), equipment_str,
-        data.get('special_request'), data.get('donation'), data.get('donation_method'),
-        data.get('remarks'), data.get('emergency_name'), data.get('emergency_phone')
-    ))
+              INSERT INTO submissions (name, phone, email, group_name, event_name,
+                         start_date, start_time, end_date, end_time,
+                         location, event_type, participants, equipment,
+                         special_request, donation, donation_method,
+                         remarks, emergency_name, emergency_phone, attachment)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+
+              ''', (
+                  data.get('name'), data.get('phone'), data.get('email'), data.get('group'),
+                  data.get('event_name'), data.get('start_date'), data.get('start_time'),
+                  data.get('end_date'), data.get('end_time'), data.get('location'),
+                  data.get('event_type'), data.get('participants'), equipment_str,
+                  data.get('special_request'), data.get('donation'), data.get('donation_method'),
+                  data.get('remarks'), data.get('emergency_name'), data.get('emergency_phone'),
+                  filename
+              ))
+
     conn.commit(); conn.close()
 
     send_email("【新申请】通用申请",
@@ -268,15 +282,22 @@ def download(submission_id):
     if not submission: return "记录不存在"
 
     doc = Document(); doc.add_heading('申请表详情', level=1)
-    fields = ["ID","姓名","电话","邮箱","团体名称","活动名称","开始日期","开始时间",
-              "结束日期","结束时间","地点","活动类型","参与人数","器材","特别需求",
-              "捐款","捐款方式","备注","紧急联系人","紧急联系电话","审核状态","审核说明"]
+    fields = ["ID", "姓名", "电话", "邮箱", "团体名称", "活动名称", "开始日期", "开始时间",
+              "结束日期", "结束时间", "地点", "活动类型", "参与人数", "器材", "特别需求",
+              "捐款", "捐款方式", "备注", "紧急联系人", "紧急联系电话", "审核状态", "审核说明", "附件文件名"]
     for i, field in enumerate(fields):
         if i < len(submission):
             doc.add_paragraph(f"{field}: {submission[i]}")
 
     file_path = f"submission_{submission_id}.docx"; doc.save(file_path)
     return send_file(file_path, as_attachment=True)
+
+@app.route("/uploads/<filename>")
+@login_required
+def uploaded_file(filename):
+    return send_file(os.path.join(app.config["UPLOAD_FOLDER"], filename), as_attachment=True)
+
+
 
 # ========================
 # 查询状态 API
