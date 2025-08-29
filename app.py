@@ -8,19 +8,20 @@ from email.header import Header
 from email.utils import formataddr
 import traceback
 from dotenv import load_dotenv
-load_dotenv()
 import os
 from functools import wraps
 import psycopg2
 
+# ========== Flask 应用 ==========
 app = Flask(__name__)
 
+# 上传文件目录
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-
 # ========== 基本配置 ==========
+load_dotenv()
 app.secret_key = os.getenv("SECRET_KEY", "replace-this-in-prod")
 
 # 管理员密码（优先环境变量）
@@ -29,32 +30,34 @@ print(">>> ADMIN_PASSWORD source:", "ENV" if os.getenv("ADMIN_PASSWORD") else "D
 
 # ========== 邮件配置 ==========
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
-SMTP_PORT   = int(os.getenv("SMTP_PORT", "587"))
-SENDER_EMAIL    = os.getenv("SENDER_EMAIL", "lausukyork8@gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lausukyork8@gmail.com")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "ejlnrpkvvwotxlzj")
-ADMIN_EMAIL     = os.getenv("ADMIN_EMAIL", "lausukyork8@gmail.com")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "lausukyork8@gmail.com")
 
-# ========== 数据库配置（Neon PostgreSQL） ==========
+# ========== 数据库配置 ==========
 DB_URL = os.getenv("DB_URL")
 def get_conn():
     return psycopg2.connect(DB_URL, connect_timeout=10)
 
 # ========== 器材清单 ==========
 EQUIP_MAP = {
-    "amp": "扩音器","pa": "音响系统","projector": "投影机","screen": "投影屏幕",
-    "ext": "延长线","table": "桌子","chair": "椅子","podium": "讲台","hdmi": "HDMI线",
+    "amp": "扩音器", "pa": "音响系统", "projector": "投影机", "screen": "投影屏幕",
+    "ext": "延长线", "table": "桌子", "chair": "椅子", "podium": "讲台", "hdmi": "HDMI线",
     "signal": "信号线"
 }
-# 麦克风单独处理（无线/有线）
+# 麦克风单独处理
 
-# ===== 邮件发送 =====
+# ========== 邮件发送函数 ==========
 def send_email(subject, content, to_email):
     msg = MIMEMultipart()
     msg['From'] = formataddr(("通用申请审核系统", SENDER_EMAIL))
     msg['To'] = to_email
     msg['Subject'] = Header(subject, "utf-8")
     msg.attach(MIMEText(content, "plain", "utf-8"))
+
     try:
+        # 优先 SSL
         server = smtplib.SMTP_SSL(SMTP_SERVER, 465, timeout=20)
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.sendmail(SENDER_EMAIL, [to_email], msg.as_string())
@@ -63,8 +66,9 @@ def send_email(subject, content, to_email):
         return True, None
     except Exception as e_ssl:
         print("⚠️ SSL(465) 发送失败：", e_ssl)
-        print(traceback.format_exc())
+
     try:
+        # 尝试 TLS
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=20)
         server.ehlo(); server.starttls(); server.ehlo()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
@@ -73,13 +77,11 @@ def send_email(subject, content, to_email):
         print(f"✅ 邮件已发送至 {to_email}（TLS:587）")
         return True, None
     except Exception as e_tls:
-        print("❌ 邮件发送失败（TLS:587）：", e_tls)
+        print("❌ 邮件发送失败：", e_tls)
         print(traceback.format_exc())
         return False, str(e_tls)
 
-# ========================
-# 数据库初始化
-# ========================
+# ========== 数据库初始化 ==========
 def init_db():
     conn = get_conn()
     c = conn.cursor()
@@ -90,15 +92,15 @@ def init_db():
         location TEXT, event_type TEXT, participants TEXT, equipment TEXT,
         special_request TEXT, donation TEXT, donation_method TEXT,
         remarks TEXT, emergency_name TEXT, emergency_phone TEXT,
-        status TEXT DEFAULT '待审核', review_comment TEXT, attachment TEXT
+        status TEXT DEFAULT '待审核', review_comment TEXT,
+        attachment TEXT
     )''')
-    conn.commit(); conn.close()
+    conn.commit()
+    conn.close()
 
 init_db()
 
-# ========================
-# 登录保护
-# ========================
+# ========== 登录保护 ==========
 def login_required(view_func):
     @wraps(view_func)
     def wrapper(*args, **kwargs):
@@ -107,6 +109,7 @@ def login_required(view_func):
         return view_func(*args, **kwargs)
     return wrapper
 
+# ========== 登录/登出 ==========
 @app.route("/login", methods=["GET", "POST"])
 def login():
     error = None
@@ -122,9 +125,7 @@ def logout():
     session.pop("logged_in", None)
     return redirect(url_for("login"))
 
-# ========================
-# 前台
-# ========================
+# ========== 前台 ==========
 @app.route("/")
 def index():
     return render_template("index.html", equip_map=EQUIP_MAP)
@@ -138,19 +139,14 @@ def submit():
         filename = secure_filename(file.filename)
         file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
 
+    # 处理器材选择
     equip_items = []
-
-    # ✅ 特殊处理：无线麦克风
     if data.get("equip_mic_wireless") == "on":
         qty = int(data.get("equip_mic_wireless_qty") or 1)
         equip_items.append(f"无线麦克风x{qty}")
-
-    # ✅ 特殊处理：有线麦克风
     if data.get("equip_mic_wired") == "on":
         qty = int(data.get("equip_mic_wired_qty") or 1)
         equip_items.append(f"有线麦克风x{qty}")
-
-    # ✅ 其他器材
     for key, cname in EQUIP_MAP.items():
         if data.get(f"equip_{key}") == "on":
             qty_str = (data.get(f"equip_{key}_qty") or "").strip()
@@ -158,39 +154,35 @@ def submit():
             except: qty = 0
             if qty <= 0: qty = 1
             equip_items.append(f"{cname}x{qty}")
-
     equipment_str = ", ".join(equip_items)
 
+    # 插入数据库
     conn = get_conn(); c = conn.cursor()
-    c.execute('''
-              INSERT INTO submissions (name, phone, email, group_name, event_name,
-                         start_date, start_time, end_date, end_time,
-                         location, event_type, participants, equipment,
-                         special_request, donation, donation_method,
-                         remarks, emergency_name, emergency_phone, attachment)
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-
-              ''', (
-                  data.get('name'), data.get('phone'), data.get('email'), data.get('group'),
-                  data.get('event_name'), data.get('start_date'), data.get('start_time'),
-                  data.get('end_date'), data.get('end_time'), data.get('location'),
-                  data.get('event_type'), data.get('participants'), equipment_str,
-                  data.get('special_request'), data.get('donation'), data.get('donation_method'),
-                  data.get('remarks'), data.get('emergency_name'), data.get('emergency_phone'),
-                  filename
-              ))
-
+    c.execute('''INSERT INTO submissions (
+        name, phone, email, group_name, event_name,
+        start_date, start_time, end_date, end_time,
+        location, event_type, participants, equipment,
+        special_request, donation, donation_method,
+        remarks, emergency_name, emergency_phone, attachment
+    ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+              %s,%s,%s,%s,%s,%s,%s,%s,%s,%s)''',
+        (data.get('name'), data.get('phone'), data.get('email'), data.get('group'),
+         data.get('event_name'), data.get('start_date'), data.get('start_time'),
+         data.get('end_date'), data.get('end_time'), data.get('location'),
+         data.get('event_type'), data.get('participants'), equipment_str,
+         data.get('special_request'), data.get('donation'), data.get('donation_method'),
+         data.get('remarks'), data.get('emergency_name'), data.get('emergency_phone'),
+         filename))
     conn.commit(); conn.close()
 
+    # 发邮件通知管理员
     send_email("【新申请】通用申请",
                f"申请人：{data.get('name')}\n活动：{data.get('event_name')}\n电话：{data.get('phone')}\n邮箱：{data.get('email')}",
                ADMIN_EMAIL)
 
-    return """<html><body><h1>提交成功！</h1><p>请返回首页查询审核状态。</p></body></html>"""
+    return "<h1>提交成功！</h1><p>请返回首页查询审核状态。</p>"
 
-# ========================
-# 管理页 + 接口
-# ========================
+# ========== 管理页 ==========
 @app.route("/admin")
 @login_required
 def admin():
@@ -204,8 +196,7 @@ def admin():
 @login_required
 def api_submission(submission_id):
     conn = get_conn(); c = conn.cursor()
-    c.execute("""SELECT id, name, email, event_name, status, review_comment
-                 FROM submissions WHERE id=%s""", (submission_id,))
+    c.execute("SELECT id, name, email, event_name, status, review_comment FROM submissions WHERE id=%s", (submission_id,))
     row = c.fetchone(); conn.close()
     if not row:
         return jsonify({"success": False, "message": "记录不存在"}), 404
@@ -231,38 +222,32 @@ def update_status(submission_id, new_status):
         conn.close()
 
         if row and row[1]:
-            try:
-                send_email("【审核结果】通用申请审核系统",
-                           f"您好 {row[0]}，您的申请已被审核为：{row[2]}\n审核说明：{comment or '无'}",
-                           row[1])
-            except Exception as mail_err:
-                print("⚠️ 审核后通知申请人失败：", mail_err)
+            send_email("【审核结果】通用申请审核系统",
+                       f"您好 {row[0]}，您的申请已被审核为：{row[2]}\n审核说明：{comment or '无'}",
+                       row[1])
 
         return jsonify({"success": True, "submission_id": submission_id,
                         "name": row[0] if row else "", "status": row[2] if row else new_status})
     except Exception as e:
-        print("❌ /update_status 出错：", e); print(traceback.format_exc())
+        print("❌ /update_status 出错：", e)
         return jsonify({"success": False, "message": f"服务器错误：{e}"}), 500
 
 @app.route("/send_review_email/<int:submission_id>", methods=["POST"])
 @login_required
 def send_review_email(submission_id):
     conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT name, email, event_name, status, review_comment FROM submissions WHERE id=%s",
-              (submission_id,))
+    c.execute("SELECT name, email, event_name, status, review_comment FROM submissions WHERE id=%s", (submission_id,))
     row = c.fetchone(); conn.close()
     if not row: return jsonify({"success": False, "message": "记录不存在"}), 404
 
     name, email, event_name, status, review_comment = row
-    if not email: return jsonify({"success": False, "message": "该记录没有填写邮箱，无法发送"}), 400
+    if not email: return jsonify({"success": False, "message": "无邮箱"}), 400
 
     ok, err = send_email(f"【审核结果】{event_name or ''}",
-                         f"您好 {name or ''}：\n\n您的申请（活动：{event_name or '-'}) "
-                         f"审核结果为：{status or '待审核'}\n审核说明：{review_comment or '无'}\n\n"
-                         f"如有疑问请回复此邮件联系管理员。",
+                         f"您好 {name or ''}：\n您的申请审核结果为：{status or '待审核'}\n审核说明：{review_comment or '无'}",
                          email)
     if ok: return jsonify({"success": True, "message": f"已发送到 {email}"})
-    else:  return jsonify({"success": False, "message": f"发送失败：{err}"}), 500
+    else: return jsonify({"success": False, "message": f"发送失败：{err}"}), 500
 
 @app.route("/delete_submission/<int:submission_id>", methods=["POST"])
 @login_required
@@ -282,9 +267,9 @@ def download(submission_id):
     if not submission: return "记录不存在"
 
     doc = Document(); doc.add_heading('申请表详情', level=1)
-    fields = ["ID", "姓名", "电话", "邮箱", "团体名称", "活动名称", "开始日期", "开始时间",
-              "结束日期", "结束时间", "地点", "活动类型", "参与人数", "器材", "特别需求",
-              "捐款", "捐款方式", "备注", "紧急联系人", "紧急联系电话", "审核状态", "审核说明", "附件文件名"]
+    fields = ["ID","姓名","电话","邮箱","团体名称","活动名称","开始日期","开始时间",
+              "结束日期","结束时间","地点","活动类型","参与人数","器材","特别需求",
+              "捐款","捐款方式","备注","紧急联系人","紧急联系电话","审核状态","审核说明","附件文件名"]
     for i, field in enumerate(fields):
         if i < len(submission):
             doc.add_paragraph(f"{field}: {submission[i]}")
@@ -297,11 +282,7 @@ def download(submission_id):
 def uploaded_file(filename):
     return send_file(os.path.join(app.config["UPLOAD_FOLDER"], filename), as_attachment=True)
 
-
-
-# ========================
-# 查询状态 API
-# ========================
+# ========== 查询状态 ==========
 @app.route("/check_status_api")
 def check_status_api():
     name = request.args.get("name")
@@ -313,44 +294,31 @@ def check_status_api():
     row = c.fetchone(); conn.close()
 
     if row:
-        return jsonify({
-            "status": row[2],
-            "data": {
-                "name": row[0],
-                "event_name": row[1],
-                "review_status": row[2],
-                "review_comment": row[3] or ""
-            }
-        })
+        return jsonify({"status": row[2],
+                        "data": {"name": row[0], "event_name": row[1],
+                                 "review_status": row[2], "review_comment": row[3] or ""}})
     else:
         return jsonify({"status": "not_found"})
 
-# ========================
-# 数据统计页面 + API
-# ========================
+# ========== 数据统计 ==========
 @app.route("/stats")
 @login_required
-def stats():
-    return render_template("stats.html")
+def stats(): return render_template("stats.html")
 
 @app.route("/stats_data")
 @login_required
 def stats_data():
     conn = get_conn(); c = conn.cursor()
-
-    # 状态统计
     c.execute("SELECT status, COUNT(*) FROM submissions GROUP BY status")
     status_counts = dict(c.fetchall())
-
-    # 活动类别统计
     c.execute("SELECT event_type, COUNT(*) FROM submissions GROUP BY event_type")
     type_counts = dict(c.fetchall())
-
     conn.close()
     return jsonify({"status": status_counts, "type": type_counts})
 
 @app.route("/_health")
 def _health(): return "ok", 200
 
+# ========== 启动 ==========
 if __name__ == "__main__":
     app.run(debug=True)
