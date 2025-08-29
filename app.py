@@ -304,6 +304,30 @@ def check_status_api():
     else:
         return jsonify({"status": "not_found"})
 
+# ========================
+# 数据统计页面 + API
+# ========================
+@app.route("/stats")
+@login_required
+def stats():
+    return render_template("stats.html")
+
+@app.route("/stats_data")
+@login_required
+def stats_data():
+    conn = get_conn(); c = conn.cursor()
+
+    # 状态统计
+    c.execute("SELECT status, COUNT(*) FROM submissions GROUP BY status")
+    status_counts = dict(c.fetchall())
+
+    # 活动类别统计
+    c.execute("SELECT event_type, COUNT(*) FROM submissions GROUP BY event_type")
+    type_counts = dict(c.fetchall())
+
+    conn.close()
+    return jsonify({"status": status_counts, "type": type_counts})
+
 @app.route("/_health")
 def _health(): return "ok", 200
 

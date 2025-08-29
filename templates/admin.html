@@ -76,6 +76,7 @@
           <input type="checkbox" id="autoRefreshToggle" checked>
           自动刷新（30 秒）
         </label>
+        <a href="/stats" target="_self">📊 数据统计</a>
         <a href="/" target="_self">返回首页</a>
         <a href="/logout" target="_self">退出登录</a>
       </div>
@@ -287,8 +288,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
 });
 window.addEventListener('pageshow', function (e) { if (e.persisted) { hardReload(); } });
-
-/* 🔍 搜索过滤 */
 function filterTable(){
   const input = document.getElementById("searchInput");
   const filter = input.value.toLowerCase();
