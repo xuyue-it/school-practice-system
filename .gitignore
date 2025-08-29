@@ -14,3 +14,4 @@ masland-data/
 # 忽略 Python 缓存
 __pycache__/
 *.pyc
+-e ".env\n*.db" 
