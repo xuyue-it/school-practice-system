@@ -267,12 +267,13 @@ def download(submission_id):
     if not submission: return "记录不存在"
 
     doc = Document(); doc.add_heading('申请表详情', level=1)
-    fields = ["ID","姓名","电话","邮箱","团体名称","活动名称","开始日期","开始时间",
-              "结束日期","结束时间","地点","活动类型","参与人数","器材","特别需求",
-              "捐款","捐款方式","备注","紧急联系人","紧急联系电话","审核状态","审核说明","附件文件名"]
+    fields = ["ID", "姓名", "电话", "邮箱", "团体名称", "活动名称", "开始日期", "开始时间",
+              "结束日期", "结束时间", "地点", "活动类型", "参与人数", "器材", "特别需求",
+              "捐款", "捐款方式", "备注", "紧急联系人", "紧急联系电话", "审核状态", "审核说明", "附件文件名"]
     for i, field in enumerate(fields):
         if i < len(submission):
-            doc.add_paragraph(f"{field}: {submission[i]}")
+            value = submission[i] if submission[i] else "无"
+            doc.add_paragraph(f"{field}: {value}")
 
     file_path = f"submission_{submission_id}.docx"; doc.save(file_path)
     return send_file(file_path, as_attachment=True)
