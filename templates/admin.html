@@ -34,17 +34,13 @@
   .topbar-actions a:hover, .topbar-actions button:hover{ transform: translateY(-1px); box-shadow:0 4px 0 #cbd6f2, 0 10px 18px rgba(17,24,39,.08);}
   .topbar-actions a:active, .topbar-actions button:active{ transform: translateY(1px); }
   .autorefresh{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px dashed var(--line); border-radius:10px; background:#fff; }
-  .scroll-x { width:100%; overflow-x:auto; overflow-y:hidden; border:1px solid var(--line); border-radius:14px; background:var(--card); box-shadow:0 6px 18px rgba(17,24,39,.05); }
+  .scroll-x { width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:14px; background:var(--card); box-shadow:0 6px 18px rgba(17,24,39,.05); }
 
-  /* ✅ 表格分割线样式 */
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    white-space: nowrap;
-  }
+  /* 表格样式 */
+  table { border-collapse: collapse; width: 100%; white-space: nowrap; }
   thead th, tbody td {
     border: 1px solid var(--line);
-    padding: 14px 12px;
+    padding: 12px 10px;
   }
   thead th {
     position: sticky;
@@ -56,27 +52,21 @@
     z-index: 2;
     box-shadow: 0 2px 4px rgba(0,0,0,0.08);
   }
-  tbody td {
-    font-size:15px;
-    vertical-align: middle;
-  }
+  tbody td { font-size:15px; vertical-align: middle; text-align:center; }
+  tbody tr:nth-child(odd){ background:#ffffff; }
+  tbody tr:nth-child(even){ background:#f9fafb; }
+  tbody tr:hover{ background:#f1f5f9; }
 
-  /* ✅ 奇偶行背景优化 */
-  tbody tr:nth-child(odd){ background:#ffffff; }     /* 白色 */
-  tbody tr:nth-child(even){ background:#f9fafb; }   /* 浅灰 */
-  tbody tr:hover{ background:#f1f5f9; }             /* 鼠标悬浮更深一点灰 */
-
-  .td-equipment { white-space: normal; max-width: 360px; line-height: 1.45; min-width: 180px; }
-  .equip-lines{ display:block; }
-  .equip-line{ display:block; white-space: nowrap; word-break: keep-all; }
   .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid transparent; }
   .badge-pending { background:#fff7e6; border-color:#ffcc80; }
   .badge-approved { background:#e8f5e9; border-color:#a5d6a7; }
   .badge-rejected { background:#ffebee; border-color:#ef9a9a; }
-  .actions { min-width: 520px; }
-  .stack { display:flex; gap:8px; align-items:center; }
-  .comment-input { flex:1; height:36px; font-size:14px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; min-width:120px; }
-  .btn{ appearance:none; border:none; cursor:pointer; padding:8px 12px; border-radius:10px; color:#fff; font-size:14px; line-height:1; box-shadow:0 2px 8px rgba(17,24,39,.08); transition:.15s transform ease, .15s opacity ease, .15s background ease; }
+
+  .status-block { display:flex; flex-direction:column; align-items:center; gap:4px; }
+
+  .comment-input { width: 240px; height:34px; font-size:14px; padding:6px 10px; border:1px solid var(--line); border-radius:8px; }
+
+  .btn{ appearance:none; border:none; cursor:pointer; padding:8px 12px; border-radius:8px; color:#fff; font-size:14px; line-height:1; box-shadow:0 2px 6px rgba(17,24,39,.08); transition:.15s transform ease, .15s opacity ease, .15s background ease; }
   .btn:hover{ transform: translateY(-1px); opacity:.95; }
   .btn:active{ transform:none; }
   .btn[disabled]{ opacity:.6; cursor:not-allowed; }
@@ -84,28 +74,10 @@
   .btn-reject{ background:var(--red); } .btn-reject:hover{ background:var(--red-600); }
   .btn-mail{ background:var(--indigo); } .btn-mail:hover{ background:var(--indigo-600); }
   .btn-delete{ background:var(--amber); color:#111; } .btn-delete:hover{ background:var(--amber-600); color:#fff; }
+
   .muted { color:var(--muted); font-size:12px; }
   a.link { color:var(--primary); text-decoration:none; }
   a.link:hover { color:var(--primary-600); text-decoration:underline; }
-  .inline-tip { margin-top:6px; font-size:12px; color:#065f46; }
-  .inline-tip.error { color:#b91c1c; }
-
-  /* ✅ 最后 6 列居中 */
-  #adminTable th:nth-last-child(-n+6),
-  #adminTable td:nth-last-child(-n+6) {
-    text-align: center;
-    min-width: 120px;
-    white-space: nowrap;
-  }
-
-  /* ✅ 状态+附件 block */
-  .status-block {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 70px;
-  }
 </style>
 </head>
 <body>
@@ -119,9 +91,9 @@
           <input type="checkbox" id="autoRefreshToggle" checked>
           自动刷新（30 秒）
         </label>
-        <a href="/stats" target="_self">📊 数据统计</a>
-        <a href="/" target="_self">返回首页</a>
-        <a href="/logout" target="_self">退出登录</a>
+        <a href="/stats">📊 数据统计</a>
+        <a href="/">返回首页</a>
+        <a href="/logout">退出登录</a>
       </div>
     </div>
 
@@ -133,13 +105,12 @@
             <th>开始</th><th>结束</th><th>地点</th><th>性质</th><th>人数</th>
             <th>器材</th><th>特别需求</th><th>捐款</th><th>方式</th><th>备注</th>
             <th>紧急联系人</th><th>紧急电话</th>
-            <th>状态（含附件）</th><th>审核说明</th>
-            <th>操作</th><th>导出</th><th>发送邮件</th><th>删除</th>
+            <th>状态（含附件）</th><th>审核说明</th><th>操作</th><th>导出</th><th>发送邮件</th><th>删除</th>
           </tr>
         </thead>
         <tbody id="tbody-root">
           {% for s in submissions %}
-          <tr id="row-{{ s[0] }}" data-id="{{ s[0] }}">
+          <tr id="row-{{ s[0] }}">
             <td>{{ loop.index }}</td>
             <td>{{ s[1] }}</td>
             <td>{{ s[2] }}</td>
@@ -151,37 +122,46 @@
             <td>{{ s[10] }}</td>
             <td>{{ s[11] }}</td>
             <td>{{ s[12] }}</td>
-            <td class="td-equipment raw-equip">{{ (s[13] if s|length>13 else '') | default('', true) }}</td>
+            <td>{{ s[13] }}</td>
             <td>{{ s[14] }}</td>
             <td>{{ s[15] }}</td>
             <td>{{ s[16] }}</td>
             <td>{{ s[17] }}</td>
             <td>{{ s[18] }}</td>
+
+            <!-- 状态 + 附件 -->
             <td>
               <div class="status-block">
                 {% set st = (s[20] if s|length>20 and s[20] else '待审核') %}
                 <span class="badge
                   {% if '待' in st %}badge-pending{% elif '通' in st %}badge-approved{% elif '拒' in st %}badge-rejected{% endif %}
                 ">{{ st }}</span>
-                <div style="margin-top:6px;">
-                  {% if s|length > 22 and s[22] %}
-                    <a class="link" href="/uploads/{{ s[22] }}" target="_blank">{{ s[22] }}</a>
-                  {% else %}
-                    <span class="muted">无</span>
-                  {% endif %}
-                </div>
+                {% if s|length > 22 and s[22] %}
+                  <a class="link" href="/uploads/{{ s[22] }}" target="_blank">{{ s[22] }}</a>
+                {% else %}
+                  <span class="muted">无</span>
+                {% endif %}
               </div>
             </td>
-            <td>{{ s[21] or '' }}</td>
-            <td class="actions">
-              <div class="stack">
-                <input type="text" id="comment-{{ s[0] }}" class="comment-input" placeholder="审核说明">
-                <button class="btn btn-approve" onclick="updateStatus({{ s[0] }}, '通过')">通过</button>
-                <button class="btn btn-reject" onclick="updateStatus({{ s[0] }}, '不通过')">不通过</button>
-              </div>
+
+            <!-- 审核说明 -->
+            <td>
+              <input type="text" id="comment-{{ s[0] }}" class="comment-input" placeholder="审核说明">
             </td>
+
+            <!-- 操作 -->
+            <td>
+              <button class="btn btn-approve" onclick="updateStatus({{ s[0] }}, '通过')">通过</button>
+              <button class="btn btn-reject" onclick="updateStatus({{ s[0] }}, '不通过')">不通过</button>
+            </td>
+
+            <!-- 导出 -->
             <td><a class="link" href="/download/{{ s[0] }}" target="_blank">Word</a></td>
+
+            <!-- 发送邮件 -->
             <td><button id="mailbtn-{{ s[0] }}" class="btn btn-mail" onclick="sendReviewEmail({{ s[0] }})">发送邮件</button></td>
+
+            <!-- 删除 -->
             <td><button class="btn btn-delete" onclick="deleteSubmission({{ s[0] }})">删除</button></td>
           </tr>
           {% endfor %}
