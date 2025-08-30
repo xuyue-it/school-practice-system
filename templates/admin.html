@@ -45,7 +45,6 @@
     transition:.2s;
   }
   .topbar-actions a:hover, .topbar-actions button:hover{ transform: translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.6);}
-  .topbar-actions a:active, .topbar-actions button:active{ transform: translateY(1px); }
   .autorefresh{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px dashed #666; border-radius:10px; background:#1e1e1e; color:#ccc; }
 
   .scroll-x {
@@ -93,14 +92,39 @@
 
   .comment-input { width: 240px; height:34px; font-size:14px; padding:6px 10px; border:1px solid #555; border-radius:8px; background:#1f1f1f; color:#f1f1f1; }
 
-  .btn{ appearance:none; border:none; cursor:pointer; padding:8px 12px; border-radius:8px; color:#fff; font-size:14px; line-height:1; box-shadow:0 2px 6px rgba(0,0,0,.5); transition:.15s; }
-  .btn:hover{ transform: translateY(-1px); opacity:.95; }
-  .btn:active{ transform:none; }
-  .btn[disabled]{ opacity:.6; cursor:not-allowed; }
-  .btn-approve{ background:var(--green); } .btn-approve:hover{ background:var(--green-600); }
-  .btn-reject{ background:var(--red); } .btn-reject:hover{ background:var(--red-600); }
-  .btn-mail{ background:var(--indigo); } .btn-mail:hover{ background:var(--indigo-600); }
-  .btn-delete{ background:var(--amber); color:#111; } .btn-delete:hover{ background:var(--amber-600); color:#fff; }
+  /* ✅ 黑金风按钮 */
+  .btn{
+    appearance:none; cursor:pointer;
+    padding:8px 12px; border-radius:8px;
+    font-size:14px; line-height:1;
+    border:1px solid #d4af37;   /* 金色描边 */
+    background: linear-gradient(145deg,#3a3a3a,#2a2a2a);
+    color:#f9f9f9;
+    box-shadow:0 2px 6px rgba(0,0,0,.6), inset 0 1px 2px rgba(255,215,0,0.3);
+    transition:.2s;
+  }
+  .btn:hover{
+    transform: translateY(-1px);
+    border-color:#ffd700; /* 更亮的金色 */
+    box-shadow:0 4px 12px rgba(212,175,55,.6), inset 0 1px 3px rgba(255,215,0,.4);
+  }
+  .btn:active{
+    transform: translateY(1px);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,.8);
+  }
+
+  /* 不同按钮色调 */
+  .btn-approve{ background: linear-gradient(145deg,#166534,#065f46); }
+  .btn-approve:hover{ background: linear-gradient(145deg,#22c55e,#15803d); }
+
+  .btn-reject{ background: linear-gradient(145deg,#7f1d1d,#991b1b); }
+  .btn-reject:hover{ background: linear-gradient(145deg,#dc2626,#b91c1c); }
+
+  .btn-mail{ background: linear-gradient(145deg,#312e81,#4338ca); }
+  .btn-mail:hover{ background: linear-gradient(145deg,#6366f1,#4f46e5); }
+
+  .btn-delete{ background: linear-gradient(145deg,#92400e,#b45309); color:#fff; }
+  .btn-delete:hover{ background: linear-gradient(145deg,#f59e0b,#d97706); }
 
   a.link { color:#60a5fa; text-decoration:none; }
   a.link:hover { color:#93c5fd; text-decoration:underline; }
