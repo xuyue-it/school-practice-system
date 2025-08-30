@@ -64,13 +64,33 @@
   .inline-tip { margin-top:6px; font-size:12px; color:#065f46; }
   .inline-tip.error { color:#b91c1c; }
 
-  /* ✅ 只控制最后 6 列对齐 */
-  #adminTable th:nth-last-child(-n+6),
-  #adminTable td:nth-last-child(-n+6) {
-    text-align: center;
-    min-width: 120px;
-    white-space: nowrap;
-  }
+  /* ✅ 操作列内部元素对齐 + 自适应宽度 */
+#adminTable td.actions {
+  vertical-align: middle;
+}
+
+#adminTable td.actions .stack {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#adminTable td.actions .comment-input {
+  flex: 1;                 /* 自动占满剩余空间 */
+  height: 36px;            /* 高度和按钮一致 */
+  font-size: 14px;
+  line-height: 1.2;
+  min-width: 120px;        /* 不要太小 */
+}
+
+#adminTable td.actions .btn {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;     /* 按钮文字不换行 */
+}
+
 </style>
 </head>
 <body>
