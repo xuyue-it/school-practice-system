@@ -185,16 +185,12 @@
     <section class="card">
       <h2><span class="icon">📎</span>上传附件</h2>
       <div class="row">
-        <!-- ✅ 改：支持多文件 -->
         <input type="file" id="attachments" name="attachments" multiple accept=".pdf,.doc,.docx,.jpg,.png,.jpeg">
-        <!-- ✅ 新增：文件列表 -->
-        <ul id="fileList" style="margin-top:10px; list-style-type:disc; padding-left:20px;"></ul>
-        <!-- ✅ 新增：计数显示 -->
+        <ul id="fileList" style="margin-top:10px; list-style-type:none; padding-left:0;"></ul>
         <p><b id="fileCount">0/5</b></p>
       </div>
       <p class="muted">（可选：上传活动方案、预算、相关证明等，支持多文件，每个文件 ≤5MB，最多 5 个文件）</p>
     </section>
-
 
     <!-- 其他信息 -->
     <section class="card">
@@ -256,28 +252,44 @@ document.getElementById("mainForm").addEventListener("submit", function(e){
   }
 });
 
-// ✅ 文件选择后更新列表和计数
-document.getElementById("attachments").addEventListener("change", function() {
+// ✅ 文件选择后更新列表和计数 + 删除按钮
+document.getElementById("attachments").addEventListener("change", updateFileList);
+
+function updateFileList(){
+  const input = document.getElementById("attachments");
   const list = document.getElementById("fileList");
   const count = document.getElementById("fileCount");
-  list.innerHTML = ""; // 清空原来的
-  const files = this.files;
+  const files = input.files;
   const maxFiles = 5;
 
-  if (files.length > maxFiles) {
+  list.innerHTML = "";
+  if(files.length > maxFiles){
     alert(`最多只能上传 ${maxFiles} 个文件！`);
-    this.value = ""; // 清空
+    input.value = "";
     count.textContent = `0/${maxFiles}`;
     return;
   }
 
-  for (let i = 0; i < files.length; i++) {
+  const dt = new DataTransfer();
+  Array.from(files).forEach((file, i)=>{
     const li = document.createElement("li");
-    li.textContent = files[i].name;
+    li.innerHTML = `${file.name} <button type="button" onclick="removeFile(${i})" style="color:red;font-weight:bold;margin-left:8px;">×</button>`;
     list.appendChild(li);
-  }
+    dt.items.add(file);
+  });
+  input.files = dt.files;
   count.textContent = `${files.length}/${maxFiles}`;
-});
+}
+
+function removeFile(index){
+  const input = document.getElementById("attachments");
+  const dt = new DataTransfer();
+  Array.from(input.files).forEach((file, i)=>{
+    if(i !== index){ dt.items.add(file); }
+  });
+  input.files = dt.files;
+  updateFileList();
+}
 </script>
 </body>
 </html>

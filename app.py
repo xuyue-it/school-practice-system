@@ -20,10 +20,10 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# ✅ 新增：限制上传文件大小（5MB）
+# 限制上传文件大小（5MB）
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
-# ✅ 新增：允许的扩展名白名单
+# 允许的扩展名白名单
 ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png"}
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -140,7 +140,7 @@ def index():
 def submit():
     data = request.form.to_dict(flat=True)
 
-    # ✅ 修改：接收多个文件
+    # 接收多个文件
     files = request.files.getlist("attachments")
     filenames = []
     for file in files:
@@ -153,7 +153,7 @@ def submit():
             filenames.append(fname)
     filenames_str = ",".join(filenames) if filenames else None
 
-    # 处理器材选择（保留原始逻辑）
+    # 处理器材选择
     equip_items = []
     if data.get("equip_mic_wireless") == "on":
         qty = int(data.get("equip_mic_wireless_qty") or 1)
@@ -246,23 +246,7 @@ def update_status(submission_id, new_status):
         print("❌ /update_status 出错：", e)
         return jsonify({"success": False, "message": f"服务器错误：{e}"}), 500
 
-# ✅ 新增批量更新接口
-@app.route("/batch_update_status", methods=["POST"])
-@login_required
-def batch_update_status():
-    try:
-        data = request.get_json()
-        ids = data.get("ids", [])
-        new_status = data.get("status", "")
-        if not ids:
-            return jsonify({"success": False, "message": "未选择记录"})
-        conn = get_conn(); c = conn.cursor()
-        c.execute("UPDATE submissions SET status=%s WHERE id = ANY(%s)", (new_status, ids))
-        conn.commit(); conn.close()
-        return jsonify({"success": True})
-    except Exception as e:
-        print("❌ /batch_update_status 出错：", e)
-        return jsonify({"success": False, "message": str(e)}), 500
+# ❌ 已删除 /batch_update_status
 
 @app.route("/send_review_email/<int:submission_id>", methods=["POST"])
 @login_required
@@ -346,7 +330,7 @@ def stats_data():
     status_counts = dict(c.fetchall())
     c.execute("SELECT event_type, COUNT(*) FROM submissions GROUP BY event_type")
     type_counts = dict(c.fetchall())
-    # ✅ 新增：附件统计
+    # 附件统计
     c.execute("SELECT COUNT(*) FROM submissions WHERE attachment IS NOT NULL AND attachment <> ''")
     with_attach = c.fetchone()[0]
     c.execute("SELECT COUNT(*) FROM submissions WHERE attachment IS NULL OR attachment = ''")

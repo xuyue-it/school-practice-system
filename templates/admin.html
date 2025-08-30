@@ -98,7 +98,6 @@
 
   .status-block { display:flex; flex-direction:column; align-items:center; gap:4px; }
 
-  /* 审核说明框：无边框 + hover 柔光 */
   .comment-input {
     width: 240px; height:34px;
     font-size:14px; padding:6px 10px;
@@ -119,7 +118,6 @@
     box-shadow: 0 0 8px rgba(255,255,255,0.15);
   }
 
-  /* 按钮基础样式 */
   .btn{
     appearance:none; cursor:pointer;
     padding:8px 14px; border-radius:8px;
@@ -133,26 +131,19 @@
     transform: translateY(-1px);
     box-shadow:0 4px 12px rgba(0,0,0,.5), inset 0 1px 3px rgba(255,255,255,0.15);
   }
-  /* ✅ 新增 active 效果 */
   .btn:active {
-   transform: scale(0.95);   /* 点击时缩小 95% */
+   transform: scale(0.95);
    box-shadow: 0 2px 6px rgba(0,0,0,0.4) inset;
   }
-
-  /* ✅ 按钮颜色（浅色 + 暗色模式下保持） */
   .btn-approve{ background: linear-gradient(145deg,#22c55e,#15803d); }
   .btn-approve:hover{ background: linear-gradient(145deg,#4ade80,#16a34a); }
-
   .btn-reject{ background: linear-gradient(145deg,#ef4444,#b91c1c); }
   .btn-reject:hover{ background: linear-gradient(145deg,#f87171,#dc2626); }
-
   .btn-mail{ background: linear-gradient(145deg,#6366f1,#4338ca); }
   .btn-mail:hover{ background: linear-gradient(145deg,#818cf8,#4f46e5); }
-
   .btn-delete{ background: linear-gradient(145deg,#f59e0b,#d97706); color:#111; }
   .btn-delete:hover{ background: linear-gradient(145deg,#fbbf24,#ea580c); color:#fff; }
 
-  /* 🌗 切换主题按钮 */
   .toggle-theme {
     border: none;
     background: linear-gradient(145deg,#f3f4f6,#e5e7eb);
@@ -180,9 +171,6 @@
       <div class="topbar-actions">
         <input type="text" id="searchInput" class="search-box" placeholder="搜索姓名或活动名称..." onkeyup="filterTable()">
         <button type="button" onclick="hardReload()">刷新</button>
-        <!-- ✅ 新增批量按钮 -->
-        <button type="button" onclick="batchUpdateStatus('通过')">批量通过</button>
-        <button type="button" onclick="batchUpdateStatus('不通过')">批量不通过</button>
         <label class="autorefresh">
           <input type="checkbox" id="autoRefreshToggle" checked>
           自动刷新（30 秒）
@@ -198,8 +186,6 @@
       <table id="adminTable">
         <thead>
           <tr>
-            <!-- ✅ 新增全选框 -->
-            <th><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
             <th>ID</th><th>姓名</th><th>电话</th><th>邮箱</th><th>团体名称</th><th>活动名称</th>
             <th>开始</th><th>结束</th><th>地点</th><th>性质</th><th>人数</th>
             <th>器材</th><th>特别需求</th><th>捐款</th><th>方式</th><th>备注</th>
@@ -210,8 +196,6 @@
         <tbody id="tbody-root">
           {% for s in submissions %}
           <tr id="row-{{ s[0] }}">
-            <!-- ✅ 新增行复选框 -->
-            <td><input type="checkbox" class="row-check" value="{{ s[0] }}"></td>
             <td>{{ loop.index }}</td>
             <td>{{ s[1] }}</td>
             <td>{{ s[2] }}</td>
@@ -275,34 +259,10 @@
   </div>
 
 <script>
-function toggleTheme(){
-  document.body.classList.toggle("dark");
-}
-function filterTable(){
-  const input = document.getElementById("searchInput");
-  const filter = input.value.toLowerCase();
-  const rows = document.querySelectorAll("#tbody-root tr");
-  rows.forEach(row=>{
-    const name = row.cells[1]?.textContent.toLowerCase() || "";
-    const eventName = row.cells[5]?.textContent.toLowerCase() || "";
-    row.style.display = (name.includes(filter) || eventName.includes(filter)) ? "" : "none";
-  });
-}
+function toggleTheme(){ document.body.classList.toggle("dark"); }
 async function handleJsonResponse(resp) {
   const text = await resp.text();
   try { return JSON.parse(text); } catch (_) { return { success:false, message: text || '非JSON响应' }; }
-}
-function setTip(id, msg, isError=false){
-  const tip = document.getElementById(`tip-${id}`);
-  if (!tip) return;
-  tip.textContent = msg;
-  tip.classList.toggle('error', !!isError);
-  tip.style.display = 'block';
-}
-function formatNow(){
-  const d = new Date();
-  const pad = n=> String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 function updateStatus(id, statusText) {
   const comment = document.getElementById(`comment-${id}`).value || "";
@@ -316,70 +276,40 @@ function updateStatus(id, statusText) {
     .then(async r => {
       const data = await handleJsonResponse(r);
       if (!r.ok || !data.success) {
-        setTip(id, data.message || `更新失败（HTTP ${r.status})`, true);
         alert(data.message || `更新失败（HTTP ${r.status})`);
         return;
       }
-      alert(`已更新为 ${data.status}`);
+      alert(`已更新为 ${data.status}`); location.reload();
     })
-    .catch(err => {
-      console.error(err);
-      alert("网络或服务器异常");
-    });
+    .catch(()=> alert("网络或服务器异常"));
 }
 function sendReviewEmail(id) {
   if (!confirm(`确认向该申请的邮箱发送当前审核结果和说明吗？`)) return;
-  const btn = document.getElementById(`mailbtn-${id}`);
-  if (btn) btn.disabled = true;
+  const btn = document.getElementById(`mailbtn-${id}`); if (btn) btn.disabled = true;
   fetch(`/send_review_email/${id}`, { method: "POST", credentials: "same-origin" })
     .then(async r => {
       const data = await handleJsonResponse(r);
-      if (!r.ok || !data.success) {
-        if (btn) btn.disabled = false;
-        alert(data.message || `发送失败（HTTP ${r.status})`);
-        return;
-      }
+      if (!r.ok || !data.success) { if (btn) btn.disabled = false; alert(data.message || `发送失败（HTTP ${r.status})`); return; }
       alert(`${data.message}`);
     })
-    .catch(err => {
-      console.error(err);
-      if (btn) btn.disabled = false;
-      alert("网络或服务器异常");
-    });
+    .catch(()=> { if (btn) btn.disabled = false; alert("网络或服务器异常"); });
 }
 function deleteSubmission(id){
   if (!confirm(`确认删除编号 ${id} 这条记录吗？此操作不可撤销。`)) return;
   fetch(`/delete_submission/${id}`, { method: "POST", credentials: "same-origin" })
     .then(async r => {
       const data = await handleJsonResponse(r);
-      if (!r.ok || !data.success) {
-        alert(data.message || `删除失败（HTTP ${r.status})`);
-        return;
-      }
-      const row = document.getElementById(`row-${id}`);
-      if (row) row.remove();
+      if (!r.ok || !data.success) { alert(data.message || `删除失败（HTTP ${r.status})`); return; }
+      const row = document.getElementById(`row-${id}`); if (row) row.remove();
       alert(`已删除记录 ID: ${id}`);
     })
-    .catch(err => {
-      console.error(err);
-      alert("网络或服务器异常");
-    });
+    .catch(()=> alert("网络或服务器异常"));
 }
-function hardReload(){
-  const url = new URL(window.location.href);
-  url.searchParams.set('ts', Date.now().toString());
-  window.location.replace(url.toString());
-}
+function hardReload(){ const url = new URL(window.location.href); url.searchParams.set('ts', Date.now().toString()); window.location.replace(url.toString()); }
 let autoTimer = null;
 function startAutoRefresh(){ stopAutoRefresh(); autoTimer = setInterval(()=>hardReload(), 30000); }
 function stopAutoRefresh(){ if (autoTimer){ clearInterval(autoTimer); autoTimer = null; } }
-document.addEventListener('DOMContentLoaded', ()=>{
-  const toggle = document.getElementById('autoRefreshToggle');
-  if (toggle){
-    if (toggle.checked) startAutoRefresh();
-    toggle.addEventListener('change', ()=> toggle.checked ? startAutoRefresh() : stopAutoRefresh());
-  }
-});
+document.addEventListener('DOMContentLoaded', ()=>{ const toggle = document.getElementById('autoRefreshToggle'); if (toggle){ if (toggle.checked) startAutoRefresh(); toggle.addEventListener('change', ()=> toggle.checked ? startAutoRefresh() : stopAutoRefresh()); } });
 window.addEventListener('pageshow', function (e) { if (e.persisted) { hardReload(); } });
 function filterTable(){
   const input = document.getElementById("searchInput");
@@ -390,25 +320,6 @@ function filterTable(){
     const eventName = row.cells[5]?.textContent.toLowerCase() || "";
     row.style.display = (name.includes(filter) || eventName.includes(filter)) ? "" : "none";
   });
-}
-<!-- ✅ 新增批量操作函数 -->
-function batchUpdateStatus(newStatus){
-  const ids = [...document.querySelectorAll(".row-check:checked")].map(cb=>cb.value);
-  if(ids.length===0){ alert("请先选择记录"); return; }
-  if(!confirm(`确认将 ${ids.length} 条记录设为「${newStatus}」吗？`)) return;
-  fetch("/batch_update_status", {
-    method:"POST", headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ ids: ids, status: newStatus })
-  })
-  .then(r=>r.json())
-  .then(data=>{
-    if(data.success){ alert("批量更新成功"); location.reload(); }
-    else{ alert("更新失败: "+data.message); }
-  })
-  .catch(()=>alert("网络或服务器错误"));
-}
-function toggleAll(source){
-  document.querySelectorAll(".row-check").forEach(cb=>cb.checked = source.checked);
 }
 </script>
 </body>
