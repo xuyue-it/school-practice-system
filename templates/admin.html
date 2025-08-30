@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0"/>
 <style>
   :root{
-    --bg:#f5f7fb; --card:#ffffff; --line:#e8ecf2; --text:#111827; --muted:#6b7280;
+    --bg:#f5f7fb; --card:#ffffff; --line:#cbd5e1; --text:#111827; --muted:#6b7280;
     --primary:#2563eb; --primary-600:#1d4ed8;
     --green:#22c55e; --green-600:#16a34a;
     --red:#ef4444; --red-600:#dc2626;
@@ -35,11 +35,37 @@
   .topbar-actions a:active, .topbar-actions button:active{ transform: translateY(1px); }
   .autorefresh{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px dashed var(--line); border-radius:10px; background:#fff; }
   .scroll-x { width:100%; overflow-x:auto; overflow-y:hidden; border:1px solid var(--line); border-radius:14px; background:var(--card); box-shadow:0 6px 18px rgba(17,24,39,.05); }
-  table { border-collapse: separate; border-spacing:0; white-space: nowrap; }
-  thead th{ position:sticky; top:0; background:#f3f4f6; z-index:1; font-weight:700; font-size:14px; text-align:left; padding:14px 12px; border-bottom:1px solid var(--line); }
-  tbody td{ font-size:15px; padding:14px 12px; border-bottom:1px solid var(--line); max-width: 420px; overflow:hidden; text-overflow: ellipsis; }
-  tbody tr:nth-child(odd){ background:#fbfdff; }
-  tbody tr:hover{ background:#f8fafc; }
+
+  /* ✅ 表格分割线样式 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    white-space: nowrap;
+  }
+  thead th, tbody td {
+    border: 1px solid var(--line);
+    padding: 14px 12px;
+  }
+  thead th {
+    position: sticky;
+    top: 0;
+    background:#f3f4f6;
+    font-weight:900;
+    font-size:14px;
+    text-align:center;
+    z-index: 2;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  }
+  tbody td {
+    font-size:15px;
+    vertical-align: middle;
+  }
+
+  /* ✅ 奇偶行背景优化 */
+  tbody tr:nth-child(odd){ background:#ffffff; }     /* 白色 */
+  tbody tr:nth-child(even){ background:#f9fafb; }   /* 浅灰 */
+  tbody tr:hover{ background:#f1f5f9; }             /* 鼠标悬浮更深一点灰 */
+
   .td-equipment { white-space: normal; max-width: 360px; line-height: 1.45; min-width: 180px; }
   .equip-lines{ display:block; }
   .equip-line{ display:block; white-space: nowrap; word-break: keep-all; }
@@ -64,7 +90,7 @@
   .inline-tip { margin-top:6px; font-size:12px; color:#065f46; }
   .inline-tip.error { color:#b91c1c; }
 
-  /* ✅ 只控制最后 6 列对齐 */
+  /* ✅ 最后 6 列居中 */
   #adminTable th:nth-last-child(-n+6),
   #adminTable td:nth-last-child(-n+6) {
     text-align: center;
@@ -72,21 +98,14 @@
     white-space: nowrap;
   }
 
- /* ✅ 所有单元格内容垂直居中，强制覆盖 */
-#adminTable td {
-  vertical-align: middle !important;
-}
-
-/* ✅ 状态+附件：固定行高，避免忽高忽低 */
-.status-block {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;        /* 占满整个单元格 */
-  min-height: 70px;    /* 统一行高，可以按需要调 */
-  box-sizing: border-box;
-}
+  /* ✅ 状态+附件 block */
+  .status-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 70px;
+  }
 </style>
 </head>
 <body>
