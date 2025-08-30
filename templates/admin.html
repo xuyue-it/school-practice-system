@@ -47,12 +47,12 @@
   .search-box{
     display:inline-flex; align-items:center; gap:6px;
     text-decoration:none; cursor:pointer;
-    padding:8px 12px; border-radius:10px; border:1px solid #d4af37;
+    padding:8px 12px; border-radius:10px; border:none;
     background:var(--card-gradient-odd); color:var(--text);
-    box-shadow:0 3px 6px rgba(0,0,0,.3);
+    box-shadow:0 3px 6px rgba(0,0,0,.2);
     transition:.2s;
   }
-  .topbar-actions a:hover, .topbar-actions button:hover{ transform: translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.5);}
+  .topbar-actions a:hover, .topbar-actions button:hover{ transform: translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.4);}
   .autorefresh{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px dashed #999; border-radius:10px; background:#fff; color:#444; }
 
   .scroll-x {
@@ -60,7 +60,7 @@
     overflow-x:auto;
     border-radius:14px;
     background:transparent;
-    box-shadow:0 8px 24px rgba(0,0,0,.4);
+    box-shadow:0 8px 24px rgba(0,0,0,.2);
   }
 
   /* 表格样式 */
@@ -91,30 +91,31 @@
   tbody tr:nth-child(even){ background: var(--card-gradient-even); }
   tbody tr:hover{ background: var(--hover-gradient); }
 
-  .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid transparent; }
-  .badge-pending { background:#4a4a2e; border-color:#aaa04a; color:#f5f5dc; }
-  .badge-approved { background:#1e3a2f; border-color:#16a34a; color:#a7f3d0; }
-  .badge-rejected { background:#3f1d1d; border-color:#dc2626; color:#fecaca; }
+  .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; border:none; }
+  .badge-pending { background:#facc15; color:#111; }
+  .badge-approved { background:#16a34a; color:#fff; }
+  .badge-rejected { background:#dc2626; color:#fff; }
 
   .status-block { display:flex; flex-direction:column; align-items:center; gap:4px; }
 
-  .comment-input { width: 240px; height:34px; font-size:14px; padding:6px 10px; border:1px solid #d4af37; border-radius:8px; background:transparent; color:var(--text); }
+  .comment-input { width: 240px; height:34px; font-size:14px; padding:6px 10px; border:none; border-radius:8px; background:#f3f4f6; color:var(--text); }
 
-  /* ✅ 黑金风按钮 */
+  body.dark .comment-input { background:#2a2a2a; color:#f5f5f5; }
+
+  /* ✅ 无边框渐变按钮 */
   .btn{
     appearance:none; cursor:pointer;
-    padding:8px 12px; border-radius:8px;
+    padding:8px 14px; border-radius:8px;
     font-size:14px; line-height:1;
-    border:1px solid #d4af37;   /* 金色描边 */
-    background: linear-gradient(145deg,#3a3a3a,#2a2a2a);
-    color:#f9f9f9;
-    box-shadow:0 2px 6px rgba(0,0,0,.6), inset 0 1px 2px rgba(255,215,0,0.3);
+    border:none;
+    color:#fff;
+    background: linear-gradient(145deg,#444,#2a2a2a);
+    box-shadow: 0 3px 6px rgba(0,0,0,.4), inset 0 1px 2px rgba(255,255,255,0.1);
     transition:.2s;
   }
   .btn:hover{
     transform: translateY(-1px);
-    border-color:#ffd700;
-    box-shadow:0 4px 12px rgba(212,175,55,.6), inset 0 1px 3px rgba(255,215,0,.4);
+    box-shadow:0 4px 12px rgba(0,0,0,.5), inset 0 1px 3px rgba(255,255,255,0.15);
   }
   .btn:active{
     transform: translateY(1px);
@@ -122,20 +123,37 @@
   }
 
   /* 不同按钮色调 */
-  .btn-approve{ background: linear-gradient(145deg,#166534,#065f46); }
+  .btn-approve{ background: linear-gradient(145deg,#16a34a,#065f46); }
   .btn-approve:hover{ background: linear-gradient(145deg,#22c55e,#15803d); }
 
-  .btn-reject{ background: linear-gradient(145deg,#7f1d1d,#991b1b); }
+  .btn-reject{ background: linear-gradient(145deg,#991b1b,#7f1d1d); }
   .btn-reject:hover{ background: linear-gradient(145deg,#dc2626,#b91c1c); }
 
-  .btn-mail{ background: linear-gradient(145deg,#312e81,#4338ca); }
+  .btn-mail{ background: linear-gradient(145deg,#4338ca,#312e81); }
   .btn-mail:hover{ background: linear-gradient(145deg,#6366f1,#4f46e5); }
 
-  .btn-delete{ background: linear-gradient(145deg,#92400e,#b45309); color:#fff; }
+  .btn-delete{ background: linear-gradient(145deg,#b45309,#92400e); }
   .btn-delete:hover{ background: linear-gradient(145deg,#f59e0b,#d97706); }
 
-  a.link { color:#60a5fa; text-decoration:none; }
-  a.link:hover { color:#93c5fd; text-decoration:underline; }
+  /* 🌗 切换主题按钮 */
+  .toggle-theme {
+    border: none;
+    background: linear-gradient(145deg,#f3f4f6,#e5e7eb);
+    color: #111827;
+    font-weight: 600;
+    padding: 8px 14px;
+    border-radius: 8px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    transition: all 0.3s ease;
+  }
+  body.dark .toggle-theme {
+    background: linear-gradient(145deg,#3a3a3a,#1f1f1f);
+    color: #f5f5f5;
+    box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+  }
+
+  a.link { color:#3b82f6; text-decoration:none; }
+  a.link:hover { color:#60a5fa; text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -149,7 +167,7 @@
           <input type="checkbox" id="autoRefreshToggle" checked>
           自动刷新（30 秒）
         </label>
-        <button type="button" onclick="toggleTheme()">🌗 切换主题</button>
+        <button type="button" class="toggle-theme" onclick="toggleTheme()">🌗 切换主题</button>
         <a href="/stats">📊 数据统计</a>
         <a href="/">返回首页</a>
         <a href="/logout">退出登录</a>
