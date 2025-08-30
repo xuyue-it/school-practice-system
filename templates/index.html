@@ -183,14 +183,10 @@
     <!-- 上传附件 -->
     <section class="card">
       <h2><span class="icon">📎</span>上传附件</h2>
-      <div class="row" id="fileUploadArea">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <input type="file" id="fileInput" name="attachments" accept=".pdf,.doc,.docx,.jpg,.png,.jpeg" multiple>
-          <span id="fileCount" class="muted">0/5</span>
-        </div>
-        <ul id="fileList" class="muted" style="margin-top:8px; list-style:none; padding:0;"></ul>
+      <div class="row">
+        <input type="file" name="attachment" accept=".pdf,.doc,.docx,.jpg,.png,.jpeg">
       </div>
-      <p class="muted">（最多上传 5 个文件，如活动方案、预算、相关证明等）</p>
+      <p class="muted">（可选：上传活动方案、预算、相关证明等）</p>
     </section>
 
     <!-- 其他信息 -->
@@ -232,33 +228,6 @@ async function doLookup(){
 }
 function toggleTheme(){
   document.body.classList.toggle("dark");
-}
-
-// ✅ 附件最多 5 个，显示文件名 + 数量
-const fileInput = document.getElementById("fileInput");
-const fileList = document.getElementById("fileList");
-const fileCount = document.getElementById("fileCount");
-let uploadedFiles = [];
-
-fileInput.addEventListener("change", function(){
-  const newFiles = Array.from(this.files);
-  if(uploadedFiles.length + newFiles.length > 5){
-    alert("最多只能上传 5 个文件！");
-    this.value = "";
-    return;
-  }
-  uploadedFiles = uploadedFiles.concat(newFiles);
-  renderFileList();
-  this.value = "";
-});
-function renderFileList(){
-  fileList.innerHTML = "";
-  uploadedFiles.forEach((f)=>{
-    const li = document.createElement("li");
-    li.textContent = f.name;
-    fileList.appendChild(li);
-  });
-  fileCount.textContent = `${uploadedFiles.length}/5`;
 }
 </script>
 </body>
