@@ -8,7 +8,6 @@
 <meta http-equiv="Expires" content="0"/>
 <style>
   :root{
-    /* 默认浅色模式 */
     --bg-gradient: linear-gradient(135deg, #f8fafc, #e2e8f0);
     --card-gradient-odd: linear-gradient(90deg, #ffffff, #f1f5f9);
     --card-gradient-even: linear-gradient(90deg, #f9fafb, #e2e8f0);
@@ -98,7 +97,7 @@
 
   .status-block { display:flex; flex-direction:column; align-items:center; gap:4px; }
 
-  /* ✅ 审核说明框：无边框 + hover 高亮柔光 */
+  /* 审核说明框：无边框 + hover 柔光 */
   .comment-input {
     width: 240px; height:34px;
     font-size:14px; padding:6px 10px;
@@ -119,40 +118,38 @@
     box-shadow: 0 0 8px rgba(255,255,255,0.15);
   }
 
-  /* ✅ 按钮：无边框 + hover 柔光 */
+  /* 按钮基础样式 */
   .btn{
     appearance:none; cursor:pointer;
     padding:8px 14px; border-radius:8px;
     font-size:14px; line-height:1;
     border: none;
     color:#fff;
-    background: linear-gradient(145deg,#444,#2a2a2a);
-    box-shadow: 0 3px 6px rgba(0,0,0,.4), inset 0 1px 2px rgba(255,255,255,0.1);
     transition:.2s;
+    box-shadow: 0 3px 6px rgba(0,0,0,.4), inset 0 1px 2px rgba(255,255,255,0.1);
   }
   .btn:hover{
     transform: translateY(-1px);
     box-shadow:0 4px 12px rgba(0,0,0,.5), inset 0 1px 3px rgba(255,255,255,0.15);
   }
-  body.dark .btn {
-    background: linear-gradient(145deg,#2a2a2a,#1a1a1a);
+  /* ✅ 新增 active 效果 */
+  .btn:active {
+   transform: scale(0.95);   /* 点击时缩小 95% */
+   box-shadow: 0 2px 6px rgba(0,0,0,0.4) inset;
   }
-  body.dark .btn:hover {
-    box-shadow: 0 4px 12px rgba(255,255,255,0.25), inset 0 1px 3px rgba(255,255,255,0.2);
-  }
 
-  /* 不同按钮色调 */
-  .btn-approve{ background: linear-gradient(145deg,#16a34a,#065f46); }
-  .btn-approve:hover{ background: linear-gradient(145deg,#22c55e,#15803d); }
+  /* ✅ 按钮颜色（浅色 + 暗色模式下保持） */
+  .btn-approve{ background: linear-gradient(145deg,#22c55e,#15803d); }
+  .btn-approve:hover{ background: linear-gradient(145deg,#4ade80,#16a34a); }
 
-  .btn-reject{ background: linear-gradient(145deg,#991b1b,#7f1d1d); }
-  .btn-reject:hover{ background: linear-gradient(145deg,#dc2626,#b91c1c); }
+  .btn-reject{ background: linear-gradient(145deg,#ef4444,#b91c1c); }
+  .btn-reject:hover{ background: linear-gradient(145deg,#f87171,#dc2626); }
 
-  .btn-mail{ background: linear-gradient(145deg,#4338ca,#312e81); }
-  .btn-mail:hover{ background: linear-gradient(145deg,#6366f1,#4f46e5); }
+  .btn-mail{ background: linear-gradient(145deg,#6366f1,#4338ca); }
+  .btn-mail:hover{ background: linear-gradient(145deg,#818cf8,#4f46e5); }
 
-  .btn-delete{ background: linear-gradient(145deg,#b45309,#92400e); }
-  .btn-delete:hover{ background: linear-gradient(145deg,#f59e0b,#d97706); }
+  .btn-delete{ background: linear-gradient(145deg,#f59e0b,#d97706); color:#111; }
+  .btn-delete:hover{ background: linear-gradient(145deg,#fbbf24,#ea580c); color:#fff; }
 
   /* 🌗 切换主题按钮 */
   .toggle-theme {
