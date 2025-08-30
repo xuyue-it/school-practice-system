@@ -91,24 +91,6 @@
     body.dark .status-card{background:#2a2a2a;border:1px solid #555;color:#f5f5f5;}
     .status-row{display:flex;justify-content:space-between;margin:6px 0}
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--bd);font-size:12px}
-
-    /* ✅ 附件列表样式 */
-    #fileList li {
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      padding:4px 8px;
-      margin:3px 0;
-      background:#f3f4f6;
-      border-radius:6px;
-    }
-    body.dark #fileList li { background:#333; }
-    .remove-btn {
-      cursor:pointer;
-      color:red;
-      font-weight:bold;
-      margin-left:10px;
-    }
   </style>
 </head>
 <body>
@@ -136,6 +118,68 @@
 
   <!-- 主表单 -->
   <form action="/submit" method="post" id="mainForm" enctype="multipart/form-data">
+    <!-- 申请人信息 -->
+    <section class="card">
+      <h2><span class="icon">👤</span>申请人信息</h2>
+      <div class="grid-2">
+        <div class="row"><label>姓名 *</label><input type="text" name="name" required></div>
+        <div class="row"><label>联系电话 *</label><input type="tel" name="phone" required></div>
+        <div class="row"><label>电子邮箱 *</label><input type="email" name="email" required></div>
+        <div class="row"><label>所属团体/组织</label><input type="text" name="group"></div>
+      </div>
+    </section>
+
+    <!-- 活动信息 -->
+    <section class="card">
+      <h2><span class="icon">📅</span>事项信息</h2>
+      <div class="grid-2">
+        <div class="row"><label>事项/活动名称 *</label><input type="text" name="event_name" required></div>
+        <div class="row"><label>地点 *</label><input type="text" name="location" required></div>
+        <div class="row"><label>开始日期 *</label><input type="date" name="start_date" required></div>
+        <div class="row"><label>开始时间 *</label><input type="time" name="start_time" required></div>
+        <div class="row"><label>结束日期 *</label><input type="date" name="end_date" required></div>
+        <div class="row"><label>结束时间 *</label><input type="time" name="end_time" required></div>
+        <div class="row"><label>类别 *</label>
+          <select name="event_type" required>
+            <option value="">请选择类别</option>
+            <option value="活动">活动</option>
+            <option value="资源申请">资源申请</option>
+            <option value="其他">其他</option>
+          </select>
+        </div>
+        <div class="row"><label>预计参与人数 *</label><input type="number" name="participants" min="1" step="1" required></div>
+      </div>
+    </section>
+
+    <!-- 器材申请 -->
+    <section class="card">
+      <h2><span class="icon">🎤</span>器材申请</h2>
+      <div class="grid-2">
+        <div class="row">
+          <label><input type="checkbox" name="equip_projector"> 投影机</label>
+          <input type="number" name="equip_projector_qty" min="1" placeholder="数量">
+        </div>
+        <div class="row">
+          <label><input type="checkbox" name="equip_screen"> 投影屏幕</label>
+          <input type="number" name="equip_screen_qty" min="1" placeholder="数量">
+        </div>
+        <div class="row">
+          <label><input type="checkbox" name="equip_mic_wireless"> 无线麦克风</label>
+          <input type="number" name="equip_mic_wireless_qty" min="1" placeholder="数量">
+        </div>
+        <div class="row">
+          <label><input type="checkbox" name="equip_mic_wired"> 有线麦克风</label>
+          <input type="number" name="equip_mic_wired_qty" min="1" placeholder="数量">
+        </div>
+      </div>
+    </section>
+
+    <!-- 申请说明 -->
+    <section class="card">
+      <h2><span class="icon">📝</span>申请说明</h2>
+      <div class="row"><label>说明 *</label><textarea name="special_request" required></textarea></div>
+    </section>
+
     <!-- 上传附件 -->
     <section class="card">
       <h2><span class="icon">📎</span>上传附件</h2>
@@ -190,7 +234,7 @@ function toggleTheme(){
   document.body.classList.toggle("dark");
 }
 
-// ✅ 附件最多 5 个，显示文件名 + 数量 + 删除按钮
+// ✅ 附件最多 5 个，显示文件名 + 数量
 const fileInput = document.getElementById("fileInput");
 const fileList = document.getElementById("fileList");
 const fileCount = document.getElementById("fileCount");
@@ -207,25 +251,14 @@ fileInput.addEventListener("change", function(){
   renderFileList();
   this.value = "";
 });
-
 function renderFileList(){
   fileList.innerHTML = "";
-  uploadedFiles.forEach((f,i)=>{
+  uploadedFiles.forEach((f)=>{
     const li = document.createElement("li");
     li.textContent = f.name;
-    const removeBtn = document.createElement("span");
-    removeBtn.textContent = "×";
-    removeBtn.className = "remove-btn";
-    removeBtn.onclick = ()=> removeFile(i);
-    li.appendChild(removeBtn);
     fileList.appendChild(li);
   });
   fileCount.textContent = `${uploadedFiles.length}/5`;
-}
-
-function removeFile(index){
-  uploadedFiles.splice(index,1);
-  renderFileList();
 }
 </script>
 </body>
