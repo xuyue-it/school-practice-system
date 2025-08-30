@@ -174,13 +174,20 @@
     <section class="card">
       <h2><span class="icon">ℹ️</span>其他信息</h2>
       <div class="grid-2">
-        <div class="row"><label>备注</label><textarea name="remarks"></textarea></div>
-        <div class="row"><label>紧急联系人姓名</label><input type="text" name="emergency_name"></div>
-        <!-- ✅ 电话字段挪到姓名下面 -->
-        <div class="row"><label>紧急联系人电话</label><input type="text" name="emergency_phone"></div>
+        <div class="row">
+          <label>备注</label>
+          <textarea name="remarks"></textarea>
+        </div>
+        <!-- ✅ 把姓名和电话放在同一列 -->
+        <div class="row">
+          <label>紧急联系人姓名</label>
+          <input type="text" name="emergency_name">
+          <label>紧急联系人电话</label>
+          <input type="text" name="emergency_phone">
+        </div>
       </div>
     </section>
-
+      
     <div class="submit-wrap"><button class="btn-submit" type="submit">提交申请</button></div>
   </form>
 
