@@ -7,16 +7,41 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <style>
-  :root{
-    --bg:#f5f7fb; --card:#ffffff; --line:#cbd5e1; --text:#111827; --muted:#6b7280;
-    --primary:#2563eb; --primary-600:#1d4ed8;
+  :root {
+    --bg-gradient: linear-gradient(135deg, #e0f2fe, #f8fafc);
+    --card-gradient-odd: linear-gradient(90deg, #ffffff, #f1f5f9);
+    --card-gradient-even: linear-gradient(90deg, #f9fafb, #e2e8f0);
+    --header-gradient: linear-gradient(90deg,#f1f5f9,#e2e8f0);
+    --hover-gradient: linear-gradient(90deg,#dbeafe,#e0f2fe);
+
+    --text:#111827;
+    --muted:#6b7280;
+
     --green:#22c55e; --green-600:#16a34a;
     --red:#ef4444; --red-600:#dc2626;
     --amber:#f59e0b; --amber-600:#d97706;
     --indigo:#6366f1; --indigo-600:#4f46e5;
   }
+
+  body.dark {
+    --bg-gradient: linear-gradient(135deg, #0f172a, #1e293b);
+    --card-gradient-odd: linear-gradient(90deg, #1e293b, #334155);
+    --card-gradient-even: linear-gradient(90deg, #0f172a, #1e293b);
+    --header-gradient: linear-gradient(90deg,#1e293b,#475569);
+    --hover-gradient: linear-gradient(90deg,#334155,#475569);
+
+    --text:#f1f5f9;
+    --muted:#94a3b8;
+  }
+
   *{ box-sizing: border-box; }
-  body { font-family: "Microsoft YaHei", sans-serif; background:var(--bg); padding:24px; color:var(--text); }
+  body {
+    font-family: "Microsoft YaHei", sans-serif;
+    background: var(--bg-gradient);
+    padding:24px;
+    color:var(--text);
+    transition: background 0.5s ease, color 0.5s ease;
+  }
   .wrap { max-width: 100%; margin: 0 auto; }
   .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:10px; flex-wrap: wrap; }
   h1 { margin:0; font-size:24px; font-weight:900; }
@@ -26,36 +51,46 @@
   .search-box{
     display:inline-flex; align-items:center; gap:6px;
     text-decoration:none; cursor:pointer;
-    padding:8px 12px; border-radius:10px; border:1px solid var(--line);
-    background:var(--card); color:var(--text);
-    box-shadow:0 3px 0 #d7def0, 0 8px 16px rgba(17,24,39,.06);
-    transition:.12s transform ease, .12s box-shadow ease;
+    padding:8px 12px; border-radius:10px; border:1px solid #e5e7eb;
+    background:var(--card-gradient-odd); color:var(--text);
+    box-shadow:0 3px 6px rgba(0,0,0,.08);
+    transition:.3s;
   }
-  .topbar-actions a:hover, .topbar-actions button:hover{ transform: translateY(-1px); box-shadow:0 4px 0 #cbd6f2, 0 10px 18px rgba(17,24,39,.08);}
-  .topbar-actions a:active, .topbar-actions button:active{ transform: translateY(1px); }
-  .autorefresh{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px dashed var(--line); border-radius:10px; background:#fff; }
-  .scroll-x { width:100%; overflow-x:auto; border:1px solid var(--line); border-radius:14px; background:var(--card); box-shadow:0 6px 18px rgba(17,24,39,.05); }
+  .topbar-actions a:hover, .topbar-actions button:hover{ transform: translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.12);}
+  .autorefresh{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px dashed #cbd5e1; border-radius:10px; background:#fff; }
 
-  /* 表格样式 */
-  table { border-collapse: collapse; width: 100%; white-space: nowrap; }
-  thead th, tbody td {
-    border: 1px solid var(--line);
-    padding: 12px 10px;
+  .scroll-x {
+    width:100%;
+    overflow-x:auto;
+    border-radius:14px;
+    background:transparent;
+    box-shadow:0 8px 24px rgba(0,0,0,.08);
   }
+
+  table { border-collapse: collapse; width: 100%; white-space: nowrap; border:none; }
   thead th {
     position: sticky;
     top: 0;
-    background:#f3f4f6;
+    background: var(--header-gradient);
     font-weight:900;
     font-size:14px;
     text-align:center;
     z-index: 2;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    border: none;
+    padding:14px 12px;
   }
-  tbody td { font-size:15px; vertical-align: middle; text-align:center; }
-  tbody tr:nth-child(odd){ background:#ffffff; }
-  tbody tr:nth-child(even){ background:#f9fafb; }
-  tbody tr:hover{ background:#f1f5f9; }
+  tbody td {
+    font-size:15px;
+    text-align:center;
+    vertical-align: middle;
+    border: none;
+    padding:14px 12px;
+  }
+
+  tbody tr:nth-child(odd){ background: var(--card-gradient-odd); }
+  tbody tr:nth-child(even){ background: var(--card-gradient-even); }
+  tbody tr:hover{ background: var(--hover-gradient); }
 
   .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid transparent; }
   .badge-pending { background:#fff7e6; border-color:#ffcc80; }
@@ -64,9 +99,9 @@
 
   .status-block { display:flex; flex-direction:column; align-items:center; gap:4px; }
 
-  .comment-input { width: 240px; height:34px; font-size:14px; padding:6px 10px; border:1px solid var(--line); border-radius:8px; }
+  .comment-input { width: 240px; height:34px; font-size:14px; padding:6px 10px; border:1px solid #e5e7eb; border-radius:8px; }
 
-  .btn{ appearance:none; border:none; cursor:pointer; padding:8px 12px; border-radius:8px; color:#fff; font-size:14px; line-height:1; box-shadow:0 2px 6px rgba(17,24,39,.08); transition:.15s transform ease, .15s opacity ease, .15s background ease; }
+  .btn{ appearance:none; border:none; cursor:pointer; padding:8px 12px; border-radius:8px; color:#fff; font-size:14px; line-height:1; box-shadow:0 2px 6px rgba(17,24,39,.08); transition:.15s; }
   .btn:hover{ transform: translateY(-1px); opacity:.95; }
   .btn:active{ transform:none; }
   .btn[disabled]{ opacity:.6; cursor:not-allowed; }
@@ -75,7 +110,6 @@
   .btn-mail{ background:var(--indigo); } .btn-mail:hover{ background:var(--indigo-600); }
   .btn-delete{ background:var(--amber); color:#111; } .btn-delete:hover{ background:var(--amber-600); color:#fff; }
 
-  .muted { color:var(--muted); font-size:12px; }
   a.link { color:var(--primary); text-decoration:none; }
   a.link:hover { color:var(--primary-600); text-decoration:underline; }
 </style>
@@ -91,6 +125,7 @@
           <input type="checkbox" id="autoRefreshToggle" checked>
           自动刷新（30 秒）
         </label>
+        <button type="button" onclick="toggleDarkMode()">🌙 切换主题</button>
         <a href="/stats">📊 数据统计</a>
         <a href="/">返回首页</a>
         <a href="/logout">退出登录</a>
@@ -128,7 +163,7 @@
             <td>{{ s[16] }}</td>
             <td>{{ s[17] }}</td>
             <td>{{ s[18] }}</td>
-            <td>{{ s[19] }}</td> <!-- ✅ 补上紧急电话 -->
+            <td>{{ s[19] }}</td>
 
             <!-- 状态 + 附件 -->
             <td>
@@ -172,6 +207,20 @@
   </div>
 
 <script>
+function toggleDarkMode(){
+  document.body.classList.toggle("dark");
+}
+
+function filterTable(){
+  const input = document.getElementById("searchInput");
+  const filter = input.value.toLowerCase();
+  const rows = document.querySelectorAll("#tbody-root tr");
+  rows.forEach(row=>{
+    const name = row.cells[1]?.textContent.toLowerCase() || "";
+    const eventName = row.cells[5]?.textContent.toLowerCase() || "";
+    row.style.display = (name.includes(filter) || eventName.includes(filter)) ? "" : "none";
+  });
+}
 async function handleJsonResponse(resp) {
   const text = await resp.text();
   try { return JSON.parse(text); } catch (_) { return { success:false, message: text || '非JSON响应' }; }
