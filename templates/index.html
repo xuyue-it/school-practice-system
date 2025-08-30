@@ -92,14 +92,7 @@
     .status-row{display:flex;justify-content:space-between;margin:6px 0}
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--bd);font-size:12px}
 
-    /* ✅ 附件列表样式 + 拖拽样式 */
-    #fileUploadArea {
-      border:2px dashed #ccc;
-      border-radius:10px;
-      padding:10px;
-      transition:.3s;
-    }
-    #fileUploadArea.dragover { background:#e0f2fe; border-color:#0a58ff; }
+    /* ✅ 附件列表样式 */
     #fileList li {
       display:flex;
       align-items:center;
@@ -153,7 +146,17 @@
         </div>
         <ul id="fileList" class="muted" style="margin-top:8px; list-style:none; padding:0;"></ul>
       </div>
-      <p class="muted">（最多上传 5 个文件，如活动方案、预算、相关证明等。支持拖拽上传）</p>
+      <p class="muted">（最多上传 5 个文件，如活动方案、预算、相关证明等）</p>
+    </section>
+
+    <!-- 其他信息 -->
+    <section class="card">
+      <h2><span class="icon">ℹ️</span>其他信息</h2>
+      <div class="grid-2">
+        <div class="row"><label>备注</label><textarea name="remarks"></textarea></div>
+        <div class="row"><label>紧急联系人姓名</label><input type="text" name="emergency_name"></div>
+        <div class="row"><label>紧急联系人电话</label><input type="text" name="emergency_phone"></div>
+      </div>
     </section>
 
     <div class="submit-wrap"><button class="btn-submit" type="submit">提交申请</button></div>
@@ -187,26 +190,23 @@ function toggleTheme(){
   document.body.classList.toggle("dark");
 }
 
-// ✅ 附件最多 5 个，显示文件名 + 删除按钮 + 拖拽上传
+// ✅ 附件最多 5 个，显示文件名 + 数量 + 删除按钮
 const fileInput = document.getElementById("fileInput");
 const fileList = document.getElementById("fileList");
 const fileCount = document.getElementById("fileCount");
-const fileUploadArea = document.getElementById("fileUploadArea");
 let uploadedFiles = [];
 
 fileInput.addEventListener("change", function(){
-  handleFiles(Array.from(this.files));
-  this.value = "";
-});
-
-function handleFiles(newFiles){
+  const newFiles = Array.from(this.files);
   if(uploadedFiles.length + newFiles.length > 5){
     alert("最多只能上传 5 个文件！");
+    this.value = "";
     return;
   }
   uploadedFiles = uploadedFiles.concat(newFiles);
   renderFileList();
-}
+  this.value = "";
+});
 
 function renderFileList(){
   fileList.innerHTML = "";
@@ -227,21 +227,6 @@ function removeFile(index){
   uploadedFiles.splice(index,1);
   renderFileList();
 }
-
-// ✅ 拖拽上传
-fileUploadArea.addEventListener("dragover", function(e){
-  e.preventDefault();
-  fileUploadArea.classList.add("dragover");
-});
-fileUploadArea.addEventListener("dragleave", function(e){
-  fileUploadArea.classList.remove("dragover");
-});
-fileUploadArea.addEventListener("drop", function(e){
-  e.preventDefault();
-  fileUploadArea.classList.remove("dragover");
-  const files = Array.from(e.dataTransfer.files);
-  handleFiles(files);
-});
 </script>
 </body>
 </html>
