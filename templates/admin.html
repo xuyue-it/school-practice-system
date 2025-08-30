@@ -72,19 +72,21 @@
     white-space: nowrap;
   }
 
-  /* ✅ 所有单元格垂直居中 */
-  #adminTable td {
-    vertical-align: middle;
-  }
+ /* ✅ 所有单元格内容垂直居中，强制覆盖 */
+#adminTable td {
+  vertical-align: middle !important;
+}
 
-  /* ✅ 状态+附件 block，保证每行高度一致 */
-  .status-block {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 60px;
-  }
+/* ✅ 状态+附件：固定行高，避免忽高忽低 */
+.status-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;        /* 占满整个单元格 */
+  min-height: 70px;    /* 统一行高，可以按需要调 */
+  box-sizing: border-box;
+}
 </style>
 </head>
 <body>
