@@ -37,7 +37,7 @@
   .scroll-x { width:100%; overflow-x:auto; overflow-y:hidden; border:1px solid var(--line); border-radius:14px; background:var(--card); box-shadow:0 6px 18px rgba(17,24,39,.05); }
   table { border-collapse: separate; border-spacing:0; white-space: nowrap; }
   thead th{ position:sticky; top:0; background:#f3f4f6; z-index:1; font-weight:700; font-size:14px; text-align:left; padding:14px 12px; border-bottom:1px solid var(--line); }
-  tbody td{ font-size:15px; padding:14px 12px; border-bottom:1px solid var(--line); vertical-align:middle; max-width: 420px; overflow:hidden; text-overflow: ellipsis; }
+  tbody td{ font-size:15px; padding:14px 12px; border-bottom:1px solid var(--line); max-width: 420px; overflow:hidden; text-overflow: ellipsis; }
   tbody tr:nth-child(odd){ background:#fbfdff; }
   tbody tr:hover{ background:#f8fafc; }
   .td-equipment { white-space: normal; max-width: 360px; line-height: 1.45; min-width: 180px; }
@@ -72,13 +72,18 @@
     white-space: nowrap;
   }
 
+  /* ✅ 所有单元格垂直居中 */
+  #adminTable td {
+    vertical-align: middle;
+  }
+
   /* ✅ 状态+附件 block，保证每行高度一致 */
   .status-block {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 60px;   /* 保证和其他列统一 */
+    min-height: 60px;
   }
 </style>
 </head>
