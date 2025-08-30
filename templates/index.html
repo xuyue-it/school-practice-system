@@ -73,6 +73,7 @@
     body.dark input,body.dark select,body.dark textarea{
       background:#2a2a2a; border:1px solid #555; color:#f5f5f5;
     }
+
     textarea{resize:vertical;min-height:90px}
 
     .submit-wrap{text-align:center;margin-top:14px}
@@ -184,9 +185,10 @@
     <section class="card">
       <h2><span class="icon">📎</span>上传附件</h2>
       <div class="row">
-        <input type="file" name="attachment" accept=".pdf,.doc,.docx,.jpg,.png,.jpeg">
+        <!-- ✅ 改成多文件上传 -->
+        <input type="file" id="attachments" name="attachments" multiple accept=".pdf,.doc,.docx,.jpg,.png,.jpeg">
       </div>
-      <p class="muted">（可选：上传活动方案、预算、相关证明等）</p>
+      <p class="muted">（可选：上传活动方案、预算、相关证明等，支持多文件，每个文件 ≤5MB）</p>
     </section>
 
     <!-- 其他信息 -->
@@ -229,6 +231,25 @@ async function doLookup(){
 function toggleTheme(){
   document.body.classList.toggle("dark");
 }
+
+/* ✅ 新增：文件大小+类型检查 */
+document.getElementById("mainForm").addEventListener("submit", function(e){
+  const files = document.getElementById("attachments").files;
+  const allowed = [".pdf",".doc",".docx",".jpg",".png",".jpeg"];
+  for (let f of files){
+    const lower = f.name.toLowerCase();
+    if(!allowed.some(ext => lower.endsWith(ext))){
+      alert(`文件 ${f.name} 类型不允许！`);
+      e.preventDefault();
+      return false;
+    }
+    if(f.size > 5*1024*1024){
+      alert(`文件 ${f.name} 超过 5MB，无法上传！`);
+      e.preventDefault();
+      return false;
+    }
+  }
+});
 </script>
 </body>
 </html>

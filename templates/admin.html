@@ -180,6 +180,9 @@
       <div class="topbar-actions">
         <input type="text" id="searchInput" class="search-box" placeholder="搜索姓名或活动名称..." onkeyup="filterTable()">
         <button type="button" onclick="hardReload()">刷新</button>
+        <!-- ✅ 新增批量按钮 -->
+        <button type="button" onclick="batchUpdateStatus('通过')">批量通过</button>
+        <button type="button" onclick="batchUpdateStatus('不通过')">批量不通过</button>
         <label class="autorefresh">
           <input type="checkbox" id="autoRefreshToggle" checked>
           自动刷新（30 秒）
@@ -195,6 +198,8 @@
       <table id="adminTable">
         <thead>
           <tr>
+            <!-- ✅ 新增全选框 -->
+            <th><input type="checkbox" id="checkAll" onclick="toggleAll(this)"></th>
             <th>ID</th><th>姓名</th><th>电话</th><th>邮箱</th><th>团体名称</th><th>活动名称</th>
             <th>开始</th><th>结束</th><th>地点</th><th>性质</th><th>人数</th>
             <th>器材</th><th>特别需求</th><th>捐款</th><th>方式</th><th>备注</th>
@@ -205,6 +210,8 @@
         <tbody id="tbody-root">
           {% for s in submissions %}
           <tr id="row-{{ s[0] }}">
+            <!-- ✅ 新增行复选框 -->
+            <td><input type="checkbox" class="row-check" value="{{ s[0] }}"></td>
             <td>{{ loop.index }}</td>
             <td>{{ s[1] }}</td>
             <td>{{ s[2] }}</td>
@@ -232,7 +239,9 @@
                   {% if '待' in st %}badge-pending{% elif '通' in st %}badge-approved{% elif '拒' in st %}badge-rejected{% endif %}
                 ">{{ st }}</span>
                 {% if s|length > 22 and s[22] %}
-                  <a class="link" href="/uploads/{{ s[22] }}" target="_blank">{{ s[22] }}</a>
+                  {% for fname in s[22].split(',') %}
+                    <a class="link" href="/uploads/{{ fname }}" target="_blank">{{ fname }}</a><br>
+                  {% endfor %}
                 {% else %}
                   <span class="muted">无</span>
                 {% endif %}
@@ -381,6 +390,25 @@ function filterTable(){
     const eventName = row.cells[5]?.textContent.toLowerCase() || "";
     row.style.display = (name.includes(filter) || eventName.includes(filter)) ? "" : "none";
   });
+}
+<!-- ✅ 新增批量操作函数 -->
+function batchUpdateStatus(newStatus){
+  const ids = [...document.querySelectorAll(".row-check:checked")].map(cb=>cb.value);
+  if(ids.length===0){ alert("请先选择记录"); return; }
+  if(!confirm(`确认将 ${ids.length} 条记录设为「${newStatus}」吗？`)) return;
+  fetch("/batch_update_status", {
+    method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ ids: ids, status: newStatus })
+  })
+  .then(r=>r.json())
+  .then(data=>{
+    if(data.success){ alert("批量更新成功"); location.reload(); }
+    else{ alert("更新失败: "+data.message); }
+  })
+  .catch(()=>alert("网络或服务器错误"));
+}
+function toggleAll(source){
+  document.querySelectorAll(".row-check").forEach(cb=>cb.checked = source.checked);
 }
 </script>
 </body>

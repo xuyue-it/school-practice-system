@@ -20,6 +20,14 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
+# ✅ 新增：限制上传文件大小（5MB）
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+
+# ✅ 新增：允许的扩展名白名单
+ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png"}
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 # ========== 基本配置 ==========
 load_dotenv()
 app.secret_key = os.getenv("SECRET_KEY", "replace-this-in-prod")
@@ -57,7 +65,6 @@ def send_email(subject, content, to_email):
     msg.attach(MIMEText(content, "plain", "utf-8"))
 
     try:
-        # 优先 SSL
         server = smtplib.SMTP_SSL(SMTP_SERVER, 465, timeout=20)
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
         server.sendmail(SENDER_EMAIL, [to_email], msg.as_string())
@@ -68,7 +75,6 @@ def send_email(subject, content, to_email):
         print("⚠️ SSL(465) 发送失败：", e_ssl)
 
     try:
-        # 尝试 TLS
         server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=20)
         server.ehlo(); server.starttls(); server.ehlo()
         server.login(SENDER_EMAIL, SENDER_PASSWORD)
@@ -133,13 +139,21 @@ def index():
 @app.route("/submit", methods=["POST"])
 def submit():
     data = request.form.to_dict(flat=True)
-    file = request.files.get("attachment")
-    filename = None
-    if file and file.filename:
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
 
-    # 处理器材选择
+    # ✅ 修改：接收多个文件
+    files = request.files.getlist("attachments")
+    filenames = []
+    for file in files:
+        if file and file.filename:
+            if not allowed_file(file.filename):
+                return f"❌ 不允许的文件类型: {file.filename}", 400
+            fname = secure_filename(file.filename)
+            save_path = os.path.join(app.config["UPLOAD_FOLDER"], fname)
+            file.save(save_path)
+            filenames.append(fname)
+    filenames_str = ",".join(filenames) if filenames else None
+
+    # 处理器材选择（保留原始逻辑）
     equip_items = []
     if data.get("equip_mic_wireless") == "on":
         qty = int(data.get("equip_mic_wireless_qty") or 1)
@@ -172,7 +186,7 @@ def submit():
          data.get('event_type'), data.get('participants'), equipment_str,
          data.get('special_request'), data.get('donation'), data.get('donation_method'),
          data.get('remarks'), data.get('emergency_name'), data.get('emergency_phone'),
-         filename))
+         filenames_str))
     conn.commit(); conn.close()
 
     # 发邮件通知管理员
@@ -231,6 +245,24 @@ def update_status(submission_id, new_status):
     except Exception as e:
         print("❌ /update_status 出错：", e)
         return jsonify({"success": False, "message": f"服务器错误：{e}"}), 500
+
+# ✅ 新增批量更新接口
+@app.route("/batch_update_status", methods=["POST"])
+@login_required
+def batch_update_status():
+    try:
+        data = request.get_json()
+        ids = data.get("ids", [])
+        new_status = data.get("status", "")
+        if not ids:
+            return jsonify({"success": False, "message": "未选择记录"})
+        conn = get_conn(); c = conn.cursor()
+        c.execute("UPDATE submissions SET status=%s WHERE id = ANY(%s)", (new_status, ids))
+        conn.commit(); conn.close()
+        return jsonify({"success": True})
+    except Exception as e:
+        print("❌ /batch_update_status 出错：", e)
+        return jsonify({"success": False, "message": str(e)}), 500
 
 @app.route("/send_review_email/<int:submission_id>", methods=["POST"])
 @login_required
@@ -314,8 +346,17 @@ def stats_data():
     status_counts = dict(c.fetchall())
     c.execute("SELECT event_type, COUNT(*) FROM submissions GROUP BY event_type")
     type_counts = dict(c.fetchall())
+    # ✅ 新增：附件统计
+    c.execute("SELECT COUNT(*) FROM submissions WHERE attachment IS NOT NULL AND attachment <> ''")
+    with_attach = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) FROM submissions WHERE attachment IS NULL OR attachment = ''")
+    without_attach = c.fetchone()[0]
     conn.close()
-    return jsonify({"status": status_counts, "type": type_counts})
+    return jsonify({
+        "status": status_counts,
+        "type": type_counts,
+        "attachments": {"有附件": with_attach, "无附件": without_attach}
+    })
 
 @app.route("/_health")
 def _health(): return "ok", 200
