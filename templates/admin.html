@@ -143,8 +143,8 @@
                   {% if '待' in st %}badge-pending{% elif '通' in st %}badge-approved{% elif '拒' in st %}badge-rejected{% endif %}
                 ">{{ st }}</span>
                 <div style="margin-top:6px; display:flex; flex-direction:column; gap:4px;">
-                  {% if s|length > 22 %}
-                    {% set files = s[22:] %}
+                  {% if s[22] %}
+                    {% set files = s[22] %}
                     {% for f in files[:5] %}
                       <a class="link" href="/uploads/{{ f }}" target="_blank">{{ f }}</a>
                     {% endfor %}
@@ -185,6 +185,7 @@
   </div>
 
 <script>
+/* 保持原有功能 */
 function filterTable(){
   const input = document.getElementById("searchInput");
   const filter = input.value.toLowerCase();
@@ -206,11 +207,6 @@ function setTip(id, msg, isError=false){
   tip.classList.toggle('error', !!isError);
   tip.style.display = 'block';
 }
-function formatNow(){
-  const d = new Date();
-  const pad = n=> String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
 function updateStatus(id, statusText) {
   const comment = document.getElementById(`comment-${id}`).value || "";
   if (!confirm(`确认将编号 ${id} 设置为「${statusText}」吗？`)) return;
@@ -223,16 +219,12 @@ function updateStatus(id, statusText) {
     .then(async r => {
       const data = await handleJsonResponse(r);
       if (!r.ok || !data.success) {
-        setTip(id, data.message || `更新失败（HTTP ${r.status})`, true);
         alert(data.message || `更新失败（HTTP ${r.status})`);
         return;
       }
       alert(`已更新为 ${data.status}`);
     })
-    .catch(err => {
-      console.error(err);
-      alert("网络或服务器异常");
-    });
+    .catch(err => { console.error(err); alert("网络或服务器异常"); });
 }
 function sendReviewEmail(id) {
   if (!confirm(`确认向该申请的邮箱发送当前审核结果和说明吗？`)) return;
@@ -267,10 +259,7 @@ function deleteSubmission(id){
       if (row) row.remove();
       alert(`已删除记录 ID: ${id}`);
     })
-    .catch(err => {
-      console.error(err);
-      alert("网络或服务器异常");
-    });
+    .catch(err => { console.error(err); alert("网络或服务器异常"); });
 }
 function hardReload(){
   const url = new URL(window.location.href);
@@ -288,16 +277,6 @@ document.addEventListener('DOMContentLoaded', ()=>{
   }
 });
 window.addEventListener('pageshow', function (e) { if (e.persisted) { hardReload(); } });
-function filterTable(){
-  const input = document.getElementById("searchInput");
-  const filter = input.value.toLowerCase();
-  const rows = document.querySelectorAll("#tbody-root tr");
-  rows.forEach(row=>{
-    const name = row.cells[1]?.textContent.toLowerCase() || "";
-    const eventName = row.cells[5]?.textContent.toLowerCase() || "";
-    row.style.display = (name.includes(filter) || eventName.includes(filter)) ? "" : "none";
-  });
-}
 </script>
 </body>
 </html>

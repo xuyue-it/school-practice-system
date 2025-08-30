@@ -8,7 +8,7 @@ from email.header import Header
 from email.utils import formataddr
 import traceback
 from dotenv import load_dotenv
-import os
+import os, json
 from functools import wraps
 import psycopg2
 
@@ -93,7 +93,7 @@ def init_db():
         special_request TEXT, donation TEXT, donation_method TEXT,
         remarks TEXT, emergency_name TEXT, emergency_phone TEXT,
         status TEXT DEFAULT '待审核', review_comment TEXT,
-        attachment TEXT
+        attachment JSON
     )''')
     conn.commit()
     conn.close()
@@ -133,11 +133,16 @@ def index():
 @app.route("/submit", methods=["POST"])
 def submit():
     data = request.form.to_dict(flat=True)
-    file = request.files.get("attachment")
-    filename = None
-    if file and file.filename:
-        filename = secure_filename(file.filename)
-        file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+
+    # 处理多个文件上传（最多 5 个）
+    files = request.files.getlist("attachments")
+    filenames = []
+    for f in files[:5]:  # 限制最多 5 个
+        if f and f.filename:
+            safe_name = secure_filename(f.filename)
+            save_path = os.path.join(app.config["UPLOAD_FOLDER"], safe_name)
+            f.save(save_path)
+            filenames.append(safe_name)
 
     # 处理器材选择
     equip_items = []
@@ -172,7 +177,7 @@ def submit():
          data.get('event_type'), data.get('participants'), equipment_str,
          data.get('special_request'), data.get('donation'), data.get('donation_method'),
          data.get('remarks'), data.get('emergency_name'), data.get('emergency_phone'),
-         filename))
+         json.dumps(filenames) if filenames else None))
     conn.commit(); conn.close()
 
     # 发邮件通知管理员
@@ -190,7 +195,20 @@ def admin():
     c.execute("SELECT * FROM submissions ORDER BY id DESC")
     submissions = c.fetchall()
     conn.close()
-    return render_template("admin.html", submissions=submissions)
+
+    # 把 JSON attachment 转换为 Python 列表
+    subs_processed = []
+    for s in submissions:
+        s = list(s)
+        if s[-1]:
+            try:
+                s[-1] = json.loads(s[-1])
+            except:
+                s[-1] = [s[-1]]
+        else:
+            s[-1] = []
+        subs_processed.append(s)
+    return render_template("admin.html", submissions=subs_processed)
 
 @app.route("/api/submission/<int:submission_id>")
 @login_required
