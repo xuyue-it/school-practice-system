@@ -12,15 +12,9 @@
       --bd:#e5e5e5; --muted:#666;
       --primary:#0a58ff; --shadow:rgba(0,0,0,.12);
     }
-
-    body {
-      background: var(--bg-light);
-      color: var(--text-light);
-      padding:24px;
-      transition: background .4s ease, color .4s ease;
-    }
+    body { background: var(--bg-light); color: var(--text-light); padding:24px;
+      transition: background .4s ease, color .4s ease; }
     body.dark { background: var(--bg-dark); color: var(--text-dark); }
-
     h1,h2,h3,label,.muted,.tabs button,.nav-title{font-family:"Microsoft YaHei","微软雅黑",sans-serif;}
     h1{font-size:32px;font-weight:900;text-align:center;margin:0 0 6px}
     h3{font-size:16px;text-align:center;margin:0 0 18px;font-weight:700;color:#444}
@@ -28,7 +22,6 @@
 
     /* 🌗 切换主题按钮 */
     .toggle-theme {
-      display:block; margin:0 auto 16px;
       padding:8px 16px; border:none; border-radius:10px;
       font-weight:700; cursor:pointer;
       background:linear-gradient(145deg,#f3f4f6,#e5e7eb);
@@ -42,7 +35,7 @@
       box-shadow:0 3px 6px rgba(255,255,255,.2);
     }
 
-    .tabs{display:flex;justify-content:center;gap:14px;margin:10px 0 22px}
+    .tabs{display:flex;justify-content:center;gap:14px;margin:10px 0 22px; flex-wrap:wrap;}
     .btn-tab{
       position:relative; padding:10px 18px; border-radius:12px; border:1px solid var(--bd);
       background:#fff; cursor:pointer; font-weight:800;
@@ -59,7 +52,6 @@
       transition: background .4s ease;
     }
     body.dark .card{background:var(--card-dark);border:1px solid #444;}
-
     .card h2{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:900;margin:0 0 12px}
     .icon{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
     .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -73,7 +65,6 @@
     body.dark input,body.dark select,body.dark textarea{
       background:#2a2a2a; border:1px solid #555; color:#f5f5f5;
     }
-
     textarea{resize:vertical;min-height:90px}
 
     .submit-wrap{text-align:center;margin-top:14px}
@@ -95,15 +86,14 @@
   </style>
 </head>
 <body>
-  <!-- 🌗 切换主题按钮 -->
-  <button class="toggle-theme" onclick="toggleTheme()">🌗 切换主题</button>
-
   <h1 class="nav-title">通用申请表单</h1>
   <h3>适用于各类活动/资源申请</h3>
 
   <div class="tabs">
     <button class="btn-tab" onclick="window.location.href='/'">申请表格</button>
     <button class="btn-tab" onclick="toggleStatusForm()">查询状态</button>
+    <!-- ✅ 切换主题按钮挪到这里 -->
+    <button class="toggle-theme" onclick="toggleTheme()">🌗 切换主题</button>
   </div>
 
   <!-- 查询状态表单 -->
@@ -156,22 +146,10 @@
     <section class="card">
       <h2><span class="icon">🎤</span>器材申请</h2>
       <div class="grid-2">
-        <div class="row">
-          <label><input type="checkbox" name="equip_projector"> 投影机</label>
-          <input type="number" name="equip_projector_qty" min="1" placeholder="数量">
-        </div>
-        <div class="row">
-          <label><input type="checkbox" name="equip_screen"> 投影屏幕</label>
-          <input type="number" name="equip_screen_qty" min="1" placeholder="数量">
-        </div>
-        <div class="row">
-          <label><input type="checkbox" name="equip_mic_wireless"> 无线麦克风</label>
-          <input type="number" name="equip_mic_wireless_qty" min="1" placeholder="数量">
-        </div>
-        <div class="row">
-          <label><input type="checkbox" name="equip_mic_wired"> 有线麦克风</label>
-          <input type="number" name="equip_mic_wired_qty" min="1" placeholder="数量">
-        </div>
+        <div class="row"><label><input type="checkbox" name="equip_projector"> 投影机</label><input type="number" name="equip_projector_qty" min="1" placeholder="数量"></div>
+        <div class="row"><label><input type="checkbox" name="equip_screen"> 投影屏幕</label><input type="number" name="equip_screen_qty" min="1" placeholder="数量"></div>
+        <div class="row"><label><input type="checkbox" name="equip_mic_wireless"> 无线麦克风</label><input type="number" name="equip_mic_wireless_qty" min="1" placeholder="数量"></div>
+        <div class="row"><label><input type="checkbox" name="equip_mic_wired"> 有线麦克风</label><input type="number" name="equip_mic_wired_qty" min="1" placeholder="数量"></div>
       </div>
     </section>
 
@@ -198,6 +176,7 @@
       <div class="grid-2">
         <div class="row"><label>备注</label><textarea name="remarks"></textarea></div>
         <div class="row"><label>紧急联系人姓名</label><input type="text" name="emergency_name"></div>
+        <!-- ✅ 电话字段挪到姓名下面 -->
         <div class="row"><label>紧急联系人电话</label><input type="text" name="emergency_phone"></div>
       </div>
     </section>
@@ -206,10 +185,7 @@
   </form>
 
 <script>
-function toggleStatusForm(){
-  const f=document.getElementById('statusForm');
-  f.style.display=(f.style.display==='none'||!f.style.display)?'block':'none';
-}
+function toggleStatusForm(){ const f=document.getElementById('statusForm'); f.style.display=(f.style.display==='none'||!f.style.display)?'block':'none'; }
 async function doLookup(){
   const name=(document.getElementById('status_name').value||'').trim();
   const box=document.getElementById('statusResult');
@@ -229,65 +205,43 @@ async function doLookup(){
        <div class="status-row"><span class="muted">审核说明</span><b>${data.data.review_comment||'无'}</b></div>`;
   }catch(e){ box.textContent='网络或服务器异常'; }
 }
-function toggleTheme(){
-  document.body.classList.toggle("dark");
-}
+function toggleTheme(){ document.body.classList.toggle("dark"); }
 
-/* ✅ 新增：文件大小+类型检查 */
+/* ✅ 文件检查 */
 document.getElementById("mainForm").addEventListener("submit", function(e){
   const files = document.getElementById("attachments").files;
   const allowed = [".pdf",".doc",".docx",".jpg",".png",".jpeg"];
   for (let f of files){
     const lower = f.name.toLowerCase();
-    if(!allowed.some(ext => lower.endsWith(ext))){
-      alert(`文件 ${f.name} 类型不允许！`);
-      e.preventDefault();
-      return false;
-    }
-    if(f.size > 5*1024*1024){
-      alert(`文件 ${f.name} 超过 5MB，无法上传！`);
-      e.preventDefault();
-      return false;
-    }
+    if(!allowed.some(ext => lower.endsWith(ext))){ alert(`文件 ${f.name} 类型不允许！`); e.preventDefault(); return false; }
+    if(f.size > 5*1024*1024){ alert(`文件 ${f.name} 超过 5MB，无法上传！`); e.preventDefault(); return false; }
   }
 });
 
-// ✅ 文件选择后更新列表和计数 + 删除按钮
+/* ✅ 文件列表 + 删除 */
 document.getElementById("attachments").addEventListener("change", updateFileList);
-
 function updateFileList(){
-  const input = document.getElementById("attachments");
-  const list = document.getElementById("fileList");
-  const count = document.getElementById("fileCount");
-  const files = input.files;
-  const maxFiles = 5;
-
-  list.innerHTML = "";
-  if(files.length > maxFiles){
-    alert(`最多只能上传 ${maxFiles} 个文件！`);
-    input.value = "";
-    count.textContent = `0/${maxFiles}`;
-    return;
-  }
-
-  const dt = new DataTransfer();
-  Array.from(files).forEach((file, i)=>{
-    const li = document.createElement("li");
-    li.innerHTML = `${file.name} <button type="button" onclick="removeFile(${i})" style="color:red;font-weight:bold;margin-left:8px;">×</button>`;
+  const input=document.getElementById("attachments");
+  const list=document.getElementById("fileList");
+  const count=document.getElementById("fileCount");
+  const files=input.files; const maxFiles=5;
+  list.innerHTML="";
+  if(files.length>maxFiles){ alert(`最多只能上传 ${maxFiles} 个文件！`); input.value=""; count.textContent=`0/${maxFiles}`; return; }
+  const dt=new DataTransfer();
+  Array.from(files).forEach((file,i)=>{
+    const li=document.createElement("li");
+    li.innerHTML=`${file.name} <button type="button" onclick="removeFile(${i})" style="color:red;font-weight:bold;margin-left:8px;">×</button>`;
     list.appendChild(li);
     dt.items.add(file);
   });
-  input.files = dt.files;
-  count.textContent = `${files.length}/${maxFiles}`;
+  input.files=dt.files;
+  count.textContent=`${files.length}/${maxFiles}`;
 }
-
 function removeFile(index){
-  const input = document.getElementById("attachments");
-  const dt = new DataTransfer();
-  Array.from(input.files).forEach((file, i)=>{
-    if(i !== index){ dt.items.add(file); }
-  });
-  input.files = dt.files;
+  const input=document.getElementById("attachments");
+  const dt=new DataTransfer();
+  Array.from(input.files).forEach((file,i)=>{ if(i!==index){ dt.items.add(file); } });
+  input.files=dt.files;
   updateFileList();
 }
 </script>
