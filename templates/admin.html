@@ -35,21 +35,53 @@
   .topbar-actions a:active, .topbar-actions button:active{ transform: translateY(1px); }
   .autorefresh{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px dashed var(--line); border-radius:10px; background:#fff; }
   .scroll-x { width:100%; overflow-x:auto; overflow-y:hidden; border:1px solid var(--line); border-radius:14px; background:var(--card); box-shadow:0 6px 18px rgba(17,24,39,.05); }
-  table { border-collapse: separate; border-spacing:0; white-space: nowrap; }
-  thead th{ position:sticky; top:0; background:#f3f4f6; z-index:1; font-weight:700; font-size:14px; text-align:left; padding:14px 12px; border-bottom:1px solid var(--line); }
-  tbody td{ font-size:15px; padding:14px 12px; border-bottom:1px solid var(--line); vertical-align:top; max-width: 420px; overflow:hidden; text-overflow: ellipsis; }
+
+  /* ==== 表格对齐修复 ==== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    white-space: nowrap;
+  }
+  thead th{
+    position:sticky; top:0;
+    background:#f3f4f6; z-index:1;
+    font-weight:700; font-size:14px;
+    text-align:center;
+    padding:12px;
+    border:1px solid var(--line);
+  }
+  tbody td{
+    font-size:15px;
+    padding:12px;
+    border:1px solid var(--line);
+    vertical-align:top;
+    text-align:center;
+    overflow:hidden;
+    text-overflow: ellipsis;
+  }
   tbody tr:nth-child(odd){ background:#fbfdff; }
   tbody tr:hover{ background:#f8fafc; }
-  .td-equipment { white-space: normal; max-width: 360px; line-height: 1.45; min-width: 180px; }
+
+  .td-equipment {
+    white-space: normal;
+    max-width: 360px;
+    line-height: 1.45;
+    min-width: 180px;
+    text-align:left;
+  }
   .equip-lines{ display:block; }
   .equip-line{ display:block; white-space: nowrap; word-break: keep-all; }
+
   .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid transparent; }
   .badge-pending { background:#fff7e6; border-color:#ffcc80; }
   .badge-approved { background:#e8f5e9; border-color:#a5d6a7; }
   .badge-rejected { background:#ffebee; border-color:#ef9a9a; }
+
   .actions { min-width: 520px; }
   .stack { display:flex; gap:8px; align-items:center; }
   .comment-input { width: 260px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; }
+
   .btn{ appearance:none; border:none; cursor:pointer; padding:8px 12px; border-radius:10px; color:#fff; font-size:14px; line-height:1; box-shadow:0 2px 8px rgba(17,24,39,.08); transition:.15s transform ease, .15s opacity ease, .15s background ease; }
   .btn:hover{ transform: translateY(-1px); opacity:.95; }
   .btn:active{ transform:none; }
@@ -58,6 +90,7 @@
   .btn-reject{ background:var(--red); } .btn-reject:hover{ background:var(--red-600); }
   .btn-mail{ background:var(--indigo); } .btn-mail:hover{ background:var(--indigo-600); }
   .btn-delete{ background:var(--amber); color:#111; } .btn-delete:hover{ background:var(--amber-600); color:#fff; }
+
   .muted { color:var(--muted); font-size:12px; }
   a.link { color:var(--primary); text-decoration:none; }
   a.link:hover { color:var(--primary-600); text-decoration:underline; }
