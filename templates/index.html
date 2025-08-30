@@ -185,11 +185,16 @@
     <section class="card">
       <h2><span class="icon">📎</span>上传附件</h2>
       <div class="row">
-        <!-- ✅ 改成多文件上传 -->
+        <!-- ✅ 改：支持多文件 -->
         <input type="file" id="attachments" name="attachments" multiple accept=".pdf,.doc,.docx,.jpg,.png,.jpeg">
+        <!-- ✅ 新增：文件列表 -->
+        <ul id="fileList" style="margin-top:10px; list-style-type:disc; padding-left:20px;"></ul>
+        <!-- ✅ 新增：计数显示 -->
+        <p><b id="fileCount">0/5</b></p>
       </div>
-      <p class="muted">（可选：上传活动方案、预算、相关证明等，支持多文件，每个文件 ≤5MB）</p>
+      <p class="muted">（可选：上传活动方案、预算、相关证明等，支持多文件，每个文件 ≤5MB，最多 5 个文件）</p>
     </section>
+
 
     <!-- 其他信息 -->
     <section class="card">
@@ -249,6 +254,29 @@ document.getElementById("mainForm").addEventListener("submit", function(e){
       return false;
     }
   }
+});
+
+// ✅ 文件选择后更新列表和计数
+document.getElementById("attachments").addEventListener("change", function() {
+  const list = document.getElementById("fileList");
+  const count = document.getElementById("fileCount");
+  list.innerHTML = ""; // 清空原来的
+  const files = this.files;
+  const maxFiles = 5;
+
+  if (files.length > maxFiles) {
+    alert(`最多只能上传 ${maxFiles} 个文件！`);
+    this.value = ""; // 清空
+    count.textContent = `0/${maxFiles}`;
+    return;
+  }
+
+  for (let i = 0; i < files.length; i++) {
+    const li = document.createElement("li");
+    li.textContent = files[i].name;
+    list.appendChild(li);
+  }
+  count.textContent = `${files.length}/${maxFiles}`;
 });
 </script>
 </body>
