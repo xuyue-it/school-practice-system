@@ -246,7 +246,6 @@ def update_status(submission_id, new_status):
         print("❌ /update_status 出错：", e)
         return jsonify({"success": False, "message": f"服务器错误：{e}"}), 500
 
-# ❌ 已删除 /batch_update_status
 
 @app.route("/send_review_email/<int:submission_id>", methods=["POST"])
 @login_required
