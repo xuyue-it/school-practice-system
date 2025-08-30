@@ -8,19 +8,26 @@
 <meta http-equiv="Expires" content="0"/>
 <style>
   :root{
-    --bg-gradient: linear-gradient(135deg, #1a1a1a, #2d2d2d);   /* 背景黑灰渐变 */
+    /* 默认浅色模式 */
+    --bg-gradient: linear-gradient(135deg, #f8fafc, #e2e8f0);
+    --card-gradient-odd: linear-gradient(90deg, #ffffff, #f1f5f9);
+    --card-gradient-even: linear-gradient(90deg, #f9fafb, #e2e8f0);
+    --header-gradient: linear-gradient(90deg,#f1f5f9,#e2e8f0);
+    --hover-gradient: linear-gradient(90deg,#e0f2fe,#c7d2fe);
+
+    --text:#111827;
+    --muted:#6b7280;
+  }
+
+  body.dark {
+    --bg-gradient: linear-gradient(135deg, #1a1a1a, #2d2d2d);
     --card-gradient-odd: linear-gradient(90deg, #2b2b2b, #3a3a3a);
     --card-gradient-even: linear-gradient(90deg, #333333, #444444);
     --header-gradient: linear-gradient(90deg,#2e2e2e,#3f3f3f);
     --hover-gradient: linear-gradient(90deg,#4a4a4a,#555555);
 
-    --text:#f5f5f5;       /* 主字体浅色 */
-    --muted:#a3a3a3;      /* 辅助字体灰 */
-
-    --green:#22c55e; --green-600:#16a34a;
-    --red:#ef4444; --red-600:#dc2626;
-    --amber:#f59e0b; --amber-600:#d97706;
-    --indigo:#6366f1; --indigo-600:#4f46e5;
+    --text:#f5f5f5;
+    --muted:#a3a3a3;
   }
 
   *{ box-sizing: border-box; }
@@ -29,30 +36,31 @@
     background: var(--bg-gradient);
     padding:24px;
     color:var(--text);
+    transition: background 0.4s ease, color 0.4s ease;
   }
   .wrap { max-width: 100%; margin: 0 auto; }
   .topbar { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; gap:10px; flex-wrap: wrap; }
-  h1 { margin:0; font-size:24px; font-weight:900; color: #f9fafb; }
+  h1 { margin:0; font-size:24px; font-weight:900; }
   .topbar-actions{ display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
   .topbar-actions a,
   .topbar-actions button,
   .search-box{
     display:inline-flex; align-items:center; gap:6px;
     text-decoration:none; cursor:pointer;
-    padding:8px 12px; border-radius:10px; border:1px solid #3f3f3f;
+    padding:8px 12px; border-radius:10px; border:1px solid #d4af37;
     background:var(--card-gradient-odd); color:var(--text);
-    box-shadow:0 3px 6px rgba(0,0,0,.4);
+    box-shadow:0 3px 6px rgba(0,0,0,.3);
     transition:.2s;
   }
-  .topbar-actions a:hover, .topbar-actions button:hover{ transform: translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.6);}
-  .autorefresh{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px dashed #666; border-radius:10px; background:#1e1e1e; color:#ccc; }
+  .topbar-actions a:hover, .topbar-actions button:hover{ transform: translateY(-1px); box-shadow:0 4px 10px rgba(0,0,0,.5);}
+  .autorefresh{ display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border:1px dashed #999; border-radius:10px; background:#fff; color:#444; }
 
   .scroll-x {
     width:100%;
     overflow-x:auto;
     border-radius:14px;
     background:transparent;
-    box-shadow:0 8px 24px rgba(0,0,0,.6);
+    box-shadow:0 8px 24px rgba(0,0,0,.4);
   }
 
   /* 表格样式 */
@@ -65,10 +73,10 @@
     font-size:14px;
     text-align:center;
     z-index: 2;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     border: none;
     padding:14px 12px;
-    color: #f1f1f1;
+    color: var(--text);
   }
   tbody td {
     font-size:15px;
@@ -90,7 +98,7 @@
 
   .status-block { display:flex; flex-direction:column; align-items:center; gap:4px; }
 
-  .comment-input { width: 240px; height:34px; font-size:14px; padding:6px 10px; border:1px solid #555; border-radius:8px; background:#1f1f1f; color:#f1f1f1; }
+  .comment-input { width: 240px; height:34px; font-size:14px; padding:6px 10px; border:1px solid #d4af37; border-radius:8px; background:transparent; color:var(--text); }
 
   /* ✅ 黑金风按钮 */
   .btn{
@@ -105,7 +113,7 @@
   }
   .btn:hover{
     transform: translateY(-1px);
-    border-color:#ffd700; /* 更亮的金色 */
+    border-color:#ffd700;
     box-shadow:0 4px 12px rgba(212,175,55,.6), inset 0 1px 3px rgba(255,215,0,.4);
   }
   .btn:active{
@@ -141,6 +149,7 @@
           <input type="checkbox" id="autoRefreshToggle" checked>
           自动刷新（30 秒）
         </label>
+        <button type="button" onclick="toggleTheme()">🌗 切换主题</button>
         <a href="/stats">📊 数据统计</a>
         <a href="/">返回首页</a>
         <a href="/logout">退出登录</a>
@@ -222,6 +231,9 @@
   </div>
 
 <script>
+function toggleTheme(){
+  document.body.classList.toggle("dark");
+}
 function filterTable(){
   const input = document.getElementById("searchInput");
   const filter = input.value.toLowerCase();
