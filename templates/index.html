@@ -4,15 +4,44 @@
   <meta charset="UTF-8" />
   <title>通用申请表单</title>
   <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/theme.js"></script>
   <style>
-    :root{
-      --card:#fff; --bd:#e5e5e5; --muted:#666;
+    :root {
+      --bg-light:#f7f7f7; --card-light:#fff; --text-light:#000;
+      --bg-dark:#1a1a1a; --card-dark:#2a2a2a; --text-dark:#f5f5f5;
+      --bd:#e5e5e5; --muted:#666;
       --primary:#0a58ff; --shadow:rgba(0,0,0,.12);
     }
-    body{background:#f7f7f7;color:#000;padding:24px;}
+
+    body {
+      background: var(--bg-light);
+      color: var(--text-light);
+      padding:24px;
+      transition: background .4s ease, color .4s ease;
+    }
+    body.dark { background: var(--bg-dark); color: var(--text-dark); }
+
     h1,h2,h3,label,.muted,.tabs button,.nav-title{font-family:"Microsoft YaHei","微软雅黑",sans-serif;}
     h1{font-size:32px;font-weight:900;text-align:center;margin:0 0 6px}
-    h3{font-size:16px;text-align:center;margin:0 0 18px;color:#444;font-weight:700}
+    h3{font-size:16px;text-align:center;margin:0 0 18px;font-weight:700;color:#444}
+    body.dark h3{color:#ccc;}
+
+    /* 🌗 切换主题按钮 */
+    .toggle-theme {
+      display:block; margin:0 auto 16px;
+      padding:8px 16px; border:none; border-radius:10px;
+      font-weight:700; cursor:pointer;
+      background:linear-gradient(145deg,#f3f4f6,#e5e7eb);
+      color:#111;
+      box-shadow:0 3px 6px rgba(0,0,0,.2);
+      transition:.3s;
+    }
+    body.dark .toggle-theme {
+      background:linear-gradient(145deg,#3a3a3a,#1f1f1f);
+      color:#f5f5f5;
+      box-shadow:0 3px 6px rgba(255,255,255,.2);
+    }
+
     .tabs{display:flex;justify-content:center;gap:14px;margin:10px 0 22px}
     .btn-tab{
       position:relative; padding:10px 18px; border-radius:12px; border:1px solid var(--bd);
@@ -20,20 +49,32 @@
       box-shadow:0 3px 0 #cfd6ff, 0 8px 16px var(--shadow);
       transition:transform .08s ease, box-shadow .15s ease;
     }
-    .btn-tab:hover{transform:translateY(-1px); box-shadow:0 4px 0 #c5ceff,0 10px 18px var(--shadow);}
-    .btn-tab:active{transform:translateY(2px); box-shadow:0 1px 0 #c5ceff,0 4px 10px var(--shadow);}
+    .btn-tab:hover{transform:translateY(-1px);}
+    body.dark .btn-tab{background:var(--card-dark); color:var(--text-dark); border:1px solid #555;}
+
     form{max-width:1000px;margin:0 auto}
-    .card{background:#fff;border:1px solid var(--bd);border-radius:16px;padding:16px 18px;margin-bottom:16px;box-shadow:0 6px 16px var(--shadow)}
+    .card{
+      background:var(--card-light);border:1px solid var(--bd);border-radius:16px;
+      padding:16px 18px;margin-bottom:16px;box-shadow:0 6px 16px var(--shadow);
+      transition: background .4s ease;
+    }
+    body.dark .card{background:var(--card-dark);border:1px solid #444;}
+
     .card h2{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:900;margin:0 0 12px}
     .icon{width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
     .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .row{display:flex;flex-direction:column;gap:6px}
     .row label{font-weight:800}
+
     input,select,textarea{
       padding:10px;border:1px solid var(--bd);border-radius:10px;background:#fff;outline:none;
-      font-family:inherit;
+      font-family:inherit; transition: background .3s,color .3s,border .3s;
+    }
+    body.dark input,body.dark select,body.dark textarea{
+      background:#2a2a2a; border:1px solid #555; color:#f5f5f5;
     }
     textarea{resize:vertical;min-height:90px}
+
     .submit-wrap{text-align:center;margin-top:14px}
     .btn-submit{
       padding:12px 22px;border:none;border-radius:12px;background:var(--primary);color:#fff;
@@ -41,15 +82,21 @@
       box-shadow:0 4px 0 #063fc7, 0 10px 18px var(--shadow);
       transition:transform .08s ease, box-shadow .15s ease;
     }
-    .btn-submit:hover{transform:translateY(-1px); box-shadow:0 5px 0 #063fc7,0 12px 20px var(--shadow);}
-    .btn-submit:active{transform:translateY(2px); box-shadow:0 2px 0 #063fc7,0 6px 12px var(--shadow);}
+    .btn-submit:hover{transform:translateY(-1px);}
+    .btn-submit:active{transform:scale(.95);}
+    body.dark .btn-submit{background:#2563eb;}
+
     #statusForm{max-width:520px;margin:0 auto 18px;display:none}
     .status-card{max-width:520px;margin:12px auto 0;padding:12px 14px;border-radius:12px;background:#fff;border:1px solid var(--bd)}
+    body.dark .status-card{background:#2a2a2a;border:1px solid #555;color:#f5f5f5;}
     .status-row{display:flex;justify-content:space-between;margin:6px 0}
     .badge{display:inline-block;padding:2px 8px;border-radius:999px;border:1px solid var(--bd);font-size:12px}
   </style>
 </head>
 <body>
+  <!-- 🌗 切换主题按钮 -->
+  <button class="toggle-theme" onclick="toggleTheme()">🌗 切换主题</button>
+
   <h1 class="nav-title">通用申请表单</h1>
   <h3>适用于各类活动/资源申请</h3>
 
@@ -178,6 +225,9 @@ async function doLookup(){
        <div class="status-row"><span class="muted">审核状态</span><span class="badge">${s}</span></div>
        <div class="status-row"><span class="muted">审核说明</span><b>${data.data.review_comment||'无'}</b></div>`;
   }catch(e){ box.textContent='网络或服务器异常'; }
+}
+function toggleTheme(){
+  document.body.classList.toggle("dark");
 }
 </script>
 </body>
