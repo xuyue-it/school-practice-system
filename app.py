@@ -234,6 +234,32 @@ def admin():
 def stats():
     return render_template("stats.html")
 
+@app.route("/stats_data")
+@admin_required
+def stats_data():
+    conn = get_conn(); c = conn.cursor()
+    # 状态统计
+    c.execute("SELECT status, COUNT(*) FROM submissions GROUP BY status")
+    status_counts = dict(c.fetchall())
+
+    # 类别统计
+    c.execute("SELECT event_type, COUNT(*) FROM submissions GROUP BY event_type")
+    type_counts = dict(c.fetchall())
+
+    # 附件统计
+    c.execute("SELECT COUNT(*) FROM submissions WHERE attachment IS NOT NULL AND attachment <> ''")
+    with_attach = c.fetchone()[0]
+    c.execute("SELECT COUNT(*) FROM submissions WHERE attachment IS NULL OR attachment = ''")
+    without_attach = c.fetchone()[0]
+
+    conn.close()
+    return jsonify({
+        "status": status_counts,
+        "type": type_counts,
+        "attachments": {"有附件": with_attach, "无附件": without_attach}
+    })
+
+
 # ========== ✅ 新增：用户管理 ==========
 @app.route("/users")
 @admin_required
