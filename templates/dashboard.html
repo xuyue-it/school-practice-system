@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>管理员控制面板</title>
+  <style>
+    body {
+      font-family: "Microsoft YaHei", sans-serif;
+      background: #f7f7f7;
+      margin: 0; padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0,0,0,.1);
+    }
+    h1 { font-weight: 900; color: #2563eb; margin-bottom: 10px; text-align:center; }
+    p { text-align:center; color:#555; margin-bottom:30px; }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px;
+    }
+    a.btn {
+      display: inline-block;
+      padding: 14px 24px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: 0.2s;
+      min-width: 200px;
+      text-align: center;
+    }
+    a.create { background: #2563eb; color: #fff; }
+    a.create:hover { background: #1d4ed8; }
+    a.manage { background: #10b981; color: #fff; }
+    a.manage:hover { background: #059669; }
+    a.logout { background: #ef4444; color: #fff; }
+    a.logout:hover { background: #dc2626; }
+    footer { margin-top:40px; text-align:center; font-size:13px; color:#888; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>管理员控制面板</h1>
+    <p>欢迎回来，{{ session["username"] }} 👋</p>
+
+    <div class="btn-group">
+      <a href="/create_form" class="btn create">➕ 创建新表单</a>
+      <a href="/super_admin" class="btn manage">📊 查看所有表单（超级管理员）</a>
+      <a href="/logout" class="btn logout">🚪 退出登录</a>
+    </div>
+
+    <footer>
+      Powered by Flask · 管理员可独立创建表单系统
+    </footer>
+  </div>
+</body>
+</html>

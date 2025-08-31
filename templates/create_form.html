@@ -4,26 +4,72 @@
   <meta charset="UTF-8">
   <title>创建新表单</title>
   <style>
-    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; }
-    .card { max-width:800px; margin:0 auto; background:#fff; padding:20px; border-radius:10px;
-      box-shadow:0 4px 10px rgba(0,0,0,.08); }
-    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
-    label { font-weight:700; display:block; margin-top:12px; }
-    input, textarea { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-family:inherit; }
+    body {
+      font-family:"Microsoft YaHei", sans-serif;
+      background:#f7f7f7;
+      margin:0; padding:0;
+    }
+    .container {
+      max-width:800px;
+      margin:40px auto;
+      background:#fff;
+      padding:30px;
+      border-radius:12px;
+      box-shadow:0 6px 16px rgba(0,0,0,.1);
+    }
+    h1 { text-align:center; font-weight:900; color:#2563eb; margin-bottom:20px; }
+    label { font-weight:700; display:block; margin-top:15px; }
+    input, textarea {
+      width:100%;
+      padding:12px;
+      border:1px solid #ccc;
+      border-radius:6px;
+      font-family:inherit;
+      margin-top:5px;
+    }
     textarea { resize:vertical; min-height:150px; }
-    button { margin-top:20px; padding:12px 20px; background:#2563eb; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
+    button {
+      margin-top:25px;
+      padding:14px 24px;
+      background:#2563eb;
+      color:white;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:700;
+      width:100%;
+    }
     button:hover { background:#1d4ed8; }
-    .topbar { text-align:center; margin-bottom:20px; }
-    .topbar a { margin:0 8px; color:#2563eb; text-decoration:none; font-weight:600; }
-    .hint { font-size:13px; color:#555; margin-top:5px; }
-    .example { background:#f9fafb; border:1px solid #ddd; padding:8px; border-radius:6px; font-size:13px; white-space:pre; }
+    .topbar {
+      text-align:center;
+      margin-bottom:20px;
+    }
+    .topbar a {
+      margin:0 8px;
+      color:#2563eb;
+      text-decoration:none;
+      font-weight:600;
+    }
+    .hint {
+      font-size:13px;
+      color:#555;
+      margin-top:5px;
+    }
+    .example {
+      background:#f9fafb;
+      border:1px solid #ddd;
+      padding:8px;
+      border-radius:6px;
+      font-size:13px;
+      white-space:pre;
+    }
   </style>
 </head>
 <body>
   <div class="topbar">
-    <a href="/">首页</a> | <a href="/admin">返回管理后台</a>
+    <a href="/dashboard">← 返回控制面板</a>
   </div>
-  <div class="card">
+  <div class="container">
     <h1>📝 创建新表单</h1>
     <form method="post">
       <!-- 表单名称 -->
@@ -33,7 +79,7 @@
       <!-- 网站名（独立入口用） -->
       <label>网站名 *</label>
       <input type="text" name="site_name" required placeholder="例如：event2025">
-      <div class="hint">⚡ 说明：用户和管理员将通过 <code>/site/[网站名]/...</code> 访问该系统。</div>
+      <div class="hint">⚡ 管理员和用户通过 <code>/site/[网站名]/...</code> 访问该系统。</div>
 
       <!-- Schema JSON -->
       <label>表单 Schema (JSON) *</label>
@@ -45,14 +91,14 @@
     {"label":"备注","name":"remark","type":"textarea"}
   ]
 }'></textarea>
-      <div class="hint">⚡ 说明：请填写 JSON 格式，用来生成动态表单字段。</div>
+      <div class="hint">⚡ 请填写 JSON 格式，用来生成动态表单字段。</div>
 
       <!-- 独立数据库 URL -->
       <label>数据库连接 URL *</label>
       <input type="text" name="db_url" required placeholder="例如：postgresql://user:pass@host/dbname">
-      <div class="hint">⚡ 每个表单会用独立的数据库（建议使用 Neon 新建实例）。</div>
+      <div class="hint">⚡ 每个表单会用独立的数据库（推荐使用 Neon 新建实例）。</div>
 
-      <button type="submit">创建表单</button>
+      <button type="submit">✅ 创建表单</button>
     </form>
   </div>
 </body>

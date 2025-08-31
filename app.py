@@ -55,17 +55,6 @@ def init_user_table():
     conn.commit(); conn.close()
 init_user_table()
 
-# 默认管理员
-def ensure_admin():
-    conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT * FROM users WHERE role='admin'")
-    if not c.fetchone():
-        c.execute("INSERT INTO users (username, password_hash, role) VALUES (%s,%s,%s)",
-                  ("admin", generate_password_hash("123456"), "admin"))
-        conn.commit()
-    conn.close()
-ensure_admin()
-
 # ========= 原有 submissions 表（固定表单） =========
 def init_main_submissions():
     conn = get_conn(); c = conn.cursor()
@@ -103,10 +92,10 @@ def init_form_defs():
     c.execute('''CREATE TABLE IF NOT EXISTS form_defs (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
-        site_name TEXT UNIQUE,         -- ✅ 新增：网站名，唯一
+        site_name TEXT UNIQUE,         -- 网站名，唯一
         schema_json TEXT NOT NULL,
         created_by INT REFERENCES users(id),
-        db_url TEXT NOT NULL,          -- ✅ 每个表单独立数据库
+        db_url TEXT NOT NULL,          -- 独立数据库
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     conn.commit(); conn.close()
@@ -117,7 +106,7 @@ def login_required(view_func):
     @wraps(view_func)
     def wrapper(*args, **kwargs):
         if not session.get("user_id"):
-            return redirect(url_for("login", next=request.path))
+            return redirect(url_for("login_user", next=request.path))
         return view_func(*args, **kwargs)
     return wrapper
 
@@ -125,24 +114,31 @@ def admin_required(view_func):
     @wraps(view_func)
     def wrapper(*args, **kwargs):
         if not session.get("user_id"):
-            return redirect(url_for("login", next=request.path))
-        if session.get("role") != "admin":
+            return redirect(url_for("login_admin", next=request.path))
+        if session.get("role") not in ["admin", "super_admin"]:
             return "无权限访问", 403
         return view_func(*args, **kwargs)
     return wrapper
 
-@app.route("/super_admin")
-@admin_required
-def super_admin():
-    conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT id, name, site_name, db_url FROM form_defs ORDER BY id ASC")
-    forms = c.fetchall()
-    conn.close()
-    return render_template("super_admin.html", forms=forms)
+# ========== 平台入口：管理员注册/登录 ==========
+@app.route("/register_admin", methods=["GET", "POST"])
+def register_admin():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        try:
+            conn = get_conn(); c = conn.cursor()
+            c.execute("INSERT INTO users (username, password_hash, role) VALUES (%s,%s,%s)",
+                      (username, generate_password_hash(password), "admin"))
+            conn.commit(); conn.close()
+            return redirect(url_for("login_admin"))
+        except Exception:
+            error = "注册失败，可能用户名已存在"
+    return render_template("register_admin.html", error=error)
 
-# ========== 登录/注册 ==========
-@app.route("/login", methods=["GET", "POST"])
-def login():
+@app.route("/login_admin", methods=["GET", "POST"])
+def login_admin():
     error = None
     if request.method == "POST":
         username = request.form.get("username")
@@ -150,36 +146,74 @@ def login():
         conn = get_conn(); c = conn.cursor()
         c.execute("SELECT id, password_hash, role FROM users WHERE username=%s", (username,))
         row = c.fetchone(); conn.close()
-        if row and check_password_hash(row[1], password):
+        if row and check_password_hash(row[1], password) and row[2] in ["admin", "super_admin"]:
             session["user_id"] = row[0]
             session["username"] = username
             session["role"] = row[2]
-            return redirect(request.args.get("next") or url_for("index"))
+            if row[2] == "super_admin":
+                return redirect(url_for("super_admin"))
+            else:
+                return redirect(url_for("dashboard"))
         else:
             error = "用户名或密码错误"
-    return render_template("login.html", error=error)
+    return render_template("login_admin.html", error=error)
 
-@app.route("/register", methods=["GET", "POST"])
-def register():
+@app.route("/dashboard")
+@admin_required
+def dashboard():
+    return render_template("dashboard.html")
+
+# ========== 超级管理员总览 ==========
+@app.route("/super_admin")
+@admin_required
+def super_admin():
+    if session.get("role") != "super_admin":
+        return "❌ 只有超级管理员能访问", 403
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT id, name, site_name, db_url FROM form_defs ORDER BY id ASC")
+    forms = c.fetchall()
+    conn.close()
+    return render_template("super_admin.html", forms=forms)
+
+# ========== 普通用户注册/登录 ==========
+@app.route("/register_user", methods=["GET", "POST"])
+def register_user():
     error = None
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
-        role = request.form.get("role", "user")
         try:
             conn = get_conn(); c = conn.cursor()
             c.execute("INSERT INTO users (username, password_hash, role) VALUES (%s,%s,%s)",
-                      (username, generate_password_hash(password), role))
+                      (username, generate_password_hash(password), "user"))
             conn.commit(); conn.close()
-            return redirect(url_for("login"))
+            return redirect(url_for("login_user"))
         except Exception:
             error = "注册失败，可能用户名已存在"
-    return render_template("register.html", error=error)
+    return render_template("register_user.html", error=error)
+
+@app.route("/login_user", methods=["GET", "POST"])
+def login_user():
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        conn = get_conn(); c = conn.cursor()
+        c.execute("SELECT id, password_hash, role FROM users WHERE username=%s", (username,))
+        row = c.fetchone(); conn.close()
+        if row and check_password_hash(row[1], password) and row[2] == "user":
+            session["user_id"] = row[0]
+            session["username"] = username
+            session["role"] = row[2]
+            return redirect(url_for("index"))
+        else:
+            error = "用户名或密码错误"
+    return render_template("login_user.html", error=error)
 
 @app.route("/logout")
 def logout():
     session.clear()
-    return redirect(url_for("login"))
+    return redirect(url_for("index"))
 
 # ========== 首页 ==========
 @app.route("/")
@@ -249,82 +283,24 @@ def check_status_api():
     else:
         return jsonify({"status": "not_found"})
 
-# ========== 管理页面 ==========
-@app.route("/admin")
-@admin_required
-def admin():
-    user_id = session.get("user_id")
-    role = session.get("role")
-
-    conn = get_conn(); c = conn.cursor()
-
-    if role == "admin":
-        # 超级管理员：查看所有表单
-        c.execute("SELECT id, name, site_name, db_url FROM form_defs ORDER BY id ASC")
-        forms = c.fetchall()
-        conn.close()
-        return render_template("super_admin.html", forms=forms)
-    else:
-        # 普通管理员：跳转到自己表单的后台
-        c.execute("SELECT id FROM form_defs WHERE created_by=%s", (user_id,))
-        form_row = c.fetchone()
-        conn.close()
-        if form_row:
-            return redirect(url_for("form_dynamic_admin", form_id=form_row[0]))
-        else:
-            return "❌ 你还没有创建任何表单，请联系超级管理员开通。", 403
-
-
-@app.route("/stats")
-@admin_required
-def stats():
-    return render_template("stats.html")
-
-@app.route("/stats_data")
-@admin_required
-def stats_data():
-    conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT status, COUNT(*) FROM submissions GROUP BY status")
-    status_counts = dict(c.fetchall())
-    c.execute("SELECT event_type, COUNT(*) FROM submissions GROUP BY event_type")
-    type_counts = dict(c.fetchall())
-    c.execute("SELECT COUNT(*) FROM submissions WHERE attachment IS NOT NULL AND attachment <> ''")
-    with_attach = c.fetchone()[0]
-    c.execute("SELECT COUNT(*) FROM submissions WHERE attachment IS NULL OR attachment = ''")
-    without_attach = c.fetchone()[0]
-    conn.close()
-    return jsonify({
-        "status": status_counts,
-        "type": type_counts,
-        "attachments": {"有附件": with_attach, "无附件": without_attach}
-    })
-
-# ========== ✅ 动态表单：创建 ==========
+# ========== 创建动态表单 ==========
 @app.route("/create_form", methods=["GET", "POST"])
 @admin_required
 def create_form():
     if request.method == "POST":
         name = request.form.get("name")
-        site_name = request.form.get("site_name")   # ✅ 新增
+        site_name = request.form.get("site_name")
         schema_json = request.form.get("schema_json")
-        db_url = request.form.get("db_url")         # 每个表单独立数据库
+        db_url = request.form.get("db_url")
 
         conn = get_conn(); c = conn.cursor()
         c.execute("INSERT INTO form_defs (name, site_name, schema_json, created_by, db_url) VALUES (%s,%s,%s,%s,%s)",
                   (name, site_name, schema_json, session.get("user_id"), db_url))
         conn.commit(); conn.close()
-        return f"<h2>✅ 表单 <b>{name}</b> 创建成功！</h2><p>访问地址：<b>/site/{site_name}/form</b></p>"
+        return f"<h2>✅ 表单 <b>{name}</b> 已创建！</h2><p>访问地址：<b>/site/{site_name}/form</b></p>"
     return render_template("create_form.html")
 
-# ========== ✅ 动态表单：填写 ==========
-def get_dynamic_conn(form_id):
-    conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT db_url FROM form_defs WHERE id=%s", (form_id,))
-    row = c.fetchone(); conn.close()
-    if not row: raise Exception("表单不存在")
-    db_url = row[0]
-    return psycopg2.connect(db_url, connect_timeout=10)
-
+# ========== 动态表单 - 填写 ==========
 @app.route("/site/<site_name>/form", methods=["GET", "POST"])
 @login_required
 def site_form(site_name):
@@ -353,7 +329,7 @@ def site_form(site_name):
 
     return render_template("dynamic_form.html", form_name=form_name, schema=schema, form_id=form_id)
 
-# ========== ✅ 动态表单：后台 ==========
+# ========== 动态表单 - 管理后台 ==========
 @app.route("/site/<site_name>/admin")
 @admin_required
 def site_admin(site_name):
@@ -370,7 +346,7 @@ def site_admin(site_name):
     subs = dc.fetchall(); dconn.close()
     return render_template("dynamic_admin.html", form_name=form_name, submissions=subs, form_id=form_id)
 
-# ========== ✅ 用户管理 ==========
+# ========== 用户管理 ==========
 @app.route("/users")
 @admin_required
 def users():

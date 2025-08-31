@@ -1,37 +1,67 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8" />
-  <title>通用申请系统首页</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <script src="/static/theme.js"></script>
+  <meta charset="UTF-8">
+  <title>通用表单平台入口</title>
   <style>
-    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; text-align:center; padding:50px; }
-    h1 { font-size:28px; margin-bottom:20px; }
-    .nav { margin-top:20px; }
-    .nav a { margin:0 12px; padding:10px 18px; background:#0078D7; color:#fff; text-decoration:none; border-radius:8px; }
-    .nav a:hover { background:#0568b7; }
+    body {
+      font-family: "Microsoft YaHei", sans-serif;
+      background: #f7f7f7;
+      margin: 0; padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 50px auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 6px 16px rgba(0,0,0,.1);
+      text-align: center;
+    }
+    h1 { font-weight: 900; color: #2563eb; margin-bottom: 10px; }
+    p  { color: #444; margin-bottom: 20px; }
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+    }
+    a.btn {
+      display: inline-block;
+      padding: 12px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: bold;
+      transition: 0.2s;
+      min-width: 160px;
+      text-align: center;
+    }
+    a.admin { background: #2563eb; color: #fff; }
+    a.admin:hover { background: #1d4ed8; }
+    a.user { background: #10b981; color: #fff; }
+    a.user:hover { background: #059669; }
+    footer {
+      margin-top: 40px;
+      font-size: 13px;
+      color: #888;
+    }
   </style>
 </head>
 <body>
-  <h1>欢迎使用通用申请系统</h1>
+  <div class="container">
+    <h1>通用表单平台入口</h1>
+    <p>请选择您的身份进入系统 👇</p>
 
-  {% if session.user_id %}
-    <p>你好，{{ session.username }}！</p>
-    <div class="nav">
-      <a href="/form">📝 填写申请表单</a>
-      <a href="/status">🔍 查询状态</a>
-      {% if session.role == "admin" %}
-        <a href="/admin">⚙️ 管理后台</a>
-        <a href="/stats">📊 数据统计</a>
-      {% endif %}
-      <a href="/logout">退出登录</a>
+    <div class="btn-group">
+      <a href="/register_admin" class="btn admin">管理员注册</a>
+      <a href="/login_admin" class="btn admin">管理员登录</a>
+      <a href="/register_user" class="btn user">用户注册</a>
+      <a href="/login_user" class="btn user">用户登录</a>
     </div>
-  {% else %}
-    <div class="nav">
-      <a href="/login">登录</a>
-      <a href="/register">注册</a>
-    </div>
-  {% endif %}
+
+    <footer>
+      Powered by Flask · 支持管理员独立建站 · 支持用户提交与审核
+    </footer>
+  </div>
 </body>
 </html>
