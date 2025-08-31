@@ -40,37 +40,48 @@
     }
     textarea { resize:vertical; min-height:100px; }
     button {
-      margin-top:15px;
-      padding:10px 14px;
+      display:block;
+      width:100%;
+      margin-top:20px;
+      padding:14px;
       background:#2563eb;
       color:white;
       border:none;
       border-radius:8px;
       cursor:pointer;
       font-weight:700;
+      font-size:16px;
     }
     button:hover { background:#1d4ed8; }
     .hint { font-size:13px; color:#555; margin-top:5px; }
+    .question-card {
+      background:#f9fafb;
+      border:1px solid #ddd;
+      padding:15px;
+      margin-top:15px;
+      border-radius:8px;
+      position:relative;
+    }
     .remove-btn {
+      position:absolute;
+      top:10px;
+      right:10px;
       background:#ef4444;
-      color:white;
       border:none;
-      padding:6px 10px;
+      color:white;
+      padding:4px 10px;
       border-radius:6px;
       cursor:pointer;
-      float:right;
     }
     .remove-btn:hover { background:#dc2626; }
-    .question-card { cursor:move; margin-top:10px; }
-    .option-list { margin-top:10px; }
-    .option-list input { width:80%; display:inline-block; }
-    .option-list button { margin-left:5px; }
+    .option-input { display:flex; gap:8px; margin-top:6px; }
+    .option-input input { flex:1; }
   </style>
 </head>
 <body>
   <h1>📝 创建新表单</h1>
   <form method="post" id="formBuilder">
-    <!-- 表单基本信息 -->
+    <!-- 表单名称 -->
     <div class="section">
       <label>表单名称 *</label>
       <input type="text" name="name" required placeholder="例如：活动申请表">
@@ -82,35 +93,39 @@
 
     <!-- 申请人信息 -->
     <div class="section">
-      <h2>申请人信息（固定，不可删除）</h2>
-      <ul>
-        <li>姓名 *</li>
-        <li>联系方式 *</li>
-        <li>电子邮箱 *</li>
-        <li>所属团契/小组 *</li>
-      </ul>
+      <h2>申请人信息</h2>
+      <label>姓名 *</label>
+      <input type="text" placeholder="请输入姓名">
+      <label>联系方式 *</label>
+      <input type="text" placeholder="请输入联系方式">
+      <label>电子邮箱 *</label>
+      <input type="email" placeholder="请输入邮箱">
+      <label>所属团契/小组 *</label>
+      <input type="text" placeholder="请输入团契/小组">
     </div>
 
     <!-- 活动信息 -->
     <div class="section">
-      <h2>活动信息（固定，不可删除）</h2>
-      <ul>
-        <li>活动名称 *</li>
-        <li>活动地点 *</li>
-        <li>开始日期 *</li>
-        <li>结束日期 *</li>
-        <li>开始时间 *</li>
-        <li>结束时间 *</li>
-        <li>预计参与人数 *</li>
-      </ul>
+      <h2>活动信息</h2>
+      <label>活动名称 *</label>
+      <input type="text" placeholder="请输入活动名称">
+      <label>活动地点 *</label>
+      <input type="text" placeholder="请输入活动地点">
+      <label>开始日期 *</label>
+      <input type="date">
+      <label>结束日期 *</label>
+      <input type="date">
+      <label>开始时间 *</label>
+      <input type="time">
+      <label>结束时间 *</label>
+      <input type="time">
+      <label>预计参与人数 *</label>
+      <input type="number" min="1">
     </div>
 
-    <!-- 动态问题 -->
-    <div class="section">
-      <h2>➕ 自定义问题</h2>
-      <div id="questions"></div>
-      <button type="button" onclick="addQuestion()">添加问题</button>
-    </div>
+    <!-- 动态问题区 -->
+    <div id="extra-sections"></div>
+    <button type="button" onclick="addQuestion()">➕ 添加新问题卡片</button>
 
     <!-- 隐藏 JSON -->
     <input type="hidden" name="schema_json" id="schema_json">
@@ -123,7 +138,7 @@
 
     function addQuestion() {
       const id = Date.now();
-      const q = { id, label:"新问题", name:"q"+id, type:"text", required:false, options:[] };
+      const q = { id, label:"新问题", type:"text", required:false, options:[] };
       questions.push(q);
       renderQuestions();
     }
@@ -133,26 +148,10 @@
       renderQuestions();
     }
 
-    function addOption(id) {
-      const q = questions.find(q => q.id === id);
+    function addOption(qid) {
+      const q = questions.find(x => x.id === qid);
       if (q) {
         q.options.push("新选项");
-        renderQuestions();
-      }
-    }
-
-    function updateOption(qid, index, value) {
-      const q = questions.find(q => q.id === qid);
-      if (q) {
-        q.options[index] = value;
-        syncSchema();
-      }
-    }
-
-    function removeOption(qid, index) {
-      const q = questions.find(q => q.id === qid);
-      if (q) {
-        q.options.splice(index,1);
         renderQuestions();
       }
     }
@@ -163,45 +162,46 @@
       renderQuestions();
     }
 
+    function updateOption(qid, idx, value) {
+      const q = questions.find(x => x.id === qid);
+      if (q) {
+        q.options[idx] = value;
+      }
+      syncSchema();
+    }
+
+    function removeOption(qid, idx) {
+      const q = questions.find(x => x.id === qid);
+      if (q) {
+        q.options.splice(idx, 1);
+      }
+      renderQuestions();
+    }
+
     function renderQuestions() {
-      const container = document.getElementById("questions");
+      const container = document.getElementById("extra-sections");
       container.innerHTML = "";
       questions.forEach(q => {
         const div = document.createElement("div");
         div.className = "section question-card";
-        div.setAttribute("draggable","true");
-        div.ondragstart = e => { e.dataTransfer.setData("id", q.id); };
-        div.ondragover = e => e.preventDefault();
-        div.ondrop = e => {
-          const fromId = parseInt(e.dataTransfer.getData("id"));
-          const fromIndex = questions.findIndex(x=>x.id===fromId);
-          const toIndex = questions.findIndex(x=>x.id===q.id);
-          const moved = questions.splice(fromIndex,1)[0];
-          questions.splice(toIndex,0,moved);
-          renderQuestions();
+        div.draggable = true;
+        div.ondragstart = (e) => { e.dataTransfer.setData("id", q.id); };
+        div.ondragover = (e) => e.preventDefault();
+        div.ondrop = (e) => {
+          const draggedId = parseInt(e.dataTransfer.getData("id"));
+          const idx1 = questions.findIndex(x => x.id === draggedId);
+          const idx2 = questions.findIndex(x => x.id === q.id);
+          if (idx1 >= 0 && idx2 >= 0) {
+            const [moved] = questions.splice(idx1, 1);
+            questions.splice(idx2, 0, moved);
+            renderQuestions();
+          }
         };
-
-        let optionsHTML = "";
-        if (["radio","checkbox","select"].includes(q.type)) {
-          optionsHTML = `
-            <div class="option-list">
-              ${q.options.map((opt,i)=>`
-                <div>
-                  <input type="text" value="${opt}" onchange="updateOption(${q.id},${i},this.value)">
-                  <button type="button" onclick="removeOption(${q.id},${i})">删除</button>
-                </div>
-              `).join("")}
-              <button type="button" onclick="addOption(${q.id})">➕ 添加选项</button>
-            </div>`;
-        }
-
         div.innerHTML = `
           <button type="button" class="remove-btn" onclick="removeQuestion(${q.id})">删除</button>
-          <label>标题</label>
+          <label>问题标题</label>
           <input type="text" value="${q.label}" onchange="updateQuestion(${q.id}, 'label', this.value)">
-          <label>字段名</label>
-          <input type="text" value="${q.name}" onchange="updateQuestion(${q.id}, 'name', this.value)">
-          <label>类型</label>
+          <label>题型</label>
           <select onchange="updateQuestion(${q.id}, 'type', this.value)">
             <option value="text" ${q.type==="text"?"selected":""}>文本</option>
             <option value="textarea" ${q.type==="textarea"?"selected":""}>多行</option>
@@ -215,8 +215,25 @@
             <option value="file" ${q.type==="file"?"selected":""}>文件上传</option>
           </select>
           <label><input type="checkbox" ${q.required?"checked":""} onchange="updateQuestion(${q.id}, 'required', this.checked)"> 必填</label>
-          ${optionsHTML}
         `;
+        if (["radio","checkbox","select"].includes(q.type)) {
+          const optDiv = document.createElement("div");
+          q.options.forEach((opt,i) => {
+            const optRow = document.createElement("div");
+            optRow.className = "option-input";
+            optRow.innerHTML = `
+              <input type="text" value="${opt}" onchange="updateOption(${q.id},${i},this.value)">
+              <button type="button" onclick="removeOption(${q.id},${i})">❌</button>
+            `;
+            optDiv.appendChild(optRow);
+          });
+          const addBtn = document.createElement("button");
+          addBtn.type="button";
+          addBtn.textContent="➕ 添加选项";
+          addBtn.onclick=()=>addOption(q.id);
+          optDiv.appendChild(addBtn);
+          div.appendChild(optDiv);
+        }
         container.appendChild(div);
       });
       syncSchema();
@@ -228,7 +245,7 @@
     }
 
     document.getElementById("formBuilder").addEventListener("submit", (e) => {
-      syncSchema(); // 提交前打包 JSON
+      syncSchema();
     });
   </script>
 </body>
