@@ -30,6 +30,11 @@
       <label>表单名称 *</label>
       <input type="text" name="name" required placeholder="例如：活动申请表">
 
+      <!-- 网站名（独立入口用） -->
+      <label>网站名 *</label>
+      <input type="text" name="site_name" required placeholder="例如：event2025">
+      <div class="hint">⚡ 说明：用户和管理员将通过 <code>/site/[网站名]/...</code> 访问该系统。</div>
+
       <!-- Schema JSON -->
       <label>表单 Schema (JSON) *</label>
       <textarea name="schema_json" required placeholder='例如:
