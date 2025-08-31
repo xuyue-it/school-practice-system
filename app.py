@@ -290,46 +290,26 @@ def create_form():
     if request.method == "POST":
         name = request.form.get("name")
         site_name = request.form.get("site_name")
+        schema_json = request.form.get("schema_json")
 
-        # 固定字段（必带）
-        base_fields = [
-            {"label": "姓名", "name": "name", "type": "text", "required": True},
-            {"label": "邮箱", "name": "email", "type": "email", "required": True},
-            {"label": "电话", "name": "phone", "type": "text", "required": True},
-            {"label": "所属小组", "name": "group", "type": "text", "required": True},
-            {"label": "活动名称", "name": "event_name", "type": "text", "required": True},
-            {"label": "开始日期", "name": "start_date", "type": "date", "required": True},
-            {"label": "结束日期", "name": "end_date", "type": "date", "required": True},
-            {"label": "地点", "name": "location", "type": "text", "required": True},
-            {"label": "预计参与人数", "name": "participants", "type": "number", "required": True}
-        ]
-
-        # 管理员添加的自定义字段
-        custom_labels = request.form.getlist("custom_label[]")
-        custom_types = request.form.getlist("custom_type[]")
-        custom_required = request.form.getlist("custom_required[]")
-
-        for i in range(len(custom_labels)):
-            base_fields.append({
-                "label": custom_labels[i],
-                "name": f"custom_{i}",
-                "type": custom_types[i],
-                "required": ("1" in custom_required)  # checkbox
-            })
-
-        schema_json = json.dumps({"fields": base_fields}, ensure_ascii=False)
-
-        # 自动生成数据库 URL（不用管理员输入）
-        db_url = f"postgresql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@{os.getenv('DB_HOST')}/{site_name}_db"
+        # ✅ 自动生成独立数据库连接 URL （每个表单一个库）
+        # 这里用 Neon / PostgreSQL 前缀拼接，可以根据你的 Neon 项目修改
+        db_url = f"{DB_URL.rsplit('/',1)[0]}/{site_name}"
 
         conn = get_conn(); c = conn.cursor()
-        c.execute("INSERT INTO form_defs (name, site_name, schema_json, created_by, db_url) VALUES (%s,%s,%s,%s,%s)",
-                  (name, site_name, schema_json, session.get("user_id"), db_url))
+        c.execute(
+            "INSERT INTO form_defs (name, site_name, schema_json, created_by, db_url) VALUES (%s,%s,%s,%s,%s)",
+            (name, site_name, schema_json, session.get("user_id"), db_url)
+        )
         conn.commit(); conn.close()
 
-        return f"<h2>✅ 表单 <b>{name}</b> 已创建！</h2><p>访问地址：<b>/site/{site_name}/form</b></p>"
-
+        return f"""
+        <h2>✅ 表单 <b>{name}</b> 已创建！</h2>
+        <p>访问地址：<b>/site/{site_name}/form</b></p>
+        <p>管理后台：<b>/site/{site_name}/admin</b></p>
+        """
     return render_template("create_form.html")
+
 
 
 # ========== 动态表单 - 填写 ==========
