@@ -5,29 +5,28 @@
   <title>创建新表单</title>
   <style>
     body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; }
-    .card { max-width:900px; margin:0 auto; background:#fff; padding:20px; border-radius:10px;
-      box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    .card { max-width:1000px; margin:0 auto; background:#fff; padding:20px; border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08); margin-bottom:20px; }
     h1 { text-align:center; font-weight:900; margin-bottom:20px; }
+    h2 { margin:10px 0; font-size:18px; border-bottom:2px solid #eee; padding-bottom:5px; }
     label { font-weight:700; display:block; margin-top:12px; }
-    input, select, textarea { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-family:inherit; }
-    button { margin-top:15px; padding:10px 18px; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
-    .btn-primary { background:#2563eb; color:white; }
-    .btn-primary:hover { background:#1d4ed8; }
-    .btn-add { background:#10b981; color:white; }
-    .btn-add:hover { background:#059669; }
-    .field-box { border:1px solid #ddd; padding:12px; margin-top:12px; border-radius:8px; background:#fafafa; }
-    .field-box h3 { margin:0 0 10px; font-size:16px; }
-    .topbar { text-align:center; margin-bottom:20px; }
-    .topbar a { margin:0 8px; color:#2563eb; text-decoration:none; font-weight:600; }
+    input, textarea, select { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-family:inherit; }
+    textarea { resize:vertical; min-height:80px; }
+    .row { display:flex; gap:15px; margin-top:10px; }
+    .row > div { flex:1; }
+    .checkbox-group { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:10px; }
+    .checkbox-group label { font-weight:normal; }
+    button { margin-top:20px; padding:12px 20px; background:#2563eb; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
+    button:hover { background:#1d4ed8; }
+    .add-btn { background:#10b981; }
+    .add-btn:hover { background:#059669; }
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <a href="/">首页</a> | <a href="/admin">返回管理后台</a>
-  </div>
   <div class="card">
     <h1>📝 创建新表单</h1>
     <form method="post" id="createForm">
+
       <!-- 表单名称 -->
       <label>表单名称 *</label>
       <input type="text" name="name" required placeholder="例如：活动申请表">
@@ -35,88 +34,111 @@
       <!-- 网站名 -->
       <label>网站名 *</label>
       <input type="text" name="site_name" required placeholder="例如：event2025">
-      <p style="font-size:13px;color:#555;">⚡ 管理员和用户通过 <code>/site/[网站名]/...</code> 访问该系统。</p>
+      <p style="font-size:13px;color:#555;">⚡ 管理员和用户将通过 <code>/site/[网站名]/...</code> 访问该系统。</p>
 
-      <!-- 固定区：基本信息 -->
-      <div class="field-box">
-        <h3>📌 基本信息（系统默认字段）</h3>
-        <ul style="margin:0;padding-left:20px;font-size:14px;color:#444;">
-          <li>姓名（必填）</li>
-          <li>邮箱（必填）</li>
-          <li>电话</li>
-          <li>活动名称、时间、地点、人数等</li>
-        </ul>
+      <!-- 固定：基本信息 -->
+      <div class="card">
+        <h2>申请人信息</h2>
+        <div class="row">
+          <div><label>姓名 *</label><input type="text" name="name"></div>
+          <div><label>联系方式 *</label><input type="text" name="phone"></div>
+        </div>
+        <div class="row">
+          <div><label>电子邮箱 *</label><input type="email" name="email"></div>
+          <div><label>所属团契/小组 *</label><input type="text" name="group"></div>
+        </div>
       </div>
 
-      <!-- 动态新增字段 -->
-      <div id="customFields"></div>
-      <button type="button" class="btn-add" onclick="addField()">➕ 添加新字段</button>
+      <!-- 固定：活动信息 -->
+      <div class="card">
+        <h2>活动信息</h2>
+        <div class="row">
+          <div><label>活动名称 *</label><input type="text" name="event_name"></div>
+          <div><label>活动地点 *</label><input type="text" name="location"></div>
+        </div>
+        <div class="row">
+          <div><label>开始日期 *</label><input type="date" name="start_date"></div>
+          <div><label>开始时间 *</label><input type="time" name="start_time"></div>
+        </div>
+        <div class="row">
+          <div><label>结束日期 *</label><input type="date" name="end_date"></div>
+          <div><label>结束时间 *</label><input type="time" name="end_time"></div>
+        </div>
+        <div class="row">
+          <div><label>活动性质 *</label>
+            <select name="event_type">
+              <option value="礼拜">礼拜</option>
+              <option value="聚会">聚会</option>
+              <option value="婚礼">婚礼</option>
+              <option value="其他">其他</option>
+            </select>
+          </div>
+          <div><label>预计参与人数 *</label><input type="number" name="participants"></div>
+        </div>
+      </div>
 
-      <!-- 隐藏 schema -->
-      <input type="hidden" name="schema_json" id="schemaJson">
+      <!-- 固定：器材需求 -->
+      <div class="card">
+        <h2>器材需求</h2>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="equipment" value="无线麦克风"> 无线麦克风</label>
+          <label><input type="checkbox" name="equipment" value="有线麦克风"> 有线麦克风</label>
+          <label><input type="checkbox" name="equipment" value="音响系统"> 音响系统</label>
+          <label><input type="checkbox" name="equipment" value="投影机"> 投影机</label>
+          <label><input type="checkbox" name="equipment" value="投影屏幕"> 投影屏幕</label>
+          <label><input type="checkbox" name="equipment" value="扩音器"> 扩音器</label>
+          <label><input type="checkbox" name="equipment" value="延长线"> 延长线</label>
+          <label><input type="checkbox" name="equipment" value="桌子"> 桌子</label>
+          <label><input type="checkbox" name="equipment" value="椅子"> 椅子</label>
+          <label><input type="checkbox" name="equipment" value="讲台"> 讲台</label>
+          <label><input type="checkbox" name="equipment" value="HDMI线"> HDMI线</label>
+          <label><input type="checkbox" name="equipment" value="信号线"> 信号线</label>
+        </div>
+        <label>特殊需求</label>
+        <textarea name="special_request"></textarea>
+      </div>
 
-      <!-- 提交 -->
-      <button type="submit" class="btn-primary">✅ 创建表单</button>
+      <!-- 固定：备注 -->
+      <div class="card">
+        <h2>其他信息</h2>
+        <div class="row">
+          <div><label>备注</label><textarea name="remarks"></textarea></div>
+          <div><label>紧急联系人姓名</label><input type="text" name="emergency_name"></div>
+        </div>
+        <div class="row">
+          <div><label>紧急联系人电话</label><input type="text" name="emergency_phone"></div>
+        </div>
+      </div>
+
+      <!-- 动态模块区域 -->
+      <div id="extra-modules"></div>
+
+      <!-- 按钮 -->
+      <button type="button" class="add-btn" onclick="addModule()">➕ 新增模块</button>
+      <button type="submit">✅ 创建表单</button>
     </form>
   </div>
 
   <script>
-    const customFields = [];
-
-    function addField() {
-      const field = {
-        label: "新字段",
-        name: "field" + (customFields.length+1),
-        type: "text",
-        required: false
-      };
-      customFields.push(field);
-      renderFields();
+    function addModule() {
+      const container = document.getElementById("extra-modules");
+      const div = document.createElement("div");
+      div.className = "card";
+      div.innerHTML = `
+        <h2>自定义模块</h2>
+        <label>字段名称 *</label>
+        <input type="text" name="custom_field_name[]" required placeholder="例如：微信号">
+        <label>字段类型 *</label>
+        <select name="custom_field_type[]">
+          <option value="text">文本</option>
+          <option value="textarea">多行文本</option>
+          <option value="number">数字</option>
+          <option value="email">邮箱</option>
+          <option value="date">日期</option>
+        </select>
+      `;
+      container.appendChild(div);
     }
-
-    function renderFields() {
-      const box = document.getElementById("customFields");
-      box.innerHTML = "";
-      customFields.forEach((f, idx) => {
-        const div = document.createElement("div");
-        div.className = "field-box";
-        div.innerHTML = `
-          <h3>自定义字段 #${idx+1}</h3>
-          <label>字段标题</label>
-          <input type="text" value="${f.label}"
-            onchange="updateField(${idx}, 'label', this.value)">
-
-          <label>字段名称 (英文/唯一)</label>
-          <input type="text" value="${f.name}"
-            onchange="updateField(${idx}, 'name', this.value)">
-
-          <label>类型</label>
-          <select onchange="updateField(${idx}, 'type', this.value)">
-            <option value="text" ${f.type==='text'?'selected':''}>单行文本</option>
-            <option value="textarea" ${f.type==='textarea'?'selected':''}>多行文本</option>
-            <option value="email" ${f.type==='email'?'selected':''}>邮箱</option>
-            <option value="number" ${f.type==='number'?'selected':''}>数字</option>
-            <option value="file" ${f.type==='file'?'selected':''}>文件上传</option>
-            <option value="select" ${f.type==='select'?'selected':''}>下拉选择</option>
-          </select>
-
-          <label>必填?</label>
-          <input type="checkbox" ${f.required?'checked':''}
-            onchange="updateField(${idx}, 'required', this.checked)">
-        `;
-        box.appendChild(div);
-      });
-    }
-
-    function updateField(index, key, value) {
-      customFields[index][key] = value;
-      renderFields();
-    }
-
-    document.getElementById("createForm").addEventListener("submit", function(e){
-      const schema = { fields: customFields };
-      document.getElementById("schemaJson").value = JSON.stringify(schema);
-    });
   </script>
 </body>
 </html>
