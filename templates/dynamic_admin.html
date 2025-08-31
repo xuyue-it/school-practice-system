@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>动态表单管理</title>
+  <style>
+    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; }
+    .card { max-width:95%; margin:0 auto; background:#fff; padding:20px; border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
+    table { width:100%; border-collapse:collapse; margin-top:20px; }
+    th, td { border:1px solid #ccc; padding:10px; text-align:center; }
+    th { background:#f1f5f9; font-weight:900; }
+    tr:nth-child(even){ background:#f9fafb; }
+    tr:hover { background:#f1f5f9; }
+    .status { font-weight:700; }
+    .btn { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+    .btn-approve { background:#16a34a; color:#fff; }
+    .btn-reject { background:#dc2626; color:#fff; }
+    .btn-approve:hover { background:#22c55e; }
+    .btn-reject:hover { background:#ef4444; }
+    .topbar { text-align:center; margin-bottom:20px; }
+    .topbar a { margin:0 8px; color:#2563eb; text-decoration:none; font-weight:600; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="/">首页</a> |
+    <a href="/create_form">创建新表单</a> |
+    <a href="/logout">退出登录</a>
+  </div>
+
+  <div class="card">
+    <h1>📊 动态表单管理 (表单ID: {{ form_id }})</h1>
+    {% if submissions %}
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>提交数据</th>
+          <th>状态</th>
+          <th>审核说明</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in submissions %}
+        <tr>
+          <td>{{ s[0] }}</td>
+          <td>
+            {% for k,v in s[3].items() %}
+              <b>{{ k }}</b>: {{ v }}<br>
+            {% endfor %}
+          </td>
+          <td class="status">{{ s[4] }}</td>
+          <td>{{ s[5] or "-" }}</td>
+          <td>
+            <form method="post" action="/form_dynamic/{{ form_id }}/review/{{ s[0] }}" style="display:inline;">
+              <input type="hidden" name="action" value="approve">
+              <button type="submit" class="btn btn-approve">通过</button>
+            </form>
+            <form method="post" action="/form_dynamic/{{ form_id }}/review/{{ s[0] }}" style="display:inline;">
+              <input type="hidden" name="action" value="reject">
+              <button type="submit" class="btn btn-reject">不通过</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+      <p style="text-align:center; color:#666;">暂无提交记录</p>
+    {% endif %}
+  </div>
+</body>
+</html>

@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 import os
 from functools import wraps
 import psycopg2
+import json   # ✅ 新增：用于存表单 schema
 
 # ========== Flask 应用 ==========
 app = Flask(__name__)
@@ -64,6 +65,29 @@ def ensure_admin():
         conn.commit()
     conn.close()
 ensure_admin()
+
+# ========= ✅ 新增：表单表初始化 =========
+def init_form_tables():
+    conn = get_conn(); c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS forms (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        creator_id INT NOT NULL,
+        schema JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS submissions (
+        id SERIAL PRIMARY KEY,
+        form_id INT,
+        user_id INT,
+        data JSONB,
+        status TEXT DEFAULT '待审核',
+        review_comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    conn.commit(); conn.close()
+
+init_form_tables()
 
 # ========== 登录保护 ==========
 def login_required(view_func):
@@ -139,6 +163,50 @@ def form():
 @login_required
 def status():
     return render_template("status.html")
+
+# ========= ✅ 新增：动态表单相关 =========
+@app.route("/create_form", methods=["GET", "POST"])
+@admin_required
+def create_form():
+    if request.method == "POST":
+        name = request.form.get("name")
+        schema = request.form.get("schema_json")  # JSON 格式
+        conn = get_conn(); c = conn.cursor()
+        c.execute("INSERT INTO forms (name, creator_id, schema) VALUES (%s,%s,%s) RETURNING id",
+                  (name, session["user_id"], schema))
+        form_id = c.fetchone()[0]
+        conn.commit(); conn.close()
+        return f"✅ 表单已创建，访问地址：/form/{form_id}"
+    return render_template("create_form.html")
+
+@app.route("/form/<int:form_id>")
+def render_dynamic_form(form_id):
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT schema FROM forms WHERE id=%s", (form_id,))
+    row = c.fetchone(); conn.close()
+    if not row: return "❌ 表单不存在", 404
+    return render_template("dynamic_form.html", schema=row[0], form_id=form_id)
+
+@app.route("/form/<int:form_id>/submit", methods=["POST"])
+def submit_dynamic_form(form_id):
+    data = request.form.to_dict(flat=True)
+    conn = get_conn(); c = conn.cursor()
+    c.execute("INSERT INTO submissions (form_id, data) VALUES (%s,%s)", (form_id, json.dumps(data)))
+    conn.commit(); conn.close()
+    return "<h1>提交成功</h1>"
+
+@app.route("/form/<int:form_id>/admin")
+@login_required
+def form_admin(form_id):
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT creator_id FROM forms WHERE id=%s", (form_id,))
+    row = c.fetchone()
+    if not row or row[0] != session["user_id"]:
+        return "❌ 无权限", 403
+    c.execute("SELECT * FROM submissions WHERE form_id=%s ORDER BY id DESC", (form_id,))
+    submissions = c.fetchall()
+    conn.close()
+    return render_template("admin.html", submissions=submissions, form_id=form_id)
 
 # ========== 邮件发送 ==========
 def send_email(subject, content, to_email):
@@ -259,6 +327,130 @@ def stats_data():
         "attachments": {"有附件": with_attach, "无附件": without_attach}
     })
 
+# ========== 表单定义表 ==========
+def init_form_table():
+    conn = get_conn(); c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS form_defs (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        schema_json TEXT NOT NULL,
+        created_by INT REFERENCES users(id),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    conn.commit(); conn.close()
+init_form_table()
+
+# ========== 创建新表单 ==========
+@app.route("/create_form", methods=["GET","POST"])
+@admin_required
+def create_form():
+    if request.method == "POST":
+        name = request.form.get("name")
+        schema_json = request.form.get("schema_json")
+        conn = get_conn(); c = conn.cursor()
+        c.execute("INSERT INTO form_defs (name, schema_json, created_by) VALUES (%s,%s,%s)",
+                  (name, schema_json, session.get("user_id")))
+        conn.commit(); conn.close()
+        return f"<h2>✅ 表单 <b>{name}</b> 创建成功！</h2><p><a href='/admin'>返回后台</a></p>"
+    return render_template("create_form.html")
+
+
+# ========== 动态表单填写页面 ==========
+@app.route("/form_dynamic/<int:form_id>", methods=["GET", "POST"])
+@login_required
+def form_dynamic(form_id):
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT name, schema_json FROM form_defs WHERE id=%s", (form_id,))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return "❌ 表单不存在", 404
+
+    form_name, schema_json = row
+    schema = json.loads(schema_json)
+
+    if request.method == "POST":
+        # 提交的数据保存成 JSON
+        data = request.form.to_dict(flat=True)
+        conn = get_conn(); c = conn.cursor()
+        c.execute("INSERT INTO submissions (form_id, user_id, data) VALUES (%s,%s,%s)",
+                  (form_id, session.get("user_id"), json.dumps(data)))
+        conn.commit(); conn.close()
+        return f"<h2>✅ 已成功提交到表单 <b>{form_name}</b></h2><a href='/'>返回首页</a>"
+
+    return render_template("dynamic_form.html", form_name=form_name, schema=schema, form_id=form_id)
+
+
+# ========== 动态表单后台 ==========
+@app.route("/form_dynamic/<int:form_id>/admin")
+@admin_required
+def form_dynamic_admin(form_id):
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT name, created_by FROM form_defs WHERE id=%s", (form_id,))
+    form_row = c.fetchone()
+    if not form_row:
+        return "❌ 表单不存在", 404
+    form_name, owner_id = form_row
+    if owner_id != session.get("user_id"):
+        return "❌ 无权限", 403
+
+    c.execute("SELECT id, user_id, data, status, review_comment, created_at FROM submissions WHERE form_id=%s ORDER BY id DESC", (form_id,))
+    subs = c.fetchall()
+    conn.close()
+
+    return render_template("dynamic_admin.html", form_name=form_name, submissions=subs, form_id=form_id)
+
+# ========== 动态表单 - 更新状态 ==========
+@app.route("/form/<int:form_id>/update_status/<int:submission_id>", methods=["POST"])
+@admin_required
+def update_dynamic_status(form_id, submission_id):
+    data = request.get_json() or {}
+    status = data.get("status")
+    comment = data.get("comment", "")
+
+    # 验证权限：只能表单创建者管理
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT created_by FROM form_defs WHERE id=%s", (form_id,))
+    form_row = c.fetchone()
+    if not form_row or form_row[0] != session.get("user_id"):
+        conn.close()
+        return jsonify({"success": False, "message": "无权限"}), 403
+
+    # 更新状态
+    c.execute("UPDATE submissions SET status=%s, review_comment=%s WHERE id=%s AND form_id=%s",
+              (status, comment, submission_id, form_id))
+    conn.commit(); conn.close()
+    return jsonify({"success": True, "status": status})
+
+
+# ========== 动态表单 - 删除提交 ==========
+@app.route("/form/<int:form_id>/delete/<int:submission_id>", methods=["POST"])
+@admin_required
+def delete_dynamic_submission(form_id, submission_id):
+    conn = get_conn(); c = conn.cursor()
+    # 验证权限
+    c.execute("SELECT created_by FROM form_defs WHERE id=%s", (form_id,))
+    form_row = c.fetchone()
+    if not form_row or form_row[0] != session.get("user_id"):
+        conn.close()
+        return jsonify({"success": False, "message": "无权限"}), 403
+
+    # 删除
+    c.execute("DELETE FROM submissions WHERE id=%s AND form_id=%s", (submission_id, form_id))
+    conn.commit(); conn.close()
+    return jsonify({"success": True})
+
+
+@app.route("/form_dynamic/<int:form_id>/review/<int:submission_id>", methods=["POST"])
+@login_required
+def review_dynamic_submission(form_id, submission_id):
+    action = request.form.get("action")
+    status = "通过" if action == "approve" else "不通过"
+    conn = get_conn(); c = conn.cursor()
+    c.execute("UPDATE submissions SET status=%s WHERE id=%s AND form_id=%s",
+              (status, submission_id, form_id))
+    conn.commit(); conn.close()
+    return redirect(url_for("form_admin", form_id=form_id))
 
 # ========== ✅ 新增：用户管理 ==========
 @app.route("/users")
