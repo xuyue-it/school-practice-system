@@ -4,102 +4,71 @@
   <meta charset="UTF-8">
   <title>创建新表单</title>
   <style>
-    body {
-      font-family:"Microsoft YaHei", sans-serif;
-      background:#f7f7f7;
-      margin:0; padding:0;
-    }
-    .container {
-      max-width:800px;
-      margin:40px auto;
-      background:#fff;
-      padding:30px;
-      border-radius:12px;
-      box-shadow:0 6px 16px rgba(0,0,0,.1);
-    }
-    h1 { text-align:center; font-weight:900; color:#2563eb; margin-bottom:20px; }
-    label { font-weight:700; display:block; margin-top:15px; }
-    input, textarea {
-      width:100%;
-      padding:12px;
-      border:1px solid #ccc;
-      border-radius:6px;
-      font-family:inherit;
-      margin-top:5px;
-    }
-    textarea { resize:vertical; min-height:150px; }
-    button {
-      margin-top:25px;
-      padding:14px 24px;
-      background:#2563eb;
-      color:white;
-      border:none;
-      border-radius:8px;
-      cursor:pointer;
-      font-weight:700;
-      width:100%;
-    }
+    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; }
+    .card { max-width:800px; margin:0 auto; background:#fff; padding:20px; border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
+    label { font-weight:700; display:block; margin-top:12px; }
+    input, select { padding:6px; border:1px solid #ccc; border-radius:4px; }
+    .field-block { margin:10px 0; padding:10px; border:1px solid #ddd; border-radius:6px; background:#fafafa; }
+    button { margin-top:20px; padding:12px 20px; background:#2563eb; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
     button:hover { background:#1d4ed8; }
-    .topbar {
-      text-align:center;
-      margin-bottom:20px;
-    }
-    .topbar a {
-      margin:0 8px;
-      color:#2563eb;
-      text-decoration:none;
-      font-weight:600;
-    }
-    .hint {
-      font-size:13px;
-      color:#555;
-      margin-top:5px;
-    }
-    .example {
-      background:#f9fafb;
-      border:1px solid #ddd;
-      padding:8px;
-      border-radius:6px;
-      font-size:13px;
-      white-space:pre;
-    }
+    .topbar { text-align:center; margin-bottom:20px; }
+    .topbar a { margin:0 8px; color:#2563eb; text-decoration:none; font-weight:600; }
   </style>
 </head>
 <body>
   <div class="topbar">
-    <a href="/dashboard">← 返回控制面板</a>
+    <a href="/">首页</a> | <a href="/dashboard">返回管理后台</a>
   </div>
-  <div class="container">
+  <div class="card">
     <h1>📝 创建新表单</h1>
     <form method="post">
       <!-- 表单名称 -->
       <label>表单名称 *</label>
-      <input type="text" name="name" required placeholder="例如：活动申请表">
+      <input type="text" name="name" required placeholder="例如：活动申请表" style="width:100%">
 
-      <!-- 网站名（独立入口用） -->
+      <!-- 网站名 -->
       <label>网站名 *</label>
-      <input type="text" name="site_name" required placeholder="例如：event2025">
-      <div class="hint">⚡ 管理员和用户通过 <code>/site/[网站名]/...</code> 访问该系统。</div>
+      <input type="text" name="site_name" required placeholder="例如：event2025" style="width:100%">
+      <div style="font-size:13px;color:#555;">⚡ 管理员和用户通过 <code>/site/[网站名]/...</code> 访问该系统。</div>
 
-      <!-- Schema JSON -->
-      <label>表单 Schema (JSON) *</label>
-      <textarea name="schema_json" required placeholder='例如:
-{
-  "fields":[
-    {"label":"姓名","name":"name","type":"text","required":true},
-    {"label":"邮箱","name":"email","type":"email"},
-    {"label":"备注","name":"remark","type":"textarea"}
-  ]
-}'></textarea>
-      <div class="hint">⚡ 请填写 JSON 格式，用来生成动态表单字段。</div>
+      <!-- 固定字段（提示说明） -->
+      <h3>📌 固定基本信息字段（自动包含）</h3>
+      <ul>
+        <li>姓名 (必填)</li>
+        <li>邮箱 (必填)</li>
+        <li>电话 (必填)</li>
+        <li>所属小组 (必填)</li>
+        <li>活动名称、日期、时间、地点、人数 (必填)</li>
+      </ul>
 
-      <!-- 独立数据库 URL -->
-      <label>数据库连接 URL *</label>
-      <input type="text" name="db_url" required placeholder="例如：postgresql://user:pass@host/dbname">
-      <div class="hint">⚡ 每个表单会用独立的数据库（推荐使用 Neon 新建实例）。</div>
+      <!-- 自定义字段 -->
+      <h3>➕ 自定义字段</h3>
+      <div id="custom-fields"></div>
+      <button type="button" onclick="addField()">添加字段</button>
 
-      <button type="submit">✅ 创建表单</button>
+      <button type="submit">创建表单</button>
     </form>
   </div>
+
+  <script>
+  function addField() {
+    const div = document.createElement("div");
+    div.className = "field-block";
+    div.innerHTML = `
+      字段名: <input type="text" name="custom_label[]" required>
+      类型:
+      <select name="custom_type[]">
+        <option value="text">文本</option>
+        <option value="textarea">多行文本</option>
+        <option value="number">数字</option>
+        <option value="file">文件上传</option>
+      </select>
+      必填: <input type="checkbox" name="custom_required[]" value="1">
+    `;
+    document.getElementById("custom-fields").appendChild(div);
+  }
+  </script>
 </body>
 </html>

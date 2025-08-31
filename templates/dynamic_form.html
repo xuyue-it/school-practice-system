@@ -2,44 +2,73 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>{{ form_name }} - 填写表单</title>
+  <title>{{ form_name }}</title>
   <style>
-    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; color:#111; }
-    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
-    .card { max-width:800px; margin:0 auto; background:#fff; padding:20px; border-radius:10px;
+    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; }
+    .card { max-width:900px; margin:0 auto; background:#fff; padding:20px; border-radius:10px;
       box-shadow:0 4px 10px rgba(0,0,0,.08); }
-    .row { margin-bottom:16px; }
-    label { display:block; font-weight:700; margin-bottom:6px; }
-    input, select, textarea { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-family:inherit; }
+    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
+    .row { display:flex; gap:10px; margin-bottom:16px; }
+    .row label { width:150px; font-weight:700; text-align:right; }
+    .row input, .row select, .row textarea {
+      flex:1; padding:10px; border:1px solid #ccc; border-radius:6px; font-family:inherit;
+    }
     textarea { resize:vertical; }
     button { margin-top:20px; padding:12px 20px; background:#2563eb; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
     button:hover { background:#1d4ed8; }
     .topbar { text-align:center; margin-bottom:20px; }
     .topbar a { margin:0 8px; color:#2563eb; text-decoration:none; font-weight:600; }
+    fieldset { margin:20px 0; padding:15px; border:1px solid #ddd; border-radius:6px; }
+    legend { font-weight:700; }
   </style>
 </head>
 <body>
   <div class="topbar">
-    <a href="/">🏠 首页</a>
-    <a href="/status">🔎 查询状态</a>
-    {% if session.get("role") == "admin" %}
-      <a href="/form_dynamic/{{ form_id }}/admin">⚙️ 表单管理</a>
-    {% endif %}
-    <a href="/logout">退出登录</a>
+    <a href="/">首页</a> | <a href="/status">查询状态</a>
   </div>
 
   <div class="card">
-    <h1>📌 {{ form_name }} - 填写表单</h1>
-    <form method="post" action="/form_dynamic/{{ form_id }}" id="dynForm"></form>
-    <button form="dynForm" type="submit">提交</button>
+    <!-- ✅ 表单标题 -->
+    <h1>{{ form_name }}</h1>
+
+    <form method="post" action="/site/{{ site_name }}/form" id="dynForm">
+      <!-- 固定基本信息 -->
+      <fieldset>
+        <legend>📌 申请人信息</legend>
+        <div class="row"><label>姓名 *</label><input type="text" name="name" required></div>
+        <div class="row"><label>邮箱 *</label><input type="email" name="email" required></div>
+        <div class="row"><label>电话 *</label><input type="text" name="phone" required></div>
+        <div class="row"><label>所属小组 *</label><input type="text" name="group" required></div>
+      </fieldset>
+
+      <fieldset>
+        <legend>📌 活动信息</legend>
+        <div class="row"><label>活动名称 *</label><input type="text" name="event_name" required></div>
+        <div class="row"><label>开始日期 *</label><input type="date" name="start_date" required></div>
+        <div class="row"><label>结束日期 *</label><input type="date" name="end_date" required></div>
+        <div class="row"><label>地点 *</label><input type="text" name="location" required></div>
+        <div class="row"><label>预计人数 *</label><input type="number" name="participants" required></div>
+      </fieldset>
+
+      <!-- 自定义字段：由 schema 渲染 -->
+      <fieldset>
+        <legend>📌 额外信息</legend>
+        <div id="extraFields"></div>
+      </fieldset>
+
+      <button type="submit">提交</button>
+    </form>
   </div>
 
   <script>
-    const schema = {{ schema|tojson }};
-    const form = document.getElementById("dynForm");
+    const schema = {{ schema|safe }};
+    const form = document.getElementById("extraFields");
 
     if (schema && schema.fields) {
       schema.fields.forEach(f => {
+        if (["name","email","phone","group","event_name","start_date","end_date","location","participants"].includes(f.name)) {
+          return; // 固定字段不重复渲染
+        }
         const row = document.createElement("div");
         row.className = "row";
         const label = document.createElement("label");
@@ -56,6 +85,9 @@
             o.value = opt; o.textContent = opt;
             input.appendChild(o);
           });
+        } else if (f.type === "file") {
+          input = document.createElement("input");
+          input.type = "file";
         } else {
           input = document.createElement("input");
           input.type = f.type || "text";
