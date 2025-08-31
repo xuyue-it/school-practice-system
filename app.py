@@ -165,19 +165,7 @@ def status():
     return render_template("status.html")
 
 # ========= ✅ 新增：动态表单相关 =========
-@app.route("/create_form", methods=["GET", "POST"])
-@admin_required
-def create_form():
-    if request.method == "POST":
-        name = request.form.get("name")
-        schema = request.form.get("schema_json")  # JSON 格式
-        conn = get_conn(); c = conn.cursor()
-        c.execute("INSERT INTO forms (name, creator_id, schema) VALUES (%s,%s,%s) RETURNING id",
-                  (name, session["user_id"], schema))
-        form_id = c.fetchone()[0]
-        conn.commit(); conn.close()
-        return f"✅ 表单已创建，访问地址：/form/{form_id}"
-    return render_template("create_form.html")
+
 
 @app.route("/form/<int:form_id>")
 def render_dynamic_form(form_id):
