@@ -292,14 +292,27 @@ def create_form():
         site_name = request.form.get("site_name")
         schema_json = request.form.get("schema_json")
 
-        # ✅ 自动生成独立数据库连接 URL （每个表单一个库）
-        # 这里用 Neon / PostgreSQL 前缀拼接，可以根据你的 Neon 项目修改
-        db_url = f"{DB_URL.rsplit('/',1)[0]}/{site_name}"
+        # ✅ 每个表单一个 schema（而不是新数据库）
+        schema_name = f"form_{site_name}"
 
         conn = get_conn(); c = conn.cursor()
+        # 创建 schema
+        c.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
+        # 创建 submissions 表
+        c.execute(f"""
+            CREATE TABLE IF NOT EXISTS {schema_name}.submissions (
+                id SERIAL PRIMARY KEY,
+                user_id INT,
+                data JSONB,
+                status TEXT DEFAULT '待审核',
+                review_comment TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # 在 form_defs 表里保存 schema 名
         c.execute(
             "INSERT INTO form_defs (name, site_name, schema_json, created_by, db_url) VALUES (%s,%s,%s,%s,%s)",
-            (name, site_name, schema_json, session.get("user_id"), db_url)
+            (name, site_name, schema_json, session.get("user_id"), schema_name)
         )
         conn.commit(); conn.close()
 
@@ -309,7 +322,6 @@ def create_form():
         <p>管理后台：<b>/site/{site_name}/admin</b></p>
         """
     return render_template("create_form.html")
-
 
 
 # ========== 动态表单 - 填写 ==========
@@ -322,23 +334,17 @@ def site_form(site_name):
     if not row:
         return "❌ 表单不存在", 404
 
-    form_id, form_name, schema_json, db_url = row
+    form_id, form_name, schema_json, schema_name = row
     schema = json.loads(schema_json)
 
     if request.method == "POST":
         data = request.form.to_dict(flat=True)
-        dconn = psycopg2.connect(db_url, connect_timeout=10); dc = dconn.cursor()
-        dc.execute('''CREATE TABLE IF NOT EXISTS submissions (
-            id SERIAL PRIMARY KEY,
-            user_id INT,
-            data JSONB,
-            status TEXT DEFAULT '待审核',
-            review_comment TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )''')
-        dc.execute("INSERT INTO submissions (user_id, data) VALUES (%s,%s)",
-                   (session.get("user_id"), json.dumps(data)))
-        dconn.commit(); dconn.close()
+        conn = get_conn(); c = conn.cursor()
+        # 切换到对应 schema
+        c.execute(f"SET search_path TO {schema_name}")
+        c.execute("INSERT INTO submissions (user_id, data) VALUES (%s,%s)",
+                  (session.get("user_id"), json.dumps(data)))
+        conn.commit(); conn.close()
         return f"<h2>✅ 已提交到表单 {form_name}</h2><a href='/'>返回首页</a>"
 
     # ✅ GET 请求时渲染页面
@@ -357,15 +363,20 @@ def site_admin(site_name):
     conn = get_conn(); c = conn.cursor()
     c.execute("SELECT id, name, created_by, db_url FROM form_defs WHERE site_name=%s", (site_name,))
     row = c.fetchone(); conn.close()
-    if not row: return "❌ 表单不存在", 404
-    form_id, form_name, owner_id, db_url = row
+    if not row:
+        return "❌ 表单不存在", 404
+
+    form_id, form_name, owner_id, schema_name = row
     if owner_id != session.get("user_id"):
         return "❌ 无权限", 403
 
-    dconn = psycopg2.connect(db_url, connect_timeout=10); dc = dconn.cursor()
-    dc.execute("SELECT id, user_id, data, status, review_comment, created_at FROM submissions ORDER BY id DESC")
-    subs = dc.fetchall(); dconn.close()
+    conn = get_conn(); c = conn.cursor()
+    c.execute(f"SET search_path TO {schema_name}")
+    c.execute("SELECT id, user_id, data, status, review_comment, created_at FROM submissions ORDER BY id DESC")
+    subs = c.fetchall()
+    conn.close()
     return render_template("dynamic_admin.html", form_name=form_name, submissions=subs, form_id=form_id)
+
 
 # ========== 用户管理 ==========
 @app.route("/users")
