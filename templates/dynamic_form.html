@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ form_name }} - 填写表单</title>
+  <style>
+    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; color:#111; }
+    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
+    .card { max-width:800px; margin:0 auto; background:#fff; padding:20px; border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    .row { margin-bottom:16px; }
+    label { display:block; font-weight:700; margin-bottom:6px; }
+    input, select, textarea { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-family:inherit; }
+    textarea { resize:vertical; }
+    button { margin-top:20px; padding:12px 20px; background:#2563eb; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
+    button:hover { background:#1d4ed8; }
+    .topbar { text-align:center; margin-bottom:20px; }
+    .topbar a { margin:0 8px; color:#2563eb; text-decoration:none; font-weight:600; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="/">🏠 首页</a>
+    <a href="/status">🔎 查询状态</a>
+    {% if session.get("role") == "admin" %}
+      <a href="/form_dynamic/{{ form_id }}/admin">⚙️ 表单管理</a>
+    {% endif %}
+    <a href="/logout">退出登录</a>
+  </div>
+
+  <div class="card">
+    <h1>📌 {{ form_name }} - 填写表单</h1>
+    <form method="post" action="/form_dynamic/{{ form_id }}" id="dynForm"></form>
+    <button form="dynForm" type="submit">提交</button>
+  </div>
+
+  <script>
+    const schema = {{ schema|tojson }};
+    const form = document.getElementById("dynForm");
+
+    if (schema && schema.fields) {
+      schema.fields.forEach(f => {
+        const row = document.createElement("div");
+        row.className = "row";
+        const label = document.createElement("label");
+        label.textContent = f.label + (f.required ? " *" : "");
+        row.appendChild(label);
+
+        let input;
+        if (f.type === "textarea") {
+          input = document.createElement("textarea");
+        } else if (f.type === "select") {
+          input = document.createElement("select");
+          (f.options || []).forEach(opt => {
+            const o = document.createElement("option");
+            o.value = opt; o.textContent = opt;
+            input.appendChild(o);
+          });
+        } else {
+          input = document.createElement("input");
+          input.type = f.type || "text";
+        }
+        input.name = f.name;
+        if (f.required) input.required = true;
+        row.appendChild(input);
+        form.appendChild(row);
+      });
+    }
+  </script>
+</body>
+</html>

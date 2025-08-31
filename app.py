@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 import os
 from functools import wraps
 import psycopg2
-import json   # ✅ 新增：用于存表单 schema
+import json
 
 # ========== Flask 应用 ==========
 app = Flask(__name__)
@@ -38,7 +38,7 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lausukyork8@gmail.com")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "ejlnrpkvvwotxlzj")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "lausukyork8@gmail.com")
 
-# 数据库配置
+# 数据库配置（主库）
 DB_URL = os.getenv("DB_URL")
 def get_conn():
     return psycopg2.connect(DB_URL, connect_timeout=10)
@@ -55,7 +55,7 @@ def init_user_table():
     conn.commit(); conn.close()
 init_user_table()
 
-# 默认管理员（admin / 123456）
+# 默认管理员
 def ensure_admin():
     conn = get_conn(); c = conn.cursor()
     c.execute("SELECT * FROM users WHERE role='admin'")
@@ -66,28 +66,50 @@ def ensure_admin():
     conn.close()
 ensure_admin()
 
-# ========= ✅ 新增：表单表初始化 =========
-def init_form_tables():
+# ========= 原有 submissions 表（固定表单） =========
+def init_main_submissions():
     conn = get_conn(); c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS forms (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        creator_id INT NOT NULL,
-        schema JSONB,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
     c.execute('''CREATE TABLE IF NOT EXISTS submissions (
         id SERIAL PRIMARY KEY,
-        form_id INT,
-        user_id INT,
-        data JSONB,
+        name TEXT,
+        phone TEXT,
+        email TEXT,
+        group_name TEXT,
+        event_name TEXT,
+        start_date TEXT,
+        start_time TEXT,
+        end_date TEXT,
+        end_time TEXT,
+        location TEXT,
+        event_type TEXT,
+        participants TEXT,
+        equipment TEXT,
+        special_request TEXT,
+        donation TEXT,
+        donation_method TEXT,
+        remarks TEXT,
+        emergency_name TEXT,
+        emergency_phone TEXT,
+        attachment TEXT,
         status TEXT DEFAULT '待审核',
-        review_comment TEXT,
+        review_comment TEXT
+    )''')
+    conn.commit(); conn.close()
+init_main_submissions()
+
+# ========= 动态表单定义表 =========
+def init_form_defs():
+    conn = get_conn(); c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS form_defs (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        schema_json TEXT NOT NULL,
+        created_by INT REFERENCES users(id),
+        db_url TEXT NOT NULL,  -- 独立数据库地址
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     conn.commit(); conn.close()
-
-init_form_tables()
+init_form_defs()
 
 # ========== 登录保护 ==========
 def login_required(view_func):
@@ -140,7 +162,7 @@ def register():
                       (username, generate_password_hash(password), role))
             conn.commit(); conn.close()
             return redirect(url_for("login"))
-        except Exception as e:
+        except Exception:
             error = "注册失败，可能用户名已存在"
     return render_template("register.html", error=error)
 
@@ -149,80 +171,17 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
-# ========== 首页/表单/状态 ==========
+# ========== 首页 ==========
 @app.route("/")
 def index():
     return render_template("index.html")
 
+# ========== 固定表单（原本的） ==========
 @app.route("/form")
 @login_required
 def form():
     return render_template("form.html")
 
-@app.route("/status")
-@login_required
-def status():
-    return render_template("status.html")
-
-# ========= ✅ 新增：动态表单相关 =========
-
-
-@app.route("/form/<int:form_id>")
-def render_dynamic_form(form_id):
-    conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT schema FROM forms WHERE id=%s", (form_id,))
-    row = c.fetchone(); conn.close()
-    if not row: return "❌ 表单不存在", 404
-    return render_template("dynamic_form.html", schema=row[0], form_id=form_id)
-
-@app.route("/form/<int:form_id>/submit", methods=["POST"])
-def submit_dynamic_form(form_id):
-    data = request.form.to_dict(flat=True)
-    conn = get_conn(); c = conn.cursor()
-    c.execute("INSERT INTO submissions (form_id, data) VALUES (%s,%s)", (form_id, json.dumps(data)))
-    conn.commit(); conn.close()
-    return "<h1>提交成功</h1>"
-
-@app.route("/form/<int:form_id>/admin")
-@login_required
-def form_admin(form_id):
-    conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT creator_id FROM forms WHERE id=%s", (form_id,))
-    row = c.fetchone()
-    if not row or row[0] != session["user_id"]:
-        return "❌ 无权限", 403
-    c.execute("SELECT * FROM submissions WHERE form_id=%s ORDER BY id DESC", (form_id,))
-    submissions = c.fetchall()
-    conn.close()
-    return render_template("admin.html", submissions=submissions, form_id=form_id)
-
-# ========== 邮件发送 ==========
-def send_email(subject, content, to_email):
-    msg = MIMEMultipart()
-    msg['From'] = formataddr(("通用申请审核系统", SENDER_EMAIL))
-    msg['To'] = to_email
-    msg['Subject'] = Header(subject, "utf-8")
-    msg.attach(MIMEText(content, "plain", "utf-8"))
-    try:
-        server = smtplib.SMTP_SSL(SMTP_SERVER, 465, timeout=20)
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.sendmail(SENDER_EMAIL, [to_email], msg.as_string())
-        server.quit()
-        return True, None
-    except Exception as e_ssl:
-        print("SSL失败:", e_ssl)
-    try:
-        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=20)
-        server.starttls()
-        server.login(SENDER_EMAIL, SENDER_PASSWORD)
-        server.sendmail(SENDER_EMAIL, [to_email], msg.as_string())
-        server.quit()
-        return True, None
-    except Exception as e_tls:
-        print("TLS失败:", e_tls)
-        return False, str(e_tls)
-
-# ========== 提交表单逻辑 ==========
 @app.route("/submit", methods=["POST"])
 @login_required
 def submit():
@@ -260,7 +219,12 @@ def submit():
     send_email("【新申请】通用申请", f"申请人：{data.get('name')} 活动：{data.get('event_name')}", ADMIN_EMAIL)
     return "<h1>提交成功！</h1><p>请返回首页查询审核状态。</p>"
 
-# ========== 查询状态 API ==========
+# ========== 查询状态 ==========
+@app.route("/status")
+@login_required
+def status():
+    return render_template("status.html")
+
 @app.route("/check_status_api")
 @login_required
 def check_status_api():
@@ -294,20 +258,14 @@ def stats():
 @admin_required
 def stats_data():
     conn = get_conn(); c = conn.cursor()
-    # 状态统计
     c.execute("SELECT status, COUNT(*) FROM submissions GROUP BY status")
     status_counts = dict(c.fetchall())
-
-    # 类别统计
     c.execute("SELECT event_type, COUNT(*) FROM submissions GROUP BY event_type")
     type_counts = dict(c.fetchall())
-
-    # 附件统计
     c.execute("SELECT COUNT(*) FROM submissions WHERE attachment IS NOT NULL AND attachment <> ''")
     with_attach = c.fetchone()[0]
     c.execute("SELECT COUNT(*) FROM submissions WHERE attachment IS NULL OR attachment = ''")
     without_attach = c.fetchone()[0]
-
     conn.close()
     return jsonify({
         "status": status_counts,
@@ -315,42 +273,37 @@ def stats_data():
         "attachments": {"有附件": with_attach, "无附件": without_attach}
     })
 
-# ========== 表单定义表 ==========
-def init_form_table():
-    conn = get_conn(); c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS form_defs (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        schema_json TEXT NOT NULL,
-        created_by INT REFERENCES users(id),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    conn.commit(); conn.close()
-init_form_table()
-
-# ========== 创建新表单 ==========
-@app.route("/create_form", methods=["GET","POST"])
+# ========== ✅ 动态表单：创建 ==========
+@app.route("/create_form", methods=["GET", "POST"])
 @admin_required
 def create_form():
     if request.method == "POST":
         name = request.form.get("name")
         schema_json = request.form.get("schema_json")
+        db_url = request.form.get("db_url")  # 每个表单独立数据库
+
         conn = get_conn(); c = conn.cursor()
-        c.execute("INSERT INTO form_defs (name, schema_json, created_by) VALUES (%s,%s,%s)",
-                  (name, schema_json, session.get("user_id")))
+        c.execute("INSERT INTO form_defs (name, schema_json, created_by, db_url) VALUES (%s,%s,%s,%s)",
+                  (name, schema_json, session.get("user_id"), db_url))
         conn.commit(); conn.close()
         return f"<h2>✅ 表单 <b>{name}</b> 创建成功！</h2><p><a href='/admin'>返回后台</a></p>"
     return render_template("create_form.html")
 
+# ========== ✅ 动态表单：填写 ==========
+def get_dynamic_conn(form_id):
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT db_url FROM form_defs WHERE id=%s", (form_id,))
+    row = c.fetchone(); conn.close()
+    if not row: raise Exception("表单不存在")
+    db_url = row[0]
+    return psycopg2.connect(db_url, connect_timeout=10)
 
-# ========== 动态表单填写页面 ==========
 @app.route("/form_dynamic/<int:form_id>", methods=["GET", "POST"])
 @login_required
 def form_dynamic(form_id):
     conn = get_conn(); c = conn.cursor()
     c.execute("SELECT name, schema_json FROM form_defs WHERE id=%s", (form_id,))
-    row = c.fetchone()
-    conn.close()
+    row = c.fetchone(); conn.close()
     if not row:
         return "❌ 表单不存在", 404
 
@@ -358,89 +311,41 @@ def form_dynamic(form_id):
     schema = json.loads(schema_json)
 
     if request.method == "POST":
-        # 提交的数据保存成 JSON
         data = request.form.to_dict(flat=True)
-        conn = get_conn(); c = conn.cursor()
-        c.execute("INSERT INTO submissions (form_id, user_id, data) VALUES (%s,%s,%s)",
-                  (form_id, session.get("user_id"), json.dumps(data)))
-        conn.commit(); conn.close()
+        dconn = get_dynamic_conn(form_id); dc = dconn.cursor()
+        dc.execute('''CREATE TABLE IF NOT EXISTS submissions (
+            id SERIAL PRIMARY KEY,
+            user_id INT,
+            data JSONB,
+            status TEXT DEFAULT '待审核',
+            review_comment TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )''')
+        dc.execute("INSERT INTO submissions (user_id, data) VALUES (%s,%s)",
+                   (session.get("user_id"), json.dumps(data)))
+        dconn.commit(); dconn.close()
         return f"<h2>✅ 已成功提交到表单 <b>{form_name}</b></h2><a href='/'>返回首页</a>"
 
     return render_template("dynamic_form.html", form_name=form_name, schema=schema, form_id=form_id)
 
-
-# ========== 动态表单后台 ==========
+# ========== ✅ 动态表单：后台 ==========
 @app.route("/form_dynamic/<int:form_id>/admin")
 @admin_required
 def form_dynamic_admin(form_id):
     conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT name, created_by FROM form_defs WHERE id=%s", (form_id,))
-    form_row = c.fetchone()
-    if not form_row:
-        return "❌ 表单不存在", 404
-    form_name, owner_id = form_row
+    c.execute("SELECT name, created_by, db_url FROM form_defs WHERE id=%s", (form_id,))
+    form_row = c.fetchone(); conn.close()
+    if not form_row: return "❌ 表单不存在", 404
+    form_name, owner_id, db_url = form_row
     if owner_id != session.get("user_id"):
         return "❌ 无权限", 403
 
-    c.execute("SELECT id, user_id, data, status, review_comment, created_at FROM submissions WHERE form_id=%s ORDER BY id DESC", (form_id,))
-    subs = c.fetchall()
-    conn.close()
-
+    dconn = psycopg2.connect(db_url, connect_timeout=10); dc = dconn.cursor()
+    dc.execute("SELECT id, user_id, data, status, review_comment, created_at FROM submissions ORDER BY id DESC")
+    subs = dc.fetchall(); dconn.close()
     return render_template("dynamic_admin.html", form_name=form_name, submissions=subs, form_id=form_id)
 
-# ========== 动态表单 - 更新状态 ==========
-@app.route("/form/<int:form_id>/update_status/<int:submission_id>", methods=["POST"])
-@admin_required
-def update_dynamic_status(form_id, submission_id):
-    data = request.get_json() or {}
-    status = data.get("status")
-    comment = data.get("comment", "")
-
-    # 验证权限：只能表单创建者管理
-    conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT created_by FROM form_defs WHERE id=%s", (form_id,))
-    form_row = c.fetchone()
-    if not form_row or form_row[0] != session.get("user_id"):
-        conn.close()
-        return jsonify({"success": False, "message": "无权限"}), 403
-
-    # 更新状态
-    c.execute("UPDATE submissions SET status=%s, review_comment=%s WHERE id=%s AND form_id=%s",
-              (status, comment, submission_id, form_id))
-    conn.commit(); conn.close()
-    return jsonify({"success": True, "status": status})
-
-
-# ========== 动态表单 - 删除提交 ==========
-@app.route("/form/<int:form_id>/delete/<int:submission_id>", methods=["POST"])
-@admin_required
-def delete_dynamic_submission(form_id, submission_id):
-    conn = get_conn(); c = conn.cursor()
-    # 验证权限
-    c.execute("SELECT created_by FROM form_defs WHERE id=%s", (form_id,))
-    form_row = c.fetchone()
-    if not form_row or form_row[0] != session.get("user_id"):
-        conn.close()
-        return jsonify({"success": False, "message": "无权限"}), 403
-
-    # 删除
-    c.execute("DELETE FROM submissions WHERE id=%s AND form_id=%s", (submission_id, form_id))
-    conn.commit(); conn.close()
-    return jsonify({"success": True})
-
-
-@app.route("/form_dynamic/<int:form_id>/review/<int:submission_id>", methods=["POST"])
-@login_required
-def review_dynamic_submission(form_id, submission_id):
-    action = request.form.get("action")
-    status = "通过" if action == "approve" else "不通过"
-    conn = get_conn(); c = conn.cursor()
-    c.execute("UPDATE submissions SET status=%s WHERE id=%s AND form_id=%s",
-              (status, submission_id, form_id))
-    conn.commit(); conn.close()
-    return redirect(url_for("form_admin", form_id=form_id))
-
-# ========== ✅ 新增：用户管理 ==========
+# ========== ✅ 用户管理 ==========
 @app.route("/users")
 @admin_required
 def users():
@@ -449,6 +354,32 @@ def users():
     users = c.fetchall()
     conn.close()
     return render_template("users.html", users=users)
+
+# ========== 邮件发送 ==========
+def send_email(subject, content, to_email):
+    msg = MIMEMultipart()
+    msg['From'] = formataddr(("通用申请审核系统", SENDER_EMAIL))
+    msg['To'] = to_email
+    msg['Subject'] = Header(subject, "utf-8")
+    msg.attach(MIMEText(content, "plain", "utf-8"))
+    try:
+        server = smtplib.SMTP_SSL(SMTP_SERVER, 465, timeout=20)
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.sendmail(SENDER_EMAIL, [to_email], msg.as_string())
+        server.quit()
+        return True, None
+    except Exception as e_ssl:
+        print("SSL失败:", e_ssl)
+    try:
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=20)
+        server.starttls()
+        server.login(SENDER_EMAIL, SENDER_PASSWORD)
+        server.sendmail(SENDER_EMAIL, [to_email], msg.as_string())
+        server.quit()
+        return True, None
+    except Exception as e_tls:
+        print("TLS失败:", e_tls)
+        return False, str(e_tls)
 
 # ========== 健康检查 ==========
 @app.route("/_health")

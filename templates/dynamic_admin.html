@@ -2,75 +2,114 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>动态表单管理</title>
+  <title>{{ form_name }} - 动态表单管理</title>
   <style>
-    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; }
-    .card { max-width:95%; margin:0 auto; background:#fff; padding:20px; border-radius:10px;
-      box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; color:#111; }
     h1 { text-align:center; font-weight:900; margin-bottom:20px; }
-    table { width:100%; border-collapse:collapse; margin-top:20px; }
-    th, td { border:1px solid #ccc; padding:10px; text-align:center; }
-    th { background:#f1f5f9; font-weight:900; }
+    .topbar { display:flex; justify-content:center; gap:16px; margin-bottom:20px; }
+    .topbar a { text-decoration:none; padding:8px 14px; border-radius:8px; background:#2563eb; color:white; font-weight:600; }
+    .topbar a:hover { background:#1d4ed8; }
+
+    table { border-collapse: collapse; width:100%; background:white; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    th, td { padding:12px; border:1px solid #ddd; text-align:center; }
+    th { background:#f1f5f9; font-weight:700; }
     tr:nth-child(even){ background:#f9fafb; }
-    tr:hover { background:#f1f5f9; }
-    .status { font-weight:700; }
-    .btn { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
-    .btn-approve { background:#16a34a; color:#fff; }
-    .btn-reject { background:#dc2626; color:#fff; }
-    .btn-approve:hover { background:#22c55e; }
-    .btn-reject:hover { background:#ef4444; }
-    .topbar { text-align:center; margin-bottom:20px; }
-    .topbar a { margin:0 8px; color:#2563eb; text-decoration:none; font-weight:600; }
+
+    .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; border:none; }
+    .badge-pending { background:#facc15; color:#111; }
+    .badge-approved { background:#16a34a; color:#fff; }
+    .badge-rejected { background:#dc2626; color:#fff; }
+
+    input.comment { width:200px; padding:6px; border-radius:6px; border:1px solid #ccc; }
+
+    button { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+    .btn-approve { background:#22c55e; color:#fff; }
+    .btn-reject { background:#ef4444; color:#fff; }
+    .btn-delete { background:#f59e0b; color:#111; }
+    button:hover { opacity:0.9; }
   </style>
 </head>
 <body>
+  <h1>📊 {{ form_name }} - 提交管理</h1>
+
   <div class="topbar">
-    <a href="/">首页</a> |
-    <a href="/create_form">创建新表单</a> |
+    <a href="/">返回首页</a>
+    <a href="/admin">全局后台</a>
     <a href="/logout">退出登录</a>
   </div>
 
-  <div class="card">
-    <h1>📊 动态表单管理 (表单ID: {{ form_id }})</h1>
-    {% if submissions %}
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>提交数据</th>
-          <th>状态</th>
-          <th>审核说明</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for s in submissions %}
-        <tr>
-          <td>{{ s[0] }}</td>
-          <td>
-            {% for k,v in s[3].items() %}
-              <b>{{ k }}</b>: {{ v }}<br>
-            {% endfor %}
-          </td>
-          <td class="status">{{ s[4] }}</td>
-          <td>{{ s[5] or "-" }}</td>
-          <td>
-            <form method="post" action="/form_dynamic/{{ form_id }}/review/{{ s[0] }}" style="display:inline;">
-              <input type="hidden" name="action" value="approve">
-              <button type="submit" class="btn btn-approve">通过</button>
-            </form>
-            <form method="post" action="/form_dynamic/{{ form_id }}/review/{{ s[0] }}" style="display:inline;">
-              <input type="hidden" name="action" value="reject">
-              <button type="submit" class="btn btn-reject">不通过</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-      <p style="text-align:center; color:#666;">暂无提交记录</p>
-    {% endif %}
-  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>提交用户</th>
+        <th>提交时间</th>
+        <th>数据内容</th>
+        <th>状态</th>
+        <th>审核说明</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in submissions %}
+      <tr id="row-{{ s[0] }}">
+        <td>{{ s[0] }}</td>
+        <td>{{ s[1] }}</td>
+        <td>{{ s[5] }}</td>
+        <td>
+          <pre style="text-align:left; white-space:pre-wrap; font-size:13px;">{{ s[2] }}</pre>
+        </td>
+        <td>
+          {% if s[3] == "待审核" %}
+            <span class="badge badge-pending">{{ s[3] }}</span>
+          {% elif s[3] == "通过" %}
+            <span class="badge badge-approved">{{ s[3] }}</span>
+          {% elif s[3] == "不通过" %}
+            <span class="badge badge-rejected">{{ s[3] }}</span>
+          {% else %}
+            {{ s[3] }}
+          {% endif %}
+        </td>
+        <td>{{ s[4] or "" }}</td>
+        <td>
+          <input type="text" id="comment-{{ s[0] }}" class="comment" placeholder="审核说明">
+          <button class="btn-approve" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '通过')">通过</button>
+          <button class="btn-reject" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '不通过')">不通过</button>
+          <button class="btn-delete" onclick="deleteSubmission({{ form_id }}, {{ s[0] }})">删除</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+<script>
+async function updateStatus(form_id, sub_id, status){
+  const comment = document.getElementById(`comment-${sub_id}`).value;
+  const res = await fetch(`/form/${form_id}/update_status/${sub_id}`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({status:status, comment:comment})
+  });
+  const data = await res.json();
+  if(data.success){
+    alert("✅ 状态已更新为 " + status);
+    location.reload();
+  } else {
+    alert("❌ " + (data.message || "更新失败"));
+  }
+}
+
+async function deleteSubmission(form_id, sub_id){
+  if(!confirm("确定删除该提交？")) return;
+  const res = await fetch(`/form/${form_id}/delete/${sub_id}`, {method:"POST"});
+  const data = await res.json();
+  if(data.success){
+    document.getElementById("row-"+sub_id).remove();
+    alert("✅ 已删除");
+  } else {
+    alert("❌ " + (data.message || "删除失败"));
+  }
+}
+</script>
 </body>
 </html>
