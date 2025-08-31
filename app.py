@@ -234,6 +234,16 @@ def admin():
 def stats():
     return render_template("stats.html")
 
+# ========== ✅ 新增：用户管理 ==========
+@app.route("/users")
+@admin_required
+def users():
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT id, username, role FROM users ORDER BY id ASC")
+    users = c.fetchall()
+    conn.close()
+    return render_template("users.html", users=users)
+
 # ========== 健康检查 ==========
 @app.route("/_health")
 def _health():
