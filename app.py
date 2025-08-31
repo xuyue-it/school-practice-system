@@ -13,6 +13,7 @@ import os
 from functools import wraps
 import psycopg2
 import json
+import traceback
 
 # ========== Flask 应用 ==========
 app = Flask(__name__)
@@ -288,39 +289,44 @@ def check_status_api():
 @admin_required
 def create_form():
     if request.method == "POST":
-        name = request.form.get("name")
-        site_name = request.form.get("site_name")
-        schema_json = request.form.get("schema_json")
+        try:
+            name = request.form.get("name")
+            site_name = request.form.get("site_name")
+            schema_json = request.form.get("schema_json")
 
-        # ✅ 每个表单一个 schema（而不是新数据库）
-        schema_name = f"form_{site_name}"
+            # 强制小写 + 安全过滤
+            import re
+            site_name = re.sub(r'[^a-z0-9_]', '_', site_name.lower())
+            schema_name = f"form_{site_name}"
 
-        conn = get_conn(); c = conn.cursor()
-        # 创建 schema
-        c.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
-        # 创建 submissions 表
-        c.execute(f"""
-            CREATE TABLE IF NOT EXISTS {schema_name}.submissions (
-                id SERIAL PRIMARY KEY,
-                user_id INT,
-                data JSONB,
-                status TEXT DEFAULT '待审核',
-                review_comment TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            conn = get_conn(); c = conn.cursor()
+            c.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
+            c.execute(f"""
+                CREATE TABLE IF NOT EXISTS {schema_name}.submissions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INT,
+                    data JSONB,
+                    status TEXT DEFAULT '待审核',
+                    review_comment TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            c.execute(
+                "INSERT INTO form_defs (name, site_name, schema_json, created_by, db_url) VALUES (%s,%s,%s,%s,%s)",
+                (name, site_name, schema_json, session.get("user_id"), schema_name)
             )
-        """)
-        # 在 form_defs 表里保存 schema 名
-        c.execute(
-            "INSERT INTO form_defs (name, site_name, schema_json, created_by, db_url) VALUES (%s,%s,%s,%s,%s)",
-            (name, site_name, schema_json, session.get("user_id"), schema_name)
-        )
-        conn.commit(); conn.close()
+            conn.commit(); conn.close()
 
-        return f"""
-        <h2>✅ 表单 <b>{name}</b> 已创建！</h2>
-        <p>访问地址：<b>/site/{site_name}/form</b></p>
-        <p>管理后台：<b>/site/{site_name}/admin</b></p>
-        """
+            return f"""
+            <h2>✅ 表单 <b>{name}</b> 已创建！</h2>
+            <p>访问地址：<b>/site/{site_name}/form</b></p>
+            <p>管理后台：<b>/site/{site_name}/admin</b></p>
+            """
+        except Exception as e:
+            print("❌ 创建表单失败:", e)
+            traceback.print_exc()
+            return f"<h2>❌ 出错了: {e}</h2>", 500
+
     return render_template("create_form.html")
 
 
