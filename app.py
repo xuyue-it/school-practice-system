@@ -317,11 +317,21 @@ def create_form():
             )
             conn.commit(); conn.close()
 
+            base_url = "https://school-practice-system.onrender.com"
+
             return f"""
-            <h2>✅ 表单 <b>{name}</b> 已创建！</h2>
-            <p>访问地址：<b>/site/{site_name}/form</b></p>
-            <p>管理后台：<b>/site/{site_name}/admin</b></p>
+            <h2>✅ 表单 <b>{name}</b> 已创建！ 请保存</h2>
+            <p>👉 普通用户填写表单地址：<br>
+               <a href="{base_url}/site/{site_name}/form" target="_blank">
+               {base_url}/site/{site_name}/form</a><br>
+               （这是给普通用户使用的页面，用来填写并提交该表单）</p>
+
+            <p>👉 管理员后台地址：<br>
+               <a href="{base_url}/site/{site_name}/admin" target="_blank">
+               {base_url}/site/{site_name}/admin</a><br>
+               （这是表单创建者使用的后台，用来查看和审核用户提交的数据）</p>
             """
+
         except Exception as e:
             print("❌ 创建表单失败:", e)
             traceback.print_exc()
