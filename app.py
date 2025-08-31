@@ -103,9 +103,10 @@ def init_form_defs():
     c.execute('''CREATE TABLE IF NOT EXISTS form_defs (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
+        site_name TEXT UNIQUE,         -- ✅ 新增：网站名，唯一
         schema_json TEXT NOT NULL,
         created_by INT REFERENCES users(id),
-        db_url TEXT NOT NULL,  -- 独立数据库地址
+        db_url TEXT NOT NULL,          -- ✅ 每个表单独立数据库
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     conn.commit(); conn.close()
@@ -129,6 +130,15 @@ def admin_required(view_func):
             return "无权限访问", 403
         return view_func(*args, **kwargs)
     return wrapper
+
+@app.route("/super_admin")
+@admin_required
+def super_admin():
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT id, name, site_name, db_url FROM form_defs ORDER BY id ASC")
+    forms = c.fetchall()
+    conn.close()
+    return render_template("super_admin.html", forms=forms)
 
 # ========== 登录/注册 ==========
 @app.route("/login", methods=["GET", "POST"])
@@ -243,11 +253,27 @@ def check_status_api():
 @app.route("/admin")
 @admin_required
 def admin():
+    user_id = session.get("user_id")
+    role = session.get("role")
+
     conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT * FROM submissions ORDER BY id DESC")
-    submissions = c.fetchall()
-    conn.close()
-    return render_template("admin.html", submissions=submissions)
+
+    if role == "admin":
+        # 超级管理员：查看所有表单
+        c.execute("SELECT id, name, site_name, db_url FROM form_defs ORDER BY id ASC")
+        forms = c.fetchall()
+        conn.close()
+        return render_template("super_admin.html", forms=forms)
+    else:
+        # 普通管理员：跳转到自己表单的后台
+        c.execute("SELECT id FROM form_defs WHERE created_by=%s", (user_id,))
+        form_row = c.fetchone()
+        conn.close()
+        if form_row:
+            return redirect(url_for("form_dynamic_admin", form_id=form_row[0]))
+        else:
+            return "❌ 你还没有创建任何表单，请联系超级管理员开通。", 403
+
 
 @app.route("/stats")
 @admin_required
@@ -279,14 +305,15 @@ def stats_data():
 def create_form():
     if request.method == "POST":
         name = request.form.get("name")
+        site_name = request.form.get("site_name")   # ✅ 新增
         schema_json = request.form.get("schema_json")
-        db_url = request.form.get("db_url")  # 每个表单独立数据库
+        db_url = request.form.get("db_url")         # 每个表单独立数据库
 
         conn = get_conn(); c = conn.cursor()
-        c.execute("INSERT INTO form_defs (name, schema_json, created_by, db_url) VALUES (%s,%s,%s,%s)",
-                  (name, schema_json, session.get("user_id"), db_url))
+        c.execute("INSERT INTO form_defs (name, site_name, schema_json, created_by, db_url) VALUES (%s,%s,%s,%s,%s)",
+                  (name, site_name, schema_json, session.get("user_id"), db_url))
         conn.commit(); conn.close()
-        return f"<h2>✅ 表单 <b>{name}</b> 创建成功！</h2><p><a href='/admin'>返回后台</a></p>"
+        return f"<h2>✅ 表单 <b>{name}</b> 创建成功！</h2><p>访问地址：<b>/site/{site_name}/form</b></p>"
     return render_template("create_form.html")
 
 # ========== ✅ 动态表单：填写 ==========
@@ -298,21 +325,19 @@ def get_dynamic_conn(form_id):
     db_url = row[0]
     return psycopg2.connect(db_url, connect_timeout=10)
 
-@app.route("/form_dynamic/<int:form_id>", methods=["GET", "POST"])
+@app.route("/site/<site_name>/form", methods=["GET", "POST"])
 @login_required
-def form_dynamic(form_id):
+def site_form(site_name):
     conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT name, schema_json FROM form_defs WHERE id=%s", (form_id,))
+    c.execute("SELECT id, name, schema_json, db_url FROM form_defs WHERE site_name=%s", (site_name,))
     row = c.fetchone(); conn.close()
-    if not row:
-        return "❌ 表单不存在", 404
-
-    form_name, schema_json = row
+    if not row: return "❌ 表单不存在", 404
+    form_id, form_name, schema_json, db_url = row
     schema = json.loads(schema_json)
 
     if request.method == "POST":
         data = request.form.to_dict(flat=True)
-        dconn = get_dynamic_conn(form_id); dc = dconn.cursor()
+        dconn = psycopg2.connect(db_url, connect_timeout=10); dc = dconn.cursor()
         dc.execute('''CREATE TABLE IF NOT EXISTS submissions (
             id SERIAL PRIMARY KEY,
             user_id INT,
@@ -324,19 +349,19 @@ def form_dynamic(form_id):
         dc.execute("INSERT INTO submissions (user_id, data) VALUES (%s,%s)",
                    (session.get("user_id"), json.dumps(data)))
         dconn.commit(); dconn.close()
-        return f"<h2>✅ 已成功提交到表单 <b>{form_name}</b></h2><a href='/'>返回首页</a>"
+        return f"<h2>✅ 已提交到表单 {form_name}</h2><a href='/'>返回首页</a>"
 
     return render_template("dynamic_form.html", form_name=form_name, schema=schema, form_id=form_id)
 
 # ========== ✅ 动态表单：后台 ==========
-@app.route("/form_dynamic/<int:form_id>/admin")
+@app.route("/site/<site_name>/admin")
 @admin_required
-def form_dynamic_admin(form_id):
+def site_admin(site_name):
     conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT name, created_by, db_url FROM form_defs WHERE id=%s", (form_id,))
-    form_row = c.fetchone(); conn.close()
-    if not form_row: return "❌ 表单不存在", 404
-    form_name, owner_id, db_url = form_row
+    c.execute("SELECT id, name, created_by, db_url FROM form_defs WHERE site_name=%s", (site_name,))
+    row = c.fetchone(); conn.close()
+    if not row: return "❌ 表单不存在", 404
+    form_id, form_name, owner_id, db_url = row
     if owner_id != session.get("user_id"):
         return "❌ 无权限", 403
 
