@@ -128,7 +128,7 @@ def logout():
 # ========== 首页/表单/状态 ==========
 @app.route("/")
 def index():
-    return render_template("form.html")
+    return render_template("index.html")
 
 @app.route("/form")
 @login_required
