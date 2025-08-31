@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>用户登录 - {{ site_name }}</title>
+  <style>
+    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; }
+    .card { max-width:400px; margin:0 auto; background:#fff; padding:20px; border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08); }
+    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
+    label { font-weight:700; display:block; margin-top:12px; }
+    input { width:100%; padding:10px; border:1px solid #ccc; border-radius:6px; font-family:inherit; }
+    button { margin-top:20px; width:100%; padding:12px; background:#22c55e; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:700; }
+    button:hover { background:#16a34a; }
+    .topbar { text-align:center; margin-bottom:20px; }
+    .topbar a { margin:0 8px; color:#2563eb; text-decoration:none; font-weight:600; }
+    .error { color:red; text-align:center; margin-top:10px; }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <a href="/">首页</a> | <a href="{{ url_for('site_register', site_name=site_name) }}">还没有账号？去注册</a>
+  </div>
+  <div class="card">
+    <h1>👤 用户登录 - {{ site_name }}</h1>
+    <form method="post">
+      <label>用户名 *</label>
+      <input type="text" name="username" required placeholder="请输入用户名">
+
+      <label>密码 *</label>
+      <input type="password" name="password" required placeholder="请输入密码">
+
+      <button type="submit">登录</button>
+    </form>
+
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+  </div>
+</body>
+</html>

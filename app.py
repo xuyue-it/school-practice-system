@@ -7,6 +7,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
 from email.utils import formataddr
+from werkzeug.security import generate_password_hash, check_password_hash
 import traceback
 from dotenv import load_dotenv
 import os
@@ -294,13 +295,16 @@ def create_form():
             site_name = request.form.get("site_name")
             schema_json = request.form.get("schema_json")
 
-            # 强制小写 + 安全过滤
+            # 统一 schema 名
             import re
             site_name = re.sub(r'[^a-z0-9_]', '_', site_name.lower())
             schema_name = f"form_{site_name}"
 
             conn = get_conn(); c = conn.cursor()
+            # 创建 schema
             c.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
+
+            # 创建 submissions 表
             c.execute(f"""
                 CREATE TABLE IF NOT EXISTS {schema_name}.submissions (
                     id SERIAL PRIMARY KEY,
@@ -311,6 +315,34 @@ def create_form():
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """)
+
+            # 创建 users 表
+            c.execute(f"""
+                CREATE TABLE IF NOT EXISTS {schema_name}.users (
+                    id SERIAL PRIMARY KEY,
+                    username TEXT UNIQUE,
+                    password_hash TEXT NOT NULL,
+                    role TEXT DEFAULT 'user'
+                )
+            """)
+
+            # ====== 自动插入管理员账号 ======
+            # 找到当前登录管理员的信息（平台 users 表里）
+            c.execute("SELECT username, password_hash FROM users WHERE id=%s", (session.get("user_id"),))
+            row = c.fetchone()
+            if row:
+                admin_username, admin_pw_hash = row
+                # 插入到这个 schema 的 users 表
+                try:
+                    c.execute(f"""
+                        INSERT INTO {schema_name}.users (id, username, password_hash, role)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (id) DO NOTHING
+                    """, (session.get("user_id"), admin_username, admin_pw_hash, "admin"))
+                except Exception as e:
+                    print("⚠️ 管理员账号已存在或插入失败:", e)
+
+            # 在 form_defs 表里保存 schema 名
             c.execute(
                 "INSERT INTO form_defs (name, site_name, schema_json, created_by, db_url) VALUES (%s,%s,%s,%s,%s)",
                 (name, site_name, schema_json, session.get("user_id"), schema_name)
@@ -318,21 +350,28 @@ def create_form():
             conn.commit(); conn.close()
 
             base_url = "https://school-practice-system.onrender.com"
-
             return f"""
-            <h2>✅ 表单 <b>{name}</b> 已创建！ 请保存</h2>
+            <h2>✅ 表单 <b>{name}</b> 已创建！</h2>
+
             <p>👉 普通用户填写表单地址：<br>
                <a href="{base_url}/site/{site_name}/form" target="_blank">
                {base_url}/site/{site_name}/form</a><br>
                （这是给普通用户使用的页面，用来填写并提交该表单）</p>
 
+            <p>👉 普通用户注册/登录：<br>
+               <a href="{base_url}/site/{site_name}/register">{base_url}/site/{site_name}/register</a> / 
+               <a href="{base_url}/site/{site_name}/login">{base_url}/site/{site_name}/login</a></p>
+
             <p>👉 管理员后台地址：<br>
                <a href="{base_url}/site/{site_name}/admin" target="_blank">
                {base_url}/site/{site_name}/admin</a><br>
                （这是表单创建者使用的后台，用来查看和审核用户提交的数据）</p>
-            """
 
+            <p>👉 管理员登录入口：<br>
+               <a href="{base_url}/site/{site_name}/admin_login">{base_url}/site/{site_name}/admin_login</a></p>
+            """
         except Exception as e:
+            import traceback
             print("❌ 创建表单失败:", e)
             traceback.print_exc()
             return f"<h2>❌ 出错了: {e}</h2>", 500
@@ -340,10 +379,15 @@ def create_form():
     return render_template("create_form.html")
 
 
+
+# ========== 动态表单 - 填写 ==========
 # ========== 动态表单 - 填写 ==========
 @app.route("/site/<site_name>/form", methods=["GET", "POST"])
-@login_required
 def site_form(site_name):
+    # ✅ 检查是否已登录（必须是这个 site 的用户）
+    if not session.get(f"user_{site_name}"):
+        return redirect(url_for("site_login", site_name=site_name))
+
     conn = get_conn(); c = conn.cursor()
     c.execute("SELECT id, name, schema_json, db_url FROM form_defs WHERE site_name=%s", (site_name,))
     row = c.fetchone(); conn.close()
@@ -359,7 +403,7 @@ def site_form(site_name):
         # 切换到对应 schema
         c.execute(f"SET search_path TO {schema_name}")
         c.execute("INSERT INTO submissions (user_id, data) VALUES (%s,%s)",
-                  (session.get("user_id"), json.dumps(data)))
+                  (session.get(f"user_{site_name}"), json.dumps(data)))
         conn.commit(); conn.close()
         return f"<h2>✅ 已提交到表单 {form_name}</h2><a href='/'>返回首页</a>"
 
@@ -371,11 +415,13 @@ def site_form(site_name):
         schema=schema
     )
 
-
 # ========== 动态表单 - 管理后台 ==========
 @app.route("/site/<site_name>/admin")
-@admin_required
 def site_admin(site_name):
+    # 检查是否已通过 admin_login 登录
+    if not session.get(f"admin_{site_name}"):
+        return redirect(url_for("site_admin_login", site_name=site_name))
+
     conn = get_conn(); c = conn.cursor()
     c.execute("SELECT id, name, created_by, db_url FROM form_defs WHERE site_name=%s", (site_name,))
     row = c.fetchone(); conn.close()
@@ -383,17 +429,53 @@ def site_admin(site_name):
         return "❌ 表单不存在", 404
 
     form_id, form_name, owner_id, schema_name = row
-    if owner_id != session.get("user_id"):
-        return "❌ 无权限", 403
 
     conn = get_conn(); c = conn.cursor()
     c.execute(f"SET search_path TO {schema_name}")
     c.execute("SELECT id, user_id, data, status, review_comment, created_at FROM submissions ORDER BY id DESC")
-    subs = c.fetchall()
-    conn.close()
+    subs = c.fetchall(); conn.close()
     return render_template("dynamic_admin.html", form_name=form_name, submissions=subs, form_id=form_id)
 
+# 用户注册
+@app.route("/site/<site_name>/register", methods=["GET", "POST"])
+def site_register(site_name):
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
 
+        conn = get_conn(); c = conn.cursor()
+        c.execute(f"SET search_path TO form_{site_name}")
+        try:
+            c.execute("INSERT INTO users (username, password_hash, role) VALUES (%s,%s,%s)",
+                      (username, generate_password_hash(password), "user"))
+            conn.commit()
+            msg = "✅ 注册成功，请去登录"
+        except Exception:
+            msg = "❌ 注册失败，用户名可能已存在"
+        conn.close()
+        return msg
+    return render_template("site_register.html", site_name=site_name)
+
+# 用户登录
+@app.route("/site/<site_name>/login", methods=["GET", "POST"])
+def site_login(site_name):
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        conn = get_conn(); c = conn.cursor()
+        c.execute(f"SET search_path TO form_{site_name}")
+        c.execute("SELECT id, password_hash, role FROM users WHERE username=%s", (username,))
+        row = c.fetchone(); conn.close()
+
+        if row and check_password_hash(row[1], password):
+            session[f"user_{site_name}"] = row[0]
+            session[f"role_{site_name}"] = row[2]
+            return redirect(url_for("site_form", site_name=site_name))
+        else:
+            error = "用户名或密码错误"
+    return render_template("site_login.html", site_name=site_name, error=error)
 # ========== 用户管理 ==========
 @app.route("/users")
 @admin_required
@@ -403,6 +485,36 @@ def users():
     users = c.fetchall()
     conn.close()
     return render_template("users.html", users=users)
+
+@app.route("/site/<site_name>/admin_login", methods=["GET", "POST"])
+def site_admin_login(site_name):
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        conn = get_conn(); c = conn.cursor()
+        # 取出表单定义，找到创建者的用户ID
+        c.execute("SELECT created_by FROM form_defs WHERE site_name=%s", (site_name,))
+        row = c.fetchone(); conn.close()
+        if not row:
+            return "❌ 表单不存在", 404
+        owner_id = row[0]
+
+        # 到 schema 里查找该管理员
+        conn = get_conn(); c = conn.cursor()
+        c.execute(f"SET search_path TO form_{site_name}")
+        c.execute("SELECT id, username, password_hash FROM users WHERE id=%s", (owner_id,))
+        admin_row = c.fetchone(); conn.close()
+
+        if admin_row and admin_row[1] == username and check_password_hash(admin_row[2], password):
+            session[f"admin_{site_name}"] = admin_row[0]
+            return redirect(url_for("site_admin", site_name=site_name))
+        else:
+            error = "用户名或密码错误"
+
+    return render_template("site_admin_login.html", site_name=site_name, error=error)
+
 
 # ========== 邮件发送 ==========
 def send_email(subject, content, to_email):
