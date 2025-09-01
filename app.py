@@ -449,12 +449,12 @@ def create_form():
 
             return f"""
             <h2>✅ 表单 <b>{name}</b> 已创建！</h2>
-            <p>👉 普通用户入口：<br>
-               <a href="{base_url}/site/{site_name}/form" target="_blank">
-               {base_url}/site/{site_name}/form</a></p>
-            <p>👉 管理员入口：<br>
-               <a href="{base_url}/site/{site_name}/admin" target="_blank">
-               {base_url}/site/{site_name}/admin</a></p>
+            <p>👉 普通用户入口（需先登录）：<br>
+               <a href="{base_url}/site/{site_name}/login" target="_blank">
+               {base_url}/site/{site_name}/login</a></p>
+            <p>👉 管理员入口（需先登录）：<br>
+               <a href="{base_url}/site/{site_name}/admin_login" target="_blank">
+               {base_url}/site/{site_name}/admin_login</a></p>
             """
         except Exception as e:
             traceback.print_exc()
