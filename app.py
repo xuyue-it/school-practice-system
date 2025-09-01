@@ -639,6 +639,63 @@ def send_email(subject, content, to_email):
         print("TLS失败:", e_tls)
         return False, str(e_tls)
 
+# 审核提交
+@app.route("/site/<site_name>/admin/review/<int:sub_id>", methods=["POST"])
+def site_admin_review(site_name, sub_id):
+    if not session.get(f"admin_{site_name}"):
+        return redirect(url_for("site_admin_login", site_name=site_name))
+
+    status = request.form.get("status")  # "通过" or "拒绝"
+    comment = request.form.get("comment")
+
+    conn = get_conn(); c = conn.cursor()
+    schema_name = f"form_{site_name}"
+    c.execute(f"SET search_path TO {schema_name}")
+    c.execute("UPDATE submissions SET status=%s, review_comment=%s WHERE id=%s",
+              (status, comment, sub_id))
+    conn.commit(); conn.close()
+    return redirect(url_for("site_admin", site_name=site_name))
+
+
+# 更新提交状态
+@app.route("/form/<int:form_id>/update_status/<int:sub_id>", methods=["POST"])
+def update_status(form_id, sub_id):
+    data = request.get_json()
+    status = data.get("status")
+    comment = data.get("comment")
+
+    conn = get_conn(); c = conn.cursor()
+    # 注意：这里需要切换 schema，根据 form_id 找到对应的 site_name
+    c.execute("SELECT db_url FROM form_defs WHERE id=%s", (form_id,))
+    row = c.fetchone()
+    if not row:
+        return jsonify({"success": False, "message": "表单不存在"})
+    schema_name = row[0]
+
+    c.execute(f"SET search_path TO {schema_name}")
+    c.execute("UPDATE submissions SET status=%s, review_comment=%s WHERE id=%s",
+              (status, comment, sub_id))
+    conn.commit(); conn.close()
+
+    return jsonify({"success": True})
+
+# 删除提交
+@app.route("/form/<int:form_id>/delete/<int:sub_id>", methods=["POST"])
+def delete_submission(form_id, sub_id):
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT db_url FROM form_defs WHERE id=%s", (form_id,))
+    row = c.fetchone()
+    if not row:
+        return jsonify({"success": False, "message": "表单不存在"})
+    schema_name = row[0]
+
+    c.execute(f"SET search_path TO {schema_name}")
+    c.execute("DELETE FROM submissions WHERE id=%s", (sub_id,))
+    conn.commit(); conn.close()
+
+    return jsonify({"success": True})
+
+
 # ========== 健康检查 ==========
 @app.route("/_health")
 def _health():

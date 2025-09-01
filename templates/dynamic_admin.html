@@ -49,13 +49,16 @@
       color:#555;
       margin-bottom:10px;
     }
-    .data {
-      background:#f9fafb;
-      padding:12px;
-      border-radius:8px;
+    .detail {
+      border-collapse: collapse;
+      width:100%;
       font-size:13px;
-      white-space:pre-wrap;
       margin-bottom:12px;
+    }
+    .detail td {
+      border:1px solid #ddd;
+      padding:6px 8px;
+      text-align:left;
     }
     .badge {
       display:inline-block;
@@ -99,7 +102,7 @@
   <div class="topbar">
     <a href="/">🏠 返回首页</a>
     <a href="/site/{{ site_name }}/admin/users">👥 用户管理</a>
-    <a href="/logout">🚪 退出登录</a>
+    <a href="/logout/{{ site_name }}">🚪 退出登录</a>
   </div>
 
   {% for s in submissions %}
@@ -117,7 +120,13 @@
         {{ s[3] }}
       {% endif %}
     </div>
-    <div class="data">{{ s[2] }}</div>
+    <div class="data">
+      <table class="detail">
+        {% for k, v in s[2].items() %}
+          <tr><td>{{ k }}</td><td>{{ v }}</td></tr>
+        {% endfor %}
+      </table>
+    </div>
     <div>审核说明: {{ s[4] or "（无）" }}</div>
     <input type="text" id="comment-{{ s[0] }}" class="comment" placeholder="输入审核说明">
     <div class="actions">
