@@ -171,11 +171,50 @@ def dashboard():
 def super_admin():
     if session.get("role") != "super_admin":
         return "❌ 只有超级管理员能访问", 403
+
     conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT id, name, site_name, db_url FROM form_defs ORDER BY id ASC")
+    c.execute("SELECT id, name, site_name, db_url, created_by, created_at FROM form_defs ORDER BY id ASC")
     forms = c.fetchall()
     conn.close()
-    return render_template("super_admin.html", forms=forms)
+
+    base_url = "https://school-practice-system.onrender.com"
+    forms_data = []
+    for fid, name, site_name, db_url, created_by, created_at in forms:
+        forms_data.append({
+            "id": fid,
+            "name": name,
+            "site_name": site_name,
+            "db_url": db_url,
+            "created_by": created_by,
+            "created_at": created_at,
+            "user_url": f"{base_url}/site/{site_name}/form",
+            "admin_url": f"{base_url}/site/{site_name}/admin"
+        })
+
+    return render_template("super_admin.html", forms=forms_data)
+
+@app.route("/super_admin/delete/<site_name>", methods=["POST"])
+@admin_required
+def super_admin_delete(site_name):
+    if session.get("role") != "super_admin":
+        return "❌ 无权限", 403
+
+    try:
+        conn = get_conn(); c = conn.cursor()
+
+        # 1. 删除数据库里的 schema
+        schema_name = f"form_{site_name}"
+        c.execute(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE")
+
+        # 2. 删除 form_defs 表里的记录
+        c.execute("DELETE FROM form_defs WHERE site_name=%s", (site_name,))
+
+        conn.commit(); conn.close()
+        return redirect(url_for("super_admin"))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"<h2>❌ 删除失败: {e}</h2>", 500
 
 # ========== 普通用户注册/登录 ==========
 @app.route("/register_user", methods=["GET", "POST"])
@@ -350,26 +389,21 @@ def create_form():
             conn.commit(); conn.close()
 
             base_url = "https://school-practice-system.onrender.com"
+
             return f"""
             <h2>✅ 表单 <b>{name}</b> 已创建！</h2>
-
-            <p>👉 普通用户填写表单地址：<br>
+            
+            <p>👉 普通用户入口：<br>
                <a href="{base_url}/site/{site_name}/form" target="_blank">
                {base_url}/site/{site_name}/form</a><br>
-               （这是给普通用户使用的页面，用来填写并提交该表单）</p>
-
-            <p>👉 普通用户注册/登录：<br>
-               <a href="{base_url}/site/{site_name}/register">{base_url}/site/{site_name}/register</a> / 
-               <a href="{base_url}/site/{site_name}/login">{base_url}/site/{site_name}/login</a></p>
-
-            <p>👉 管理员后台地址：<br>
+               （这是普通用户填写和提交表单的页面）</p>
+            
+            <p>👉 管理员入口：<br>
                <a href="{base_url}/site/{site_name}/admin" target="_blank">
                {base_url}/site/{site_name}/admin</a><br>
                （这是表单创建者使用的后台，用来查看和审核用户提交的数据）</p>
-
-            <p>👉 管理员登录入口：<br>
-               <a href="{base_url}/site/{site_name}/admin_login">{base_url}/site/{site_name}/admin_login</a></p>
             """
+
         except Exception as e:
             import traceback
             print("❌ 创建表单失败:", e)
@@ -380,7 +414,7 @@ def create_form():
 
 
 
-# ========== 动态表单 - 填写 ==========
+
 # ========== 动态表单 - 填写 ==========
 @app.route("/site/<site_name>/form", methods=["GET", "POST"])
 def site_form(site_name):
