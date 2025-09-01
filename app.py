@@ -364,8 +364,7 @@ def create_form():
             return f"❌ 创建失败: {e}", 500
 
         conn.close()
-        return redirect(url_for("super_admin"))
-
+        return redirect(url_for("site_admin", site_name=site_name))
     # GET 请求 → 显示页面
     return render_template("create_form.html")
 
