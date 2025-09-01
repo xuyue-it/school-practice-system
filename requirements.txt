@@ -4,3 +4,4 @@ python-dotenv
 pandas
 python-docx
 gunicorn
+werkzeug
