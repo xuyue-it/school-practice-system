@@ -4,51 +4,57 @@
   <meta charset="UTF-8">
   <title>超级管理员总览</title>
   <style>
-    body { font-family:"Microsoft YaHei", sans-serif; margin:20px; background:#f5f7fb; }
-    table { border-collapse: collapse; width:100%; background:#fff; box-shadow:0 4px 10px rgba(0,0,0,.08); }
-    th, td { border:1px solid #ddd; padding:10px; text-align:center; }
-    th { background:#2563eb; color:#fff; }
-    tr:nth-child(even) { background:#f9f9f9; }
-    h1 { text-align:center; margin-bottom:20px; }
-    .btn-del {
-      background:#dc2626; color:white; padding:6px 12px;
-      border:none; border-radius:6px; cursor:pointer; font-weight:700;
+    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; color:#111; }
+    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
+
+    .card {
+      background:#fff;
+      border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08);
+      padding:20px;
+      margin-bottom:20px;
     }
-    .btn-del:hover { background:#b91c1c; }
+    .card h2 { font-size:20px; margin-bottom:10px; }
+    .field { margin-bottom:8px; }
+    .field strong { display:inline-block; width:120px; color:#333; }
+
+    .actions { margin-top:15px; display:flex; gap:10px; flex-wrap:wrap; }
+    a.btn, button.btn {
+      text-decoration:none;
+      padding:8px 14px;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .btn-user { background:#2563eb; color:#fff; }
+    .btn-admin { background:#16a34a; color:#fff; }
+    .btn-delete { background:#f59e0b; color:#111; }
+    a.btn:hover, button.btn:hover { opacity:0.9; }
   </style>
 </head>
 <body>
   <h1>📊 超级管理员总览</h1>
-  <table>
-    <tr>
-      <th>ID</th>
-      <th>表单名称</th>
-      <th>网站名</th>
-      <th>数据库 Schema</th>
-      <th>普通用户入口</th>
-      <th>管理员入口</th>
-      <th>创建者 ID</th>
-      <th>创建时间</th>
-      <th>操作</th>
-    </tr>
-    {% for form in forms %}
-    <tr>
-      <td>{{ form.id }}</td>
-      <td>{{ form.name }}</td>
-      <td>{{ form.site_name }}</td>
-      <td>{{ form.db_url }}</td>
-      <td><a href="{{ form.user_url }}" target="_blank">用户入口</a></td>
-      <td><a href="{{ form.admin_url }}" target="_blank">管理员入口</a></td>
-      <td>{{ form.created_by }}</td>
-      <td>{{ form.created_at }}</td>
-      <td>
-        <form method="post" action="{{ url_for('super_admin_delete', site_name=form.site_name) }}"
-              onsubmit="return confirm('⚠️ 确定要删除 {{ form.site_name }} 吗？这会同时删除数据库 schema 和网站入口！');">
-          <button type="submit" class="btn-del">删除</button>
-        </form>
-      </td>
-    </tr>
-    {% endfor %}
-  </table>
+
+  {% for form in forms %}
+  <div class="card">
+    <h2>📑 {{ form.name }}</h2>
+    <div class="field"><strong>ID:</strong> {{ form.id }}</div>
+    <div class="field"><strong>网站名:</strong> {{ form.site_name }}</div>
+    <div class="field"><strong>数据库 Schema:</strong> {{ form.db_url }}</div>
+    <div class="field"><strong>创建者 ID:</strong> {{ form.created_by }}</div>
+    <div class="field"><strong>创建时间:</strong> {{ form.created_at }}</div>
+
+    <div class="actions">
+      <a href="{{ form.user_url }}" target="_blank" class="btn btn-user">🌐 用户入口</a>
+      <a href="{{ form.admin_url }}" target="_blank" class="btn btn-admin">⚙️ 管理员入口</a>
+
+      <form method="post" action="{{ url_for('super_admin_delete', site_name=form.site_name) }}"
+            onsubmit="return confirm('⚠️ 确定要删除 {{ form.site_name }} 吗？这会同时删除数据库 schema 和网站入口！');">
+        <button type="submit" class="btn btn-delete">🗑 删除表单</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
 </body>
 </html>

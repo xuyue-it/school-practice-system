@@ -171,27 +171,26 @@ def dashboard():
 def super_admin():
     if session.get("role") != "super_admin":
         return "❌ 只有超级管理员能访问", 403
-
     conn = get_conn(); c = conn.cursor()
     c.execute("SELECT id, name, site_name, db_url, created_by, created_at FROM form_defs ORDER BY id ASC")
-    forms = c.fetchall()
+    rows = c.fetchall()
     conn.close()
 
-    base_url = "https://school-practice-system.onrender.com"
-    forms_data = []
-    for fid, name, site_name, db_url, created_by, created_at in forms:
-        forms_data.append({
-            "id": fid,
-            "name": name,
-            "site_name": site_name,
-            "db_url": db_url,
-            "created_by": created_by,
-            "created_at": created_at,
-            "user_url": f"{base_url}/site/{site_name}/form",
-            "admin_url": f"{base_url}/site/{site_name}/admin"
+    forms = []
+    for row in rows:
+        forms.append({
+            "id": row[0],
+            "name": row[1],
+            "site_name": row[2],
+            "db_url": row[3],
+            "created_by": row[4],
+            "created_at": row[5],
+            "user_url": f"/site/{row[2]}/form",
+            "admin_url": f"/site/{row[2]}/admin"
         })
 
-    return render_template("super_admin.html", forms=forms_data)
+    return render_template("super_admin.html", forms=forms)
+
 
 @app.route("/super_admin/delete/<site_name>", methods=["POST"])
 @admin_required
