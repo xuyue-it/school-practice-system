@@ -217,27 +217,31 @@ def super_admin():
 def super_admin_delete_user(user_id):
     if session.get("role") != "super_admin":
         return "❌ 无权限", 403
-
-    site_name = request.form.get("site_name", "平台")
-    conn = get_conn(); c = conn.cursor()
-
     try:
-        if site_name == "平台":
-            # 删除平台用户
-            c.execute("DELETE FROM users WHERE id=%s", (user_id,))
-        else:
-            # 删除子网站用户
-            schema_name = f"form_{site_name}"
-            c.execute(f"SET search_path TO {schema_name}")
-            c.execute("DELETE FROM users WHERE id=%s", (user_id,))
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        return f"❌ 删除失败: {e}", 500
-    finally:
-        conn.close()
+        conn = get_conn(); c = conn.cursor()
 
-    return redirect(url_for("super_admin"))
+        # 1. 查出该用户创建的所有网站
+        c.execute("SELECT site_name FROM form_defs WHERE created_by=%s", (user_id,))
+        sites = [row[0] for row in c.fetchall()]
+
+        # 2. 删除这些网站对应的 schema
+        for site in sites:
+            schema_name = f"form_{site}"
+            c.execute(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE")
+
+        # 3. 删除 form_defs 记录
+        c.execute("DELETE FROM form_defs WHERE created_by=%s", (user_id,))
+
+        # 4. 删除用户
+        c.execute("DELETE FROM users WHERE id=%s", (user_id,))
+
+        conn.commit(); conn.close()
+        return redirect(url_for("super_admin"))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return f"<h2>❌ 删除用户失败: {e}</h2>", 500
+
 
 
 @app.route("/super_admin/reset_password/<int:user_id>", methods=["POST"])
