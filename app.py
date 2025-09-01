@@ -228,6 +228,81 @@ def super_admin():
 
     return render_template("super_admin.html", forms=forms, users=users)
 
+# ✅ 删除子网站表单
+@app.route("/super_admin/delete/<site_name>", methods=["POST"])
+@admin_required
+def super_admin_delete(site_name):
+    if session.get("role") != "super_admin":
+        return "❌ 无权限", 403
+    try:
+        conn = get_conn(); c = conn.cursor()
+        schema_name = f"form_{site_name}"
+        c.execute(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE")
+        c.execute("DELETE FROM form_defs WHERE site_name=%s", (site_name,))
+        conn.commit(); conn.close()
+        return redirect(url_for("super_admin"))
+    except Exception as e:
+        traceback.print_exc()
+        return f"<h2>❌ 删除失败: {e}</h2>", 500
+
+
+# ✅ 删除平台用户
+@app.route("/super_admin/delete_user/<int:user_id>", methods=["POST"])
+@admin_required
+def super_admin_delete_user(user_id):
+    if session.get("role") != "super_admin":
+        return "❌ 无权限", 403
+    try:
+        conn = get_conn(); c = conn.cursor()
+        # 删除用户及其创建的网站
+        c.execute("SELECT site_name FROM form_defs WHERE created_by=%s", (user_id,))
+        sites = [r[0] for r in c.fetchall()]
+        for site in sites:
+            c.execute(f"DROP SCHEMA IF EXISTS form_{site} CASCADE")
+        c.execute("DELETE FROM form_defs WHERE created_by=%s", (user_id,))
+        c.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        conn.commit(); conn.close()
+        return redirect(url_for("super_admin"))
+    except Exception as e:
+        traceback.print_exc()
+        return f"<h2>❌ 删除平台用户失败: {e}</h2>", 500
+
+
+# ✅ 删除子网站用户
+@app.route("/super_admin/delete_subuser/<site_name>/<int:user_id>", methods=["POST"])
+@admin_required
+def super_admin_delete_subuser(site_name, user_id):
+    if session.get("role") != "super_admin":
+        return "❌ 无权限", 403
+    try:
+        conn = get_conn(); c = conn.cursor()
+        schema_name = f"form_{site_name}"
+        c.execute(f"SET search_path TO {schema_name}")
+        c.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        conn.commit(); conn.close()
+        return redirect(url_for("super_admin"))
+    except Exception as e:
+        traceback.print_exc()
+        return f"<h2>❌ 删除子网站用户失败: {e}</h2>", 500
+
+
+# ✅ 重置密码
+@app.route("/super_admin/reset_password/<int:user_id>", methods=["POST"])
+@admin_required
+def super_admin_reset_password(user_id):
+    if session.get("role") != "super_admin":
+        return "❌ 无权限", 403
+    try:
+        new_pw = "123456"  # 默认重置密码
+        hashed = generate_password_hash(new_pw)
+
+        conn = get_conn(); c = conn.cursor()
+        c.execute("UPDATE users SET password_hash=%s WHERE id=%s", (hashed, user_id))
+        conn.commit(); conn.close()
+        return redirect(url_for("super_admin"))
+    except Exception as e:
+        traceback.print_exc()
+        return f"<h2>❌ 重置密码失败: {e}</h2>", 500
 
 # ========== 动态表单 ========== （保留唯一版本）
 @app.route("/site/<site_name>/admin")
