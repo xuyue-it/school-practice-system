@@ -462,41 +462,6 @@ def site_form(site_name):
     return render_template("dynamic_form.html", form_name=form_name, site_name=site_name, schema=schema)
 
 # ========== 子网站用户管理 ==========
-@app.route("/site/<site_name>/admin/users")
-def site_admin_users(site_name):
-    # ✅ 先检查是否登录了该子网站的管理员
-    if not session.get(f"admin_{site_name}"):
-        return redirect(url_for("site_admin_login", site_name=site_name))
-
-    conn = get_conn(); c = conn.cursor()
-    schema_name = f"form_{site_name}"
-    c.execute(f"SET search_path TO {schema_name}")
-    c.execute("SELECT id, username, role FROM users ORDER BY id ASC")
-    users = c.fetchall()
-    conn.close()
-
-    return render_template("site_admin_users.html", site_name=site_name, users=users)
-
-
-@app.route("/site/<site_name>/admin/delete_user/<int:user_id>", methods=["POST"])
-def site_admin_delete_user(site_name, user_id):
-    if not session.get(f"admin_{site_name}"):
-        return redirect(url_for("site_admin_login", site_name=site_name))
-
-    conn = get_conn(); c = conn.cursor()
-    schema_name = f"form_{site_name}"
-    try:
-        c.execute(f"SET search_path TO {schema_name}")
-        c.execute("DELETE FROM users WHERE id=%s", (user_id,))
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        return f"❌ 删除失败: {e}", 500
-    finally:
-        conn.close()
-    return redirect(url_for("site_admin_users", site_name=site_name))
-
-
 @app.route("/site/<site_name>/admin/reset_password/<int:user_id>", methods=["POST"])
 def site_admin_reset_password(site_name, user_id):
     if not session.get(f"admin_{site_name}"):
