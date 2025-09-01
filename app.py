@@ -8,6 +8,7 @@ from email.mime.multipart import MIMEMultipart
 from email.header import Header
 from email.utils import formataddr
 import traceback
+from datetime import timedelta
 from dotenv import load_dotenv
 import os
 from functools import wraps
@@ -16,6 +17,9 @@ import json
 
 # ========== Flask 应用 ==========
 app = Flask(__name__)
+
+# session 永久有效（比如 365 天）
+app.permanent_session_lifetime = timedelta(days=365)
 
 # 上传文件目录
 UPLOAD_FOLDER = "uploads"
@@ -147,6 +151,7 @@ def login_admin():
         c.execute("SELECT id, password_hash, role FROM users WHERE username=%s", (username,))
         row = c.fetchone(); conn.close()
         if row and check_password_hash(row[1], password) and row[2] in ["admin", "super_admin"]:
+            session.permanent = True
             session["user_id"] = row[0]
             session["username"] = username
             session["role"] = row[2]

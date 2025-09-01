@@ -121,5 +121,22 @@
     </tbody>
   </table>
 
+  <!-- 🔄 自动刷新 -->
+  <script>
+  function autoRefresh() {
+    fetch(window.location.href, { credentials: "same-origin" })
+      .then(r => r.text())
+      .then(html => {
+        document.open();
+        document.write(html);
+        document.close();
+      })
+      .catch(err => console.error("刷新失败:", err));
+  }
+
+  // 每 30 秒刷新一次
+  setInterval(autoRefresh, 30000);
+  </script>
+
 </body>
 </html>
