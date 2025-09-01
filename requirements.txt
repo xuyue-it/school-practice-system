@@ -1,6 +1,6 @@
-Flask
+flask
 psycopg2-binary
-python-dotenv
 pandas
 openpyxl
 python-docx
+gunicorn
