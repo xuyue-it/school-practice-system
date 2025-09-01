@@ -299,7 +299,10 @@ def export_word(site_name, sub_id):
                      mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 
-# 导出 Excel
+@app.route("/")
+def index():
+    return render_template("index.html")
+
 @app.route("/site/<site_name>/admin/export_excel/<int:sub_id>")
 def export_excel(site_name, sub_id):
     conn = get_conn(); c = conn.cursor()
@@ -309,21 +312,17 @@ def export_excel(site_name, sub_id):
     if not row:
         return "❌ 记录不存在", 404
 
-    # ✅ 兼容 dict 和 str
-    if isinstance(row[0], dict):
-        data = row[0]
-    else:
-        data = json.loads(row[0])
-
+    data = row[0] if isinstance(row[0], dict) else json.loads(row[0])
     df = pd.DataFrame(list(data.items()), columns=["字段", "内容"])
 
     buffer = io.BytesIO()
-    df.to_excel(buffer, index=False)
+    df.to_excel(buffer, index=False, engine="openpyxl")
     buffer.seek(0)
 
     return send_file(buffer, as_attachment=True,
                      download_name=f"submission_{sub_id}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 
 
 
