@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>用户管理 - {{ site_name }}</title>
+  <style>
+    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; }
+    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
+
+    table { border-collapse: collapse; width:100%; background:#fff; border-radius:10px;
+            box-shadow:0 4px 10px rgba(0,0,0,.08); margin-top:10px; }
+    th, td { padding:12px; border:1px solid #ddd; text-align:center; }
+    th { background:#f1f5f9; font-weight:700; }
+    tr:nth-child(even){ background:#f9fafb; }
+
+    .btn { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+    .btn-delete { background:#f59e0b; color:#111; }
+    .btn-reset { background:#6b7280; color:#fff; }
+
+    .topbar {
+      text-align:center;
+      margin-bottom:20px;
+    }
+    .topbar a {
+      margin:0 8px;
+      padding:6px 12px;
+      background:#2563eb;
+      color:#fff;
+      border-radius:6px;
+      text-decoration:none;
+      font-weight:600;
+    }
+    .topbar a:hover { background:#1d4ed8; }
+  </style>
+</head>
+<body>
+  <h1>👥 用户管理 - {{ site_name }}</h1>
+
+  <div class="topbar">
+    <a href="{{ url_for('site_admin', site_name=site_name) }}">⬅ 返回管理后台</a>
+    <a href="/logout">退出登录</a>
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>ID</th><th>用户名</th><th>角色</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u[0] }}</td>
+        <td>{{ u[1] }}</td>
+        <td>
+          {% if u[2] == "admin" %}
+            ⚙️ 管理员
+          {% else %}
+            👤 普通用户
+          {% endif %}
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('site_admin_delete_user', site_name=site_name, user_id=u[0]) }}" style="display:inline"
+                onsubmit="return confirm('⚠️ 确定要删除用户 {{ u[1] }} 吗？');">
+            <button type="submit" class="btn btn-delete">🗑 删除</button>
+          </form>
+          <form method="post" action="{{ url_for('site_admin_reset_password', site_name=site_name, user_id=u[0]) }}" style="display:inline"
+                onsubmit="return confirm('🔑 确定要重置用户 {{ u[1] }} 的密码吗？');">
+            <button type="submit" class="btn btn-reset">🔑 重置密码</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

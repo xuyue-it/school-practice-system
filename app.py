@@ -211,26 +211,63 @@ def super_admin():
 
 
 
+# ========== 超级管理员管理用户 ==========
 @app.route("/super_admin/delete_user/<int:user_id>", methods=["POST"])
 @admin_required
 def super_admin_delete_user(user_id):
     if session.get("role") != "super_admin":
         return "❌ 无权限", 403
+
+    site_name = request.form.get("site_name", "平台")
     conn = get_conn(); c = conn.cursor()
-    c.execute("DELETE FROM users WHERE id=%s", (user_id,))
-    conn.commit(); conn.close()
+
+    try:
+        if site_name == "平台":
+            # 删除平台用户
+            c.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        else:
+            # 删除子网站用户
+            schema_name = f"form_{site_name}"
+            c.execute(f"SET search_path TO {schema_name}")
+            c.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return f"❌ 删除失败: {e}", 500
+    finally:
+        conn.close()
+
     return redirect(url_for("super_admin"))
+
 
 @app.route("/super_admin/reset_password/<int:user_id>", methods=["POST"])
 @admin_required
 def super_admin_reset_password(user_id):
     if session.get("role") != "super_admin":
         return "❌ 无权限", 403
+
+    site_name = request.form.get("site_name", "平台")
     conn = get_conn(); c = conn.cursor()
-    new_pw = generate_password_hash("123456")
-    c.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_pw, user_id))
-    conn.commit(); conn.close()
+    new_pw = generate_password_hash("123456")  # 默认密码
+
+    try:
+        if site_name == "平台":
+            # 重置平台用户密码
+            c.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_pw, user_id))
+        else:
+            # 重置子网站用户密码
+            schema_name = f"form_{site_name}"
+            c.execute(f"SET search_path TO {schema_name}")
+            c.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_pw, user_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return f"❌ 重置密码失败: {e}", 500
+    finally:
+        conn.close()
+
     return redirect(url_for("super_admin"))
+
 
 @app.route("/super_admin/delete/<site_name>", methods=["POST"])
 @admin_required
@@ -420,6 +457,61 @@ def site_form(site_name):
         return f"<h2>✅ 已提交到表单 {form_name}</h2><a href='/'>返回首页</a>"
     return render_template("dynamic_form.html", form_name=form_name, site_name=site_name, schema=schema)
 
+# ========== 子网站用户管理 ==========
+@app.route("/site/<site_name>/admin/users")
+def site_admin_users(site_name):
+    # ✅ 先检查是否登录了该子网站的管理员
+    if not session.get(f"admin_{site_name}"):
+        return redirect(url_for("site_admin_login", site_name=site_name))
+
+    conn = get_conn(); c = conn.cursor()
+    schema_name = f"form_{site_name}"
+    c.execute(f"SET search_path TO {schema_name}")
+    c.execute("SELECT id, username, role FROM users ORDER BY id ASC")
+    users = c.fetchall()
+    conn.close()
+
+    return render_template("site_admin_users.html", site_name=site_name, users=users)
+
+
+@app.route("/site/<site_name>/admin/delete_user/<int:user_id>", methods=["POST"])
+def site_admin_delete_user(site_name, user_id):
+    if not session.get(f"admin_{site_name}"):
+        return redirect(url_for("site_admin_login", site_name=site_name))
+
+    conn = get_conn(); c = conn.cursor()
+    schema_name = f"form_{site_name}"
+    try:
+        c.execute(f"SET search_path TO {schema_name}")
+        c.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return f"❌ 删除失败: {e}", 500
+    finally:
+        conn.close()
+    return redirect(url_for("site_admin_users", site_name=site_name))
+
+
+@app.route("/site/<site_name>/admin/reset_password/<int:user_id>", methods=["POST"])
+def site_admin_reset_password(site_name, user_id):
+    if not session.get(f"admin_{site_name}"):
+        return redirect(url_for("site_admin_login", site_name=site_name))
+
+    new_pw = generate_password_hash("123456")  # 默认重置密码
+    conn = get_conn(); c = conn.cursor()
+    schema_name = f"form_{site_name}"
+    try:
+        c.execute(f"SET search_path TO {schema_name}")
+        c.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_pw, user_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        return f"❌ 重置密码失败: {e}", 500
+    finally:
+        conn.close()
+    return redirect(url_for("site_admin_users", site_name=site_name))
+
 @app.route("/site/<site_name>/admin")
 def site_admin(site_name):
     if not session.get(f"admin_{site_name}"):
@@ -435,6 +527,32 @@ def site_admin(site_name):
     c.execute("SELECT id, user_id, data, status, review_comment, created_at FROM submissions ORDER BY id DESC")
     subs = c.fetchall(); conn.close()
     return render_template("dynamic_admin.html", form_name=form_name, submissions=subs, form_id=form_id)
+
+# 子网站用户管理
+@app.route("/site/<site_name>/admin/users")
+def site_admin_users(site_name):
+    if not session.get(f"admin_{site_name}"):
+        return redirect(url_for("site_admin_login", site_name=site_name))
+
+    conn = get_conn(); c = conn.cursor()
+    c.execute(f"SET search_path TO form_{site_name}")
+    c.execute("SELECT id, username, role FROM users ORDER BY id ASC")
+    users = c.fetchall(); conn.close()
+
+    return render_template("site_admin_users.html", site_name=site_name, users=users)
+
+
+@app.route("/site/<site_name>/admin/delete_user/<int:user_id>", methods=["POST"])
+def site_admin_delete_user(site_name, user_id):
+    if not session.get(f"admin_{site_name}"):
+        return redirect(url_for("site_admin_login", site_name=site_name))
+
+    conn = get_conn(); c = conn.cursor()
+    c.execute(f"SET search_path TO form_{site_name}")
+    c.execute("DELETE FROM users WHERE id=%s", (user_id,))
+    conn.commit(); conn.close()
+
+    return redirect(url_for("site_admin_users", site_name=site_name))
 
 # 用户注册
 @app.route("/site/<site_name>/register", methods=["GET", "POST"])
