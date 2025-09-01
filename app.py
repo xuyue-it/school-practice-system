@@ -176,54 +176,6 @@ def login_admin():
 
     return render_template("login_admin.html", error=error)
 
-
-
-
-# ========== 平台入口：管理员注册/登录 ==========
-@app.route("/register_admin", methods=["GET", "POST"])
-def register_admin():
-    error = None
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        try:
-            conn = get_conn(); c = conn.cursor()
-            c.execute("INSERT INTO users (username, password_hash, role) VALUES (%s,%s,%s)",
-                      (username, generate_password_hash(password), "admin"))
-            conn.commit(); conn.close()
-            return redirect(url_for("login_admin"))
-        except Exception:
-            error = "注册失败，可能用户名已存在"
-    return render_template("register_admin.html", error=error)
-
-@app.route("/login_admin", methods=["GET", "POST"])
-def login_admin():
-    error = None
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        conn = get_conn(); c = conn.cursor()
-        c.execute("SELECT id, password_hash, role FROM users WHERE username=%s", (username,))
-        row = c.fetchone(); conn.close()
-
-        if row and check_password_hash(row[1], password) and row[2] in ["admin", "super_admin"]:
-            # ✅ 永久保持登录
-            session.permanent = True
-            session["user_id"] = row[0]
-            session["username"] = username
-            session["role"] = row[2]
-
-            # ✅ 区分超级管理员和普通管理员
-            if row[2] == "super_admin":
-                return redirect(url_for("super_admin"))
-            else:
-                return redirect(url_for("dashboard"))
-        else:
-            error = "用户名或密码错误"
-
-    return render_template("login_admin.html", error=error)
-
 @app.route("/dashboard")
 @admin_required
 def dashboard():
