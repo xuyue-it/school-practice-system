@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify, session
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
+from docx import Document
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -16,17 +17,18 @@ import json
 from collections import OrderedDict
 import io
 import pandas as pd
-from docx import Document
 
 # ========== Flask 应用 ==========
 app = Flask(__name__)
+
+# session 永久有效（比如 365 天）
 app.permanent_session_lifetime = timedelta(days=365)
 
 # 上传文件目录
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5MB
 
 ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "jpg", "jpeg", "png"}
 def allowed_file(filename):
@@ -36,17 +38,19 @@ def allowed_file(filename):
 load_dotenv()
 app.secret_key = os.getenv("SECRET_KEY", "replace-this-in-prod")
 
+# 邮件配置
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SENDER_EMAIL = os.getenv("SENDER_EMAIL", "lausukyork8@gmail.com")
 SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "ejlnrpkvvwotxlzj")
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "lausukyork8@gmail.com")
 
+# 数据库配置（主库）
 DB_URL = os.getenv("DB_URL")
 def get_conn():
     return psycopg2.connect(DB_URL, connect_timeout=10)
 
-# ========== 初始化表 ==========
+# ========== 用户表初始化 ==========
 def init_user_table():
     conn = get_conn(); c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (
@@ -58,6 +62,38 @@ def init_user_table():
     conn.commit(); conn.close()
 init_user_table()
 
+# ========= 原有 submissions 表（固定表单） =========
+def init_main_submissions():
+    conn = get_conn(); c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS submissions (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        phone TEXT,
+        email TEXT,
+        group_name TEXT,
+        event_name TEXT,
+        start_date TEXT,
+        start_time TEXT,
+        end_date TEXT,
+        end_time TEXT,
+        location TEXT,
+        event_type TEXT,
+        participants TEXT,
+        equipment TEXT,
+        special_request TEXT,
+        donation TEXT,
+        donation_method TEXT,
+        remarks TEXT,
+        emergency_name TEXT,
+        emergency_phone TEXT,
+        attachment TEXT,
+        status TEXT DEFAULT '待审核',
+        review_comment TEXT
+    )''')
+    conn.commit(); conn.close()
+init_main_submissions()
+
+# ========= 动态表单定义表 =========
 def init_form_defs():
     conn = get_conn(); c = conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS form_defs (
@@ -91,7 +127,7 @@ def admin_required(view_func):
         return view_func(*args, **kwargs)
     return wrapper
 
-# ========== 管理员注册 / 登录 ==========
+# ========== 平台入口：管理员注册/登录 ==========
 @app.route("/register_admin", methods=["GET", "POST"])
 def register_admin():
     error = None
@@ -114,17 +150,26 @@ def login_admin():
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
+
         conn = get_conn(); c = conn.cursor()
         c.execute("SELECT id, password_hash, role FROM users WHERE username=%s", (username,))
         row = c.fetchone(); conn.close()
+
         if row and check_password_hash(row[1], password) and row[2] in ["admin", "super_admin"]:
+            # ✅ 永久保持登录
             session.permanent = True
             session["user_id"] = row[0]
             session["username"] = username
             session["role"] = row[2]
-            return redirect(url_for("super_admin" if row[2]=="super_admin" else "dashboard"))
+
+            # ✅ 区分超级管理员和普通管理员
+            if row[2] == "super_admin":
+                return redirect(url_for("super_admin"))
+            else:
+                return redirect(url_for("dashboard"))
         else:
             error = "用户名或密码错误"
+
     return render_template("login_admin.html", error=error)
 
 @app.route("/dashboard")
@@ -132,163 +177,164 @@ def login_admin():
 def dashboard():
     return render_template("dashboard.html")
 
-# ========== 超级管理员 ==========
+# ========== 超级管理员总览（表单 + 用户） ==========
 @app.route("/super_admin")
 @admin_required
 def super_admin():
     if session.get("role") != "super_admin":
         return "❌ 只有超级管理员能访问", 403
+
     conn = get_conn(); c = conn.cursor()
+
+    # --------- 表单列表 ---------
     c.execute("SELECT id, name, site_name, db_url, created_by, created_at FROM form_defs ORDER BY id ASC")
-    forms = [{"id": r[0], "name": r[1], "site_name": r[2], "db_url": r[3],
-              "created_by": r[4], "created_at": r[5],
-              "user_url": f"/site/{r[2]}/form", "admin_url": f"/site/{r[2]}/admin"} for r in c.fetchall()]
-    c.execute("SELECT id, username, role, '平台', NOW(), '平台' FROM users ORDER BY id ASC")
+    form_rows = c.fetchall()
+    forms = [
+        {
+            "id": row[0],
+            "name": row[1],
+            "site_name": row[2],
+            "db_url": row[3],
+            "created_by": row[4],
+            "created_at": row[5],
+            "user_url": f"/site/{row[2]}/form",
+            "admin_url": f"/site/{row[2]}/admin"
+        }
+        for row in form_rows
+    ]
+
+    # --------- 平台用户 ---------
+    c.execute("SELECT id, username, role, '平台' as site_name, NOW() as created_at, '平台' as db_url FROM users ORDER BY id ASC")
     users = list(c.fetchall())
-    for f in forms:
+
+    # --------- 各子网站用户 ---------
+    for form in forms:
+        schema_name = form["db_url"]
         try:
-            c.execute(f"SET search_path TO {f['db_url']}")
-            c.execute("SELECT id, username, role, %s, NOW(), %s FROM users", (f["site_name"], f["db_url"]))
+            c.execute(f"SET search_path TO {schema_name}")
+            c.execute("SELECT id, username, role, %s as site_name, NOW() as created_at, %s as db_url FROM users",
+                      (form["site_name"], schema_name))
             users += c.fetchall()
-        except Exception as e: print("⚠️ 读取子用户失败:", e)
+        except Exception as e:
+            print(f"⚠️ 读取 {schema_name}.users 出错:", e)
+
     conn.close()
     return render_template("super_admin.html", forms=forms, users=users)
 
-# 🔹 修复: 超级管理员删除子网站
-@app.route("/super_admin/delete/<site_name>", methods=["POST"], endpoint="super_admin_delete")
-@admin_required
-def super_admin_delete(site_name):
-    if session.get("role") != "super_admin":
-        return "❌ 无权限", 403
-    try:
-        conn = get_conn(); c = conn.cursor()
-        schema_name = f"form_{site_name}"
-        c.execute(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE")
-        c.execute("DELETE FROM form_defs WHERE site_name=%s", (site_name,))
-        conn.commit(); conn.close()
-        return redirect(url_for("super_admin"))
-    except Exception as e:
-        traceback.print_exc()
-        return f"<h2>❌ 删除失败: {e}</h2>", 500
-
-@app.route("/super_admin/delete_user/<int:user_id>", methods=["POST"])
-@admin_required
-def super_admin_delete_user(user_id):
-    if session.get("role") != "super_admin":
-        return "❌ 无权限", 403
-    try:
-        conn = get_conn(); c = conn.cursor()
-        # 删除该用户创建的子网站
-        c.execute("SELECT site_name FROM form_defs WHERE created_by=%s", (user_id,))
-        sites = [r[0] for r in c.fetchall()]
-        for site in sites:
-            c.execute(f"DROP SCHEMA IF EXISTS form_{site} CASCADE")
-        c.execute("DELETE FROM form_defs WHERE created_by=%s", (user_id,))
-        # 删除用户
-        c.execute("DELETE FROM users WHERE id=%s", (user_id,))
-        conn.commit(); conn.close()
-        return redirect(url_for("super_admin"))
-    except Exception as e:
-        traceback.print_exc()
-        return f"<h2>❌ 删除平台用户失败: {e}</h2>", 500
-
-@app.route("/super_admin/delete_subuser/<site_name>/<int:user_id>", methods=["POST"])
-@admin_required
-def super_admin_delete_subuser(site_name, user_id):
-    if session.get("role") != "super_admin":
-        return "❌ 无权限", 403
-    try:
-        schema_name = f"form_{site_name}"
-        conn = get_conn(); c = conn.cursor()
-        c.execute(f"SET search_path TO {schema_name}")
-        c.execute("DELETE FROM users WHERE id=%s", (user_id,))
-        conn.commit(); conn.close()
-        return redirect(url_for("super_admin"))
-    except Exception as e:
-        traceback.print_exc()
-        return f"<h2>❌ 删除子网站用户失败: {e}</h2>", 500
-
-# ========== 子网站管理员 ==========
+# ========== 动态表单 ========== （保留唯一版本）
 @app.route("/site/<site_name>/admin")
 def site_admin(site_name):
     if not session.get(f"admin_{site_name}"):
         return redirect(url_for("site_admin_login", site_name=site_name))
+
     conn = get_conn(); c = conn.cursor()
     c.execute("SELECT id, name, created_by, db_url FROM form_defs WHERE site_name=%s", (site_name,))
     row = c.fetchone(); conn.close()
-    if not row: return "❌ 表单不存在", 404
+    if not row:
+        return "❌ 表单不存在", 404
+
     form_id, form_name, owner_id, schema_name = row
     conn = get_conn(); c = conn.cursor()
     c.execute(f"SET search_path TO {schema_name}")
     c.execute("SELECT id, user_id, data, status, review_comment, created_at FROM submissions ORDER BY id DESC")
     rows = c.fetchall(); conn.close()
-    field_labels = {"name":"姓名","phone":"电话","email":"邮箱","event_name":"活动名称",
-                    "start_date":"开始日期","end_date":"结束日期","location":"地点","participants":"人数"}
+
+    field_labels = {
+        "name": "姓名","phone": "电话","email": "邮箱","group_name": "团体名称",
+        "event_name": "活动名称","start_date": "开始日期","start_time": "开始时间",
+        "end_date": "结束日期","end_time": "结束时间","location": "地点",
+        "event_type": "性质","participants": "人数","equipment": "器材",
+        "special_request": "特别需求","donation": "捐款","donation_method": "方式",
+        "remarks": "备注","emergency_name": "紧急联系人","emergency_phone": "紧急电话","attachment": "附件"
+    }
     field_order = list(field_labels.keys())
-    subs = []
+
+    submissions = []
     for r in rows:
-        try: data = r[2] if isinstance(r[2], dict) else json.loads(r[2], object_pairs_hook=OrderedDict)
-        except: data = {}
-        subs.append((r[0], r[1], OrderedDict((f,data.get(f,"")) for f in field_order), r[3], r[4], r[5]))
-    return render_template("dynamic_admin.html", form_name=form_name, submissions=subs,
-                           form_id=form_id, site_name=site_name, field_order=field_order, field_labels=field_labels)
+        try:
+            data_dict = r[2] if isinstance(r[2], dict) else json.loads(r[2], object_pairs_hook=OrderedDict)
+        except Exception:
+            data_dict = {}
+        ordered_data = OrderedDict()
+        for f in field_order:
+            ordered_data[f] = data_dict.get(f, "")
+        submissions.append((r[0], r[1], ordered_data, r[3], r[4], r[5]))
 
-# 审核
-@app.route("/form/<int:form_id>/update_status/<int:sub_id>", methods=["POST"])
-def update_status(form_id, sub_id):
-    data = request.get_json()
-    status, comment = data.get("status"), data.get("comment")
-    conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT db_url FROM form_defs WHERE id=%s", (form_id,))
-    row = c.fetchone()
-    if not row: return jsonify({"success": False, "message": "表单不存在"})
-    c.execute(f"SET search_path TO {row[0]}")
-    c.execute("UPDATE submissions SET status=%s, review_comment=%s WHERE id=%s", (status, comment, sub_id))
-    conn.commit(); conn.close()
-    return jsonify({"success": True})
+    return render_template("dynamic_admin.html",
+                           form_name=form_name,
+                           submissions=submissions,
+                           form_id=form_id,
+                           site_name=site_name,
+                           field_order=field_order,
+                           field_labels=field_labels)
 
-# 删除提交
-@app.route("/form/<int:form_id>/delete/<int:sub_id>", methods=["POST"])
-def delete_submission(form_id, sub_id):
-    conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT db_url FROM form_defs WHERE id=%s", (form_id,))
-    row = c.fetchone()
-    if not row: return jsonify({"success": False})
-    c.execute(f"SET search_path TO {row[0]}")
-    c.execute("DELETE FROM submissions WHERE id=%s", (sub_id,))
-    conn.commit(); conn.close()
-    return jsonify({"success": True})
-
-# 导出 Word
+# ========== 导出 Word ==========
 @app.route("/site/<site_name>/admin/export_word/<int:sub_id>")
 def export_word(site_name, sub_id):
     conn = get_conn(); c = conn.cursor()
     c.execute(f"SET search_path TO form_{site_name}")
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
-    if not row: return "❌ 记录不存在", 404
-    data = row[0] if isinstance(row[0], dict) else json.loads(row[0])
-    doc = Document(); doc.add_heading(f"提交 #{sub_id}", 1)
-    for k,v in data.items(): doc.add_paragraph(f"{k}: {v}")
-    buf = io.BytesIO(); doc.save(buf); buf.seek(0)
-    return send_file(buf, as_attachment=True, download_name=f"submission_{sub_id}.docx")
+    if not row:
+        return "❌ 记录不存在", 404
 
-# 导出 Excel
+    data = row[0] if isinstance(row[0], dict) else json.loads(row[0])
+    doc = Document()
+    doc.add_heading(f"提交 #{sub_id}", level=1)
+    for k, v in data.items():
+        doc.add_paragraph(f"{k}: {v}")
+
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True,
+                     download_name=f"submission_{sub_id}.docx",
+                     mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+# ========== 导出 Excel ==========
 @app.route("/site/<site_name>/admin/export_excel/<int:sub_id>")
 def export_excel(site_name, sub_id):
     conn = get_conn(); c = conn.cursor()
     c.execute(f"SET search_path TO form_{site_name}")
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
-    if not row: return "❌ 记录不存在", 404
+    if not row:
+        return "❌ 记录不存在", 404
+
     data = row[0] if isinstance(row[0], dict) else json.loads(row[0])
-    df = pd.DataFrame(list(data.items()), columns=["字段","内容"])
-    buf = io.BytesIO(); df.to_excel(buf,index=False); buf.seek(0)
-    return send_file(buf, as_attachment=True, download_name=f"submission_{sub_id}.xlsx")
+    df = pd.DataFrame(list(data.items()), columns=["字段", "内容"])
+
+    buffer = io.BytesIO()
+    df.to_excel(buffer, index=False)
+    buffer.seek(0)
+    return send_file(buffer, as_attachment=True,
+                     download_name=f"submission_{sub_id}.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+@app.route("/form/<int:form_id>/delete/<int:sub_id>", methods=["GET", "POST"])
+def delete_submission(form_id, sub_id):
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT db_url FROM form_defs WHERE id=%s", (form_id,))
+    row = c.fetchone()
+    if not row:
+        return jsonify({"success": False, "message": "表单不存在"})
+    schema_name = row[0]
+
+    c.execute(f"SET search_path TO {schema_name}")
+    c.execute("DELETE FROM submissions WHERE id=%s", (sub_id,))
+    conn.commit(); conn.close()
+
+    # 如果是 AJAX POST 请求，返回 JSON
+    if request.method == "POST" and request.is_json:
+        return jsonify({"success": True})
+    # 如果是 GET（直接点击链接），跳回管理页
+    return redirect(url_for("site_admin", site_name=schema_name.replace("form_", "")))
+
 
 # ========== 健康检查 ==========
 @app.route("/_health")
-def _health(): return "ok", 200
+def _health():
+    return "ok", 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
