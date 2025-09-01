@@ -4,35 +4,89 @@
   <meta charset="UTF-8">
   <title>{{ form_name }} - 动态表单管理</title>
   <style>
-    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; color:#111; }
-    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
-    .topbar { display:flex; justify-content:center; gap:16px; margin-bottom:20px; }
-    .topbar a { text-decoration:none; padding:8px 14px; border-radius:8px; background:#2563eb; color:white; font-weight:600; }
+    body {
+      font-family:"Microsoft YaHei", sans-serif;
+      background:#f5f7fb;
+      margin:20px;
+      color:#111;
+    }
+    h1 {
+      text-align:center;
+      font-weight:900;
+      margin-bottom:20px;
+    }
+    .topbar {
+      display:flex;
+      justify-content:center;
+      gap:16px;
+      margin-bottom:20px;
+    }
+    .topbar a {
+      text-decoration:none;
+      padding:8px 14px;
+      border-radius:8px;
+      background:#2563eb;
+      color:white;
+      font-weight:600;
+    }
     .topbar a:hover { background:#1d4ed8; }
 
+    /* 卡片样式 */
     .card {
       background:#fff;
-      border-radius:10px;
+      border-radius:12px;
       box-shadow:0 4px 10px rgba(0,0,0,.08);
       padding:20px;
       margin-bottom:20px;
     }
     .card h2 {
       font-size:18px;
+      font-weight:700;
+      margin-bottom:12px;
+    }
+    .meta {
+      font-size:14px;
+      color:#555;
       margin-bottom:10px;
     }
-    .field { margin-bottom:10px; }
-    .field strong { display:inline-block; width:120px; color:#333; }
-
-    .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; }
+    .data {
+      background:#f9fafb;
+      padding:12px;
+      border-radius:8px;
+      font-size:13px;
+      white-space:pre-wrap;
+      margin-bottom:12px;
+    }
+    .badge {
+      display:inline-block;
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:12px;
+      margin-left:6px;
+    }
     .badge-pending { background:#facc15; color:#111; }
     .badge-approved { background:#16a34a; color:#fff; }
     .badge-rejected { background:#dc2626; color:#fff; }
 
-    input.comment { width:100%; padding:8px; border-radius:6px; border:1px solid #ccc; margin-top:5px; }
-
-    .actions { margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; }
-    button { padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+    input.comment {
+      width:100%;
+      padding:8px;
+      margin-bottom:10px;
+      border-radius:6px;
+      border:1px solid #ccc;
+    }
+    .actions {
+      display:flex;
+      gap:10px;
+    }
+    button {
+      flex:1;
+      padding:8px 12px;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+      font-weight:600;
+    }
     .btn-approve { background:#22c55e; color:#fff; }
     .btn-reject { background:#ef4444; color:#fff; }
     .btn-delete { background:#f59e0b; color:#111; }
@@ -44,20 +98,14 @@
 
   <div class="topbar">
     <a href="/">返回首页</a>
-    <a href="/admin">全局后台</a>
     <a href="/logout">退出登录</a>
   </div>
 
   {% for s in submissions %}
   <div class="card" id="row-{{ s[0] }}">
-    <h2>📝 提交记录 #{{ s[0] }}</h2>
-    <div class="field"><strong>提交用户:</strong> {{ s[1] }}</div>
-    <div class="field"><strong>提交时间:</strong> {{ s[5] }}</div>
-    <div class="field"><strong>数据内容:</strong>
-      <pre style="text-align:left; white-space:pre-wrap; font-size:13px;">{{ s[2] }}</pre>
-    </div>
-    <div class="field">
-      <strong>状态:</strong>
+    <h2>提交 #{{ s[0] }}</h2>
+    <div class="meta">
+      提交用户: {{ s[1] }} ｜ 时间: {{ s[5] }}
       {% if s[3] == "待审核" %}
         <span class="badge badge-pending">{{ s[3] }}</span>
       {% elif s[3] == "通过" %}
@@ -68,13 +116,9 @@
         {{ s[3] }}
       {% endif %}
     </div>
-    <div class="field"><strong>审核说明:</strong> {{ s[4] or "" }}</div>
-
-    <div class="field">
-      <label>✏️ 填写审核说明:</label>
-      <input type="text" id="comment-{{ s[0] }}" class="comment" placeholder="请输入审核意见">
-    </div>
-
+    <div class="data">{{ s[2] }}</div>
+    <div>审核说明: {{ s[4] or "（无）" }}</div>
+    <input type="text" id="comment-{{ s[0] }}" class="comment" placeholder="输入审核说明">
     <div class="actions">
       <button class="btn-approve" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '通过')">通过</button>
       <button class="btn-reject" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '不通过')">不通过</button>
