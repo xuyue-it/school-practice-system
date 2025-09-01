@@ -314,6 +314,7 @@ def index():
     return render_template("index.html")
 
 # 导出 Excel
+# 导出 Excel
 @app.route("/site/<site_name>/admin/export_excel/<int:sub_id>")
 def export_excel(site_name, sub_id):
     conn = get_conn(); c = conn.cursor()
@@ -328,6 +329,16 @@ def export_excel(site_name, sub_id):
         data = row[0]
     else:
         data = json.loads(row[0])
+
+    # ✅ 在这里定义 field_labels
+    field_labels = {
+        "name": "姓名", "phone": "电话", "email": "邮箱", "group_name": "团体名称",
+        "event_name": "活动名称", "start_date": "开始日期", "start_time": "开始时间",
+        "end_date": "结束日期", "end_time": "结束时间", "location": "地点",
+        "event_type": "性质", "participants": "人数", "equipment": "器材",
+        "special_request": "特别需求", "donation": "捐款", "donation_method": "方式",
+        "remarks": "备注", "emergency_name": "紧急联系人", "emergency_phone": "紧急电话", "attachment": "附件"
+    }
 
     rows = []
     for k, v in data.items():
