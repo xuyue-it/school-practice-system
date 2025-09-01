@@ -154,6 +154,23 @@ def super_admin():
     conn.close()
     return render_template("super_admin.html", forms=forms, users=users)
 
+# 🔹 修复: 超级管理员删除子网站
+@app.route("/super_admin/delete/<site_name>", methods=["POST"], endpoint="super_admin_delete")
+@admin_required
+def super_admin_delete(site_name):
+    if session.get("role") != "super_admin":
+        return "❌ 无权限", 403
+    try:
+        conn = get_conn(); c = conn.cursor()
+        schema_name = f"form_{site_name}"
+        c.execute(f"DROP SCHEMA IF EXISTS {schema_name} CASCADE")
+        c.execute("DELETE FROM form_defs WHERE site_name=%s", (site_name,))
+        conn.commit(); conn.close()
+        return redirect(url_for("super_admin"))
+    except Exception as e:
+        traceback.print_exc()
+        return f"<h2>❌ 删除失败: {e}</h2>", 500
+
 # ========== 子网站管理员 ==========
 @app.route("/site/<site_name>/admin")
 def site_admin(site_name):
@@ -173,7 +190,7 @@ def site_admin(site_name):
     field_order = list(field_labels.keys())
     subs = []
     for r in rows:
-        try: data = json.loads(r[2], object_pairs_hook=OrderedDict)
+        try: data = r[2] if isinstance(r[2], dict) else json.loads(r[2], object_pairs_hook=OrderedDict)
         except: data = {}
         subs.append((r[0], r[1], OrderedDict((f,data.get(f,"")) for f in field_order), r[3], r[4], r[5]))
     return render_template("dynamic_admin.html", form_name=form_name, submissions=subs,
@@ -213,8 +230,9 @@ def export_word(site_name, sub_id):
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
     if not row: return "❌ 记录不存在", 404
+    data = row[0] if isinstance(row[0], dict) else json.loads(row[0])
     doc = Document(); doc.add_heading(f"提交 #{sub_id}", 1)
-    for k,v in json.loads(row[0]).items(): doc.add_paragraph(f"{k}: {v}")
+    for k,v in data.items(): doc.add_paragraph(f"{k}: {v}")
     buf = io.BytesIO(); doc.save(buf); buf.seek(0)
     return send_file(buf, as_attachment=True, download_name=f"submission_{sub_id}.docx")
 
@@ -226,7 +244,8 @@ def export_excel(site_name, sub_id):
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
     if not row: return "❌ 记录不存在", 404
-    df = pd.DataFrame(list(json.loads(row[0]).items()), columns=["字段","内容"])
+    data = row[0] if isinstance(row[0], dict) else json.loads(row[0])
+    df = pd.DataFrame(list(data.items()), columns=["字段","内容"])
     buf = io.BytesIO(); df.to_excel(buf,index=False); buf.seek(0)
     return send_file(buf, as_attachment=True, download_name=f"submission_{sub_id}.xlsx")
 
