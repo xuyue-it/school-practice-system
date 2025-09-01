@@ -3,3 +3,5 @@ python-dotenv
 python-docx
 gunicorn
 psycopg2-binary
+pandas
+openpyxl
