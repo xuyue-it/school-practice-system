@@ -98,9 +98,17 @@
         <tr>
           <td>{{ user.id }}</td>
           <td>{{ user.username }}</td>
-          <td>{{ "管理员" if user.role=="admin" else "普通用户" }}</td>
-          <td>{{ user.site_name }}</td>
-          <td>{{ user.created_at }}</td>
+          <td>
+            {% if user.role == "super_admin" %}
+              🌟 超级管理员
+            {% elif user.role == "admin" %}
+              ⚙️ 管理员
+            {% else %}
+              👤 普通用户
+            {% endif %}
+          </td>
+          <td>{{ user.site_name or "-" }}</td>
+          <td>{{ user.created_at or "-" }}</td>
           <td>
             <form method="post" action="{{ url_for('super_admin_delete_user', user_id=user.id) }}"
                   style="display:inline"
