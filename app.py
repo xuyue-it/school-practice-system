@@ -287,8 +287,18 @@ def export_word(site_name, sub_id):
 
     doc = Document()
     doc.add_heading(f"提交 #{sub_id}", level=1)
+    field_labels = {
+        "name": "姓名", "phone": "电话", "email": "邮箱", "group_name": "团体名称",
+        "event_name": "活动名称", "start_date": "开始日期", "start_time": "开始时间",
+        "end_date": "结束日期", "end_time": "结束时间", "location": "地点",
+        "event_type": "性质", "participants": "人数", "equipment": "器材",
+        "special_request": "特别需求", "donation": "捐款", "donation_method": "方式",
+        "remarks": "备注", "emergency_name": "紧急联系人", "emergency_phone": "紧急电话", "attachment": "附件"
+    }
+
     for k, v in data.items():
-        doc.add_paragraph(f"{k}: {v}")
+        label = field_labels.get(k, k)  # ✅ 映射华语字段
+        doc.add_paragraph(f"{label}: {v}")
 
     buffer = io.BytesIO()
     doc.save(buffer)
@@ -319,7 +329,12 @@ def export_excel(site_name, sub_id):
     else:
         data = json.loads(row[0])
 
-    df = pd.DataFrame(list(data.items()), columns=["字段", "内容"])
+    rows = []
+    for k, v in data.items():
+        label = field_labels.get(k, k)  # ✅ 转换为中文
+        rows.append((label, v))
+
+    df = pd.DataFrame(rows, columns=["字段", "内容"])
 
     buffer = io.BytesIO()
     # ✅ 强制使用 openpyxl 引擎
