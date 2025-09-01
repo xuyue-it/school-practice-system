@@ -6,6 +6,7 @@
   <style>
     body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; color:#111; }
     h1 { text-align:center; font-weight:900; margin-bottom:20px; }
+    h2 { margin-top:30px; margin-bottom:15px; font-size:22px; }
 
     .card {
       background:#fff;
@@ -14,8 +15,8 @@
       padding:20px;
       margin-bottom:20px;
     }
-    .card h2 { font-size:20px; margin-bottom:10px; }
-    .field { margin-bottom:8px; }
+    .card h3 { font-size:18px; margin-bottom:10px; }
+    .field { margin-bottom:6px; }
     .field strong { display:inline-block; width:120px; color:#333; }
 
     .actions { margin-top:15px; display:flex; gap:10px; flex-wrap:wrap; }
@@ -33,36 +34,23 @@
     .btn-reset { background:#6b7280; color:#fff; }
     a.btn:hover, button.btn:hover { opacity:0.9; }
 
-    table {
-      width:100%;
-      border-collapse: collapse;
-      margin-top:20px;
-      background:#fff;
-      border-radius:10px;
-      box-shadow:0 4px 10px rgba(0,0,0,.08);
-      overflow:hidden;
-    }
-    th, td {
-      border:1px solid #ddd;
-      padding:10px;
-      text-align:center;
-    }
-    th {
-      background:#f1f5f9;
-      font-weight:700;
-    }
-    tr:nth-child(even) { background:#f9fafb; }
+    /* 用户表格 */
+    table { border-collapse: collapse; width:100%; background:#fff; border-radius:10px;
+            box-shadow:0 4px 10px rgba(0,0,0,.08); margin-top:10px; }
+    th, td { padding:12px; border:1px solid #ddd; text-align:center; }
+    th { background:#f1f5f9; font-weight:700; }
+    tr:nth-child(even){ background:#f9fafb; }
   </style>
 </head>
 <body>
   <h1>📊 超级管理员总览</h1>
 
   <!-- 表单总览 -->
+  <h2>📑 子网站表单</h2>
   {% for form in forms %}
   <div class="card">
-    <h2>📑 {{ form.name }}</h2>
+    <h3>{{ form.name }} ({{ form.site_name }})</h3>
     <div class="field"><strong>ID:</strong> {{ form.id }}</div>
-    <div class="field"><strong>网站名:</strong> {{ form.site_name }}</div>
     <div class="field"><strong>数据库 Schema:</strong> {{ form.db_url }}</div>
     <div class="field"><strong>创建者 ID:</strong> {{ form.created_by }}</div>
     <div class="field"><strong>创建时间:</strong> {{ form.created_at }}</div>
@@ -80,51 +68,39 @@
   {% endfor %}
 
   <!-- 用户总览 -->
-  <div class="card">
-    <h2>👥 用户与管理员列表</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>用户名</th>
-          <th>角色</th>
-          <th>所属网站</th>
-          <th>注册时间</th>
-          <th>操作</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for user in users %}
-        <tr>
-          <td>{{ user.id }}</td>
-          <td>{{ user.username }}</td>
-          <td>
-            {% if user.role == "super_admin" %}
-              🌟 超级管理员
-            {% elif user.role == "admin" %}
-              ⚙️ 管理员
-            {% else %}
-              👤 普通用户
-            {% endif %}
-          </td>
-          <td>{{ user.site_name or "-" }}</td>
-          <td>{{ user.created_at or "-" }}</td>
-          <td>
-            <form method="post" action="{{ url_for('super_admin_delete_user', user_id=user.id) }}"
-                  style="display:inline"
-                  onsubmit="return confirm('⚠️ 确定要删除用户 {{ user.username }} 吗？');">
-              <button type="submit" class="btn btn-delete">🗑 删除</button>
-            </form>
-            <form method="post" action="{{ url_for('super_admin_reset_password', user_id=user.id) }}"
-                  style="display:inline"
-                  onsubmit="return confirm('🔑 确定要重置用户 {{ user.username }} 的密码吗？');">
-              <button type="submit" class="btn btn-reset">🔑 重置密码</button>
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  <h2>👥 用户与管理员</h2>
+  <table>
+    <thead>
+      <tr><th>ID</th><th>用户名</th><th>角色</th><th>所属网站</th><th>注册时间</th><th>操作</th></tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ u[0] }}</td>
+        <td>{{ u[1] }}</td>
+        <td>
+          {% if u[2] == "super_admin" %}
+            🌟 超级管理员
+          {% elif u[2] == "admin" %}
+            ⚙️ 管理员
+          {% else %}
+            👤 普通用户
+          {% endif %}
+        </td>
+        <td>{{ u[3] }}</td>
+        <td>{{ u[4] }}</td>
+        <td>
+          <form method="post" action="{{ url_for('super_admin_delete_user', user_id=u[0]) }}" style="display:inline">
+            <button type="submit" class="btn btn-delete">🗑 删除</button>
+          </form>
+          <form method="post" action="{{ url_for('super_admin_reset_password', user_id=u[0]) }}" style="display:inline">
+            <button type="submit" class="btn btn-reset">🔑 重置密码</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
 </body>
 </html>
