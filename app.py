@@ -147,21 +147,28 @@ def login_admin():
     if request.method == "POST":
         username = request.form.get("username")
         password = request.form.get("password")
+
         conn = get_conn(); c = conn.cursor()
         c.execute("SELECT id, password_hash, role FROM users WHERE username=%s", (username,))
         row = c.fetchone(); conn.close()
+
         if row and check_password_hash(row[1], password) and row[2] in ["admin", "super_admin"]:
+            # ✅ 永久保持登录
             session.permanent = True
             session["user_id"] = row[0]
             session["username"] = username
             session["role"] = row[2]
+
+            # ✅ 区分超级管理员和普通管理员
             if row[2] == "super_admin":
                 return redirect(url_for("super_admin"))
             else:
                 return redirect(url_for("dashboard"))
         else:
             error = "用户名或密码错误"
+
     return render_template("login_admin.html", error=error)
+
 
 @app.route("/dashboard")
 @admin_required
