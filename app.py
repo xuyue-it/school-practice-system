@@ -546,6 +546,26 @@ def send_email(subject, content, to_email):
         print("TLS失败:", e_tls)
         return False, str(e_tls)
 
+@app.route("/super_admin/delete_user/<int:user_id>", methods=["POST"])
+def super_admin_delete_user(user_id):
+    # 删除用户
+    cur = conn.cursor()
+    cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    conn.commit()
+    cur.close()
+    return redirect(url_for("super_admin"))
+
+@app.route("/super_admin/reset_password/<int:user_id>", methods=["POST"])
+def super_admin_reset_password(user_id):
+    # 重置密码为默认值 123456
+    new_pw = generate_password_hash("123456")
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET password = %s WHERE id = %s", (new_pw, user_id))
+    conn.commit()
+    cur.close()
+    return redirect(url_for("super_admin"))
+
+
 # ========== 健康检查 ==========
 @app.route("/_health")
 def _health():
