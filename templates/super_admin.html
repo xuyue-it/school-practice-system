@@ -76,6 +76,7 @@
         <th>用户名</th>
         <th>角色</th>
         <th>所属网站</th>
+        <th>数据库</th>
         <th>注册时间</th>
         <th>操作</th>
       </tr>
@@ -95,13 +96,20 @@
           {% endif %}
         </td>
         <td>{{ u[3] or "平台" }}</td>
+        <td>{{ u[5] or "-" }}</td>
         <td>{{ u[4] or "-" }}</td>
         <td>
-          <!-- 删除用户 -->
-          <form method="post" action="{{ url_for('super_admin_delete_user', user_id=u[0]) }}" style="display:inline">
-            <input type="hidden" name="site_name" value="{{ u[3] or '平台' }}">
-            <button type="submit" class="btn btn-delete">🗑 删除</button>
-          </form>
+          {% if u[3] == "平台" %}
+            <!-- 删除平台用户 -->
+            <form method="post" action="{{ url_for('super_admin_delete_user', user_id=u[0]) }}" style="display:inline">
+              <button type="submit" class="btn btn-delete">🗑 删除</button>
+            </form>
+          {% else %}
+            <!-- 删除子网站用户 -->
+            <form method="post" action="{{ url_for('super_admin_delete_subuser', site_name=u[3], user_id=u[0]) }}" style="display:inline">
+              <button type="submit" class="btn btn-delete">🗑 删除</button>
+            </form>
+          {% endif %}
           <!-- 重置密码 -->
           <form method="post" action="{{ url_for('super_admin_reset_password', user_id=u[0]) }}" style="display:inline">
             <input type="hidden" name="site_name" value="{{ u[3] or '平台' }}">

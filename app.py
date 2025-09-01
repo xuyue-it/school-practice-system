@@ -163,8 +163,6 @@ def login_admin():
 def dashboard():
     return render_template("dashboard.html")
 
-
-# ========== 超级管理员总览（表单 + 用户） ==========
 # ========== 超级管理员总览（表单 + 用户） ==========
 @app.route("/super_admin")
 @admin_required
@@ -192,7 +190,7 @@ def super_admin():
     ]
 
     # --------- 平台用户 ---------
-    c.execute("SELECT id, username, role, '平台' as site_name, NOW() as created_at FROM users ORDER BY id ASC")
+    c.execute("SELECT id, username, role, '平台' as site_name, NOW() as created_at, '平台' as db_url FROM users ORDER BY id ASC")
     users = list(c.fetchall())
 
     # --------- 各子网站用户 ---------
@@ -200,7 +198,8 @@ def super_admin():
         schema_name = form["db_url"]  # 比如 form_test1
         try:
             c.execute(f"SET search_path TO {schema_name}")
-            c.execute("SELECT id, username, role, %s as site_name, NOW() as created_at FROM users", (form["site_name"],))
+            c.execute("SELECT id, username, role, %s as site_name, NOW() as created_at, %s as db_url FROM users",
+                      (form["site_name"], schema_name))
             users += c.fetchall()
         except Exception as e:
             print(f"⚠️ 读取 {schema_name}.users 出错:", e)
@@ -208,6 +207,24 @@ def super_admin():
     conn.close()
 
     return render_template("super_admin.html", forms=forms, users=users)
+
+
+# ========== 新增：超级管理员删除子网站用户 ==========
+@app.route("/super_admin/delete_subuser/<site_name>/<int:user_id>", methods=["POST"])
+@admin_required
+def super_admin_delete_subuser(site_name, user_id):
+    if session.get("role") != "super_admin":
+        return "❌ 无权限", 403
+    try:
+        schema_name = f"form_{site_name}"
+        conn = get_conn(); c = conn.cursor()
+        c.execute(f"SET search_path TO {schema_name}")
+        c.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        conn.commit(); conn.close()
+        return redirect(url_for("super_admin"))
+    except Exception as e:
+        traceback.print_exc()
+        return f"<h2>❌ 删除子用户失败: {e}</h2>", 500
 
 
 
