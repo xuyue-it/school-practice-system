@@ -216,45 +216,16 @@ def super_admin_delete(site_name):
         traceback.print_exc()
         return f"<h2>❌ 删除失败: {e}</h2>", 500
 
-# ========== 普通用户注册/登录 ==========
-@app.route("/register_user", methods=["GET", "POST"])
-def register_user():
-    error = None
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        try:
-            conn = get_conn(); c = conn.cursor()
-            c.execute("INSERT INTO users (username, password_hash, role) VALUES (%s,%s,%s)",
-                      (username, generate_password_hash(password), "user"))
-            conn.commit(); conn.close()
-            return redirect(url_for("login_user"))
-        except Exception:
-            error = "注册失败，可能用户名已存在"
-    return render_template("register_user.html", error=error)
+@app.route("/logout/<site_name>")
+def site_logout(site_name):
+    session.pop(f"user_{site_name}", None)
+    session.pop(f"role_{site_name}", None)
+    return redirect(url_for("site_login", site_name=site_name))
 
-@app.route("/login_user", methods=["GET", "POST"])
-def login_user():
-    error = None
-    if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
-        conn = get_conn(); c = conn.cursor()
-        c.execute("SELECT id, password_hash, role FROM users WHERE username=%s", (username,))
-        row = c.fetchone(); conn.close()
-        if row and check_password_hash(row[1], password) and row[2] == "user":
-            session["user_id"] = row[0]
-            session["username"] = username
-            session["role"] = row[2]
-            return redirect(url_for("index"))
-        else:
-            error = "用户名或密码错误"
-    return render_template("login_user.html", error=error)
-
-@app.route("/logout")
-def logout():
+@app.route("/logout_admin")
+def logout_admin():
     session.clear()
-    return redirect(url_for("index"))
+    return redirect(url_for("login_admin"))
 
 # ========== 首页 ==========
 @app.route("/")
