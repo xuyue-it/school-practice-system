@@ -304,6 +304,68 @@ def super_admin_reset_password(user_id):
         traceback.print_exc()
         return f"<h2>❌ 重置密码失败: {e}</h2>", 500
 
+# ========== 创建新表单 ==========
+@app.route("/create_form", methods=["GET", "POST"])
+@admin_required
+def create_form():
+    if request.method == "POST":
+        name = request.form.get("name")
+        site_name = request.form.get("site_name")
+        schema_json = request.form.get("schema_json")
+
+        if not name or not site_name:
+            return "❌ 表单名称或网站名不能为空", 400
+
+        schema_name = f"form_{site_name}"
+        created_by = session.get("user_id")
+
+        conn = get_conn(); c = conn.cursor()
+        try:
+            # 保存表单定义
+            c.execute("""
+                INSERT INTO form_defs (name, site_name, schema_json, created_by, db_url)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (name, site_name, schema_json, created_by, schema_name))
+
+            # 创建 schema
+            c.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
+
+            # 创建 submissions 表
+            c.execute(f"""
+                CREATE TABLE IF NOT EXISTS {schema_name}.submissions (
+                    id SERIAL PRIMARY KEY,
+                    user_id INT,
+                    data JSONB,
+                    status TEXT DEFAULT '待审核',
+                    review_comment TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # 创建用户表（子网站用户）
+            c.execute(f"""
+                CREATE TABLE IF NOT EXISTS {schema_name}.users (
+                    id SERIAL PRIMARY KEY,
+                    username TEXT UNIQUE,
+                    password_hash TEXT,
+                    role TEXT DEFAULT 'user',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            conn.close()
+            return f"❌ 创建失败: {e}", 500
+
+        conn.close()
+        return redirect(url_for("super_admin"))
+
+    # GET 请求 → 显示页面
+    return render_template("create_form.html")
+
+
 # ========== 动态表单 ========== （保留唯一版本）
 @app.route("/site/<site_name>/admin")
 def site_admin(site_name):
