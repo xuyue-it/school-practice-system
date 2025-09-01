@@ -194,17 +194,18 @@ def super_admin():
             "id": row[0],
             "name": row[1],
             "site_name": row[2],
-            "db_url": row[3],
+            "db_url": row[3] or "-",  # ✅ 避免 None
             "created_by": row[4],
-            "created_at": row[5],
-            "user_url": f"/site/{row[2]}/form",
-            "admin_url": f"/site/{row[2]}/admin"
+            "created_at": str(row[5]) if row[5] else "-"  # ✅ 避免 datetime 直接传
         }
         for row in form_rows
     ]
 
     # --------- 平台用户 ---------
-    c.execute("SELECT id, username, role, '平台' as site_name, NOW() as created_at, '平台' as db_url FROM users ORDER BY id ASC")
+    c.execute("""
+        SELECT id, username, role, '平台' as site_name, NOW() as created_at, '平台' as db_url
+        FROM users ORDER BY id ASC
+    """)
     users = list(c.fetchall())
 
     # --------- 各子网站用户 ---------
@@ -212,14 +213,21 @@ def super_admin():
         schema_name = form["db_url"]
         try:
             c.execute(f"SET search_path TO {schema_name}")
-            c.execute("SELECT id, username, role, %s as site_name, NOW() as created_at, %s as db_url FROM users",
-                      (form["site_name"], schema_name))
+            c.execute("""
+                SELECT id, username, role, %s as site_name, NOW() as created_at, %s as db_url
+                FROM users
+            """, (form["site_name"], schema_name))
             users += c.fetchall()
         except Exception as e:
             print(f"⚠️ 读取 {schema_name}.users 出错:", e)
 
     conn.close()
+
+    print("DEBUG FORMS:", forms)
+    print("DEBUG USERS:", users[:5])  # 打印前 5 个
+
     return render_template("super_admin.html", forms=forms, users=users)
+
 
 # ========== 动态表单 ========== （保留唯一版本）
 @app.route("/site/<site_name>/admin")
@@ -313,7 +321,7 @@ def export_word(site_name, sub_id):
 def index():
     return render_template("index.html")
 
-# 导出 Excel
+
 # 导出 Excel
 @app.route("/site/<site_name>/admin/export_excel/<int:sub_id>")
 def export_excel(site_name, sub_id):
