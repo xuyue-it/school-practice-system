@@ -31,69 +31,57 @@
     }
     .topbar a:hover { background:#1d4ed8; }
 
-    /* 卡片样式 */
-    .card {
-      background:#fff;
-      border-radius:12px;
-      box-shadow:0 4px 10px rgba(0,0,0,.08);
-      padding:20px;
-      margin-bottom:20px;
-    }
-    .card h2 {
-      font-size:18px;
-      font-weight:700;
-      margin-bottom:12px;
-    }
-    .meta {
-      font-size:14px;
-      color:#555;
-      margin-bottom:10px;
-    }
-    .detail {
-      border-collapse: collapse;
+    table {
       width:100%;
-      font-size:13px;
-      margin-bottom:12px;
+      border-collapse:collapse;
+      background:#fff;
+      border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08);
+      overflow:hidden;
+      table-layout:auto;         /* 自动列宽 */
+      word-break:break-word;     /* 内容过长自动换行 */
     }
-    .detail td {
+    th, td {
+      padding:10px;
       border:1px solid #ddd;
-      padding:6px 8px;
-      text-align:left;
+      text-align:center;
+      font-size:14px;
     }
+    th {
+      background:#f1f5f9;
+      font-weight:700;
+    }
+    tr:nth-child(even) { background:#f9fafb; }
+
     .badge {
       display:inline-block;
       padding:4px 10px;
       border-radius:999px;
       font-size:12px;
-      margin-left:6px;
+      font-weight:600;
     }
-    .badge-pending { background:#facc15; color:#111; }
-    .badge-approved { background:#16a34a; color:#fff; }
-    .badge-rejected { background:#dc2626; color:#fff; }
+    .badge-pending { background:#facc15; color:#111; }   /* 待审核 黄 */
+    .badge-approved { background:#16a34a; color:#fff; } /* 通过 绿 */
+    .badge-rejected { background:#dc2626; color:#fff; } /* 不通过 红 */
 
     input.comment {
-      width:100%;
-      padding:8px;
-      margin-bottom:10px;
+      width:100px;
+      padding:4px;
       border-radius:6px;
       border:1px solid #ccc;
     }
-    .actions {
-      display:flex;
-      gap:10px;
-    }
-    button {
-      flex:1;
-      padding:8px 12px;
+    .btn {
+      padding:6px 10px;
       border:none;
       border-radius:6px;
       cursor:pointer;
       font-weight:600;
+      margin-top:4px;
     }
     .btn-approve { background:#22c55e; color:#fff; }
     .btn-reject { background:#ef4444; color:#fff; }
     .btn-delete { background:#f59e0b; color:#111; }
-    button:hover { opacity:0.9; }
+    .btn:hover { opacity:0.9; }
   </style>
 </head>
 <body>
@@ -105,37 +93,52 @@
     <a href="/logout/{{ site_name }}">🚪 退出登录</a>
   </div>
 
-  {% for s in submissions %}
-  <div class="card" id="row-{{ s[0] }}">
-    <h2>提交 #{{ s[0] }}</h2>
-    <div class="meta">
-      提交用户: {{ s[1] }} ｜ 时间: {{ s[5] }}
-      {% if s[3] == "待审核" %}
-        <span class="badge badge-pending">{{ s[3] }}</span>
-      {% elif s[3] == "通过" %}
-        <span class="badge badge-approved">{{ s[3] }}</span>
-      {% elif s[3] == "不通过" %}
-        <span class="badge badge-rejected">{{ s[3] }}</span>
-      {% else %}
-        {{ s[3] }}
-      {% endif %}
-    </div>
-    <div class="data">
-      <table class="detail">
-        {% for k, v in s[2].items() %}
-          <tr><td>{{ k }}</td><td>{{ v }}</td></tr>
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>提交用户</th>
+        <th>提交时间</th>
+        {% for f in field_order %}
+          <th>{{ field_labels[f] }}</th>
         {% endfor %}
-      </table>
-    </div>
-    <div>审核说明: {{ s[4] or "（无）" }}</div>
-    <input type="text" id="comment-{{ s[0] }}" class="comment" placeholder="输入审核说明">
-    <div class="actions">
-      <button class="btn-approve" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '通过')">通过</button>
-      <button class="btn-reject" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '不通过')">不通过</button>
-      <button class="btn-delete" onclick="deleteSubmission({{ form_id }}, {{ s[0] }})">删除</button>
-    </div>
-  </div>
-  {% endfor %}
+        <th>状态</th>
+        <th>审核说明</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in submissions %}
+      <tr id="row-{{ s[0] }}">
+        <td>{{ s[0] }}</td>
+        <td>{{ s[1] }}</td>
+        <td>{{ s[5] }}</td>
+        {% for f in field_order %}
+          <td>{{ s[2][f] }}</td>
+        {% endfor %}
+        <td>
+          {% if s[3] == "待审核" %}
+            <span class="badge badge-pending">🟡 待审核</span>
+          {% elif s[3] == "通过" %}
+            <span class="badge badge-approved">🟢 已通过</span>
+          {% elif s[3] == "不通过" %}
+            <span class="badge badge-rejected">🔴 已拒绝</span>
+          {% else %}
+            {{ s[3] }}
+          {% endif %}
+        </td>
+        <td>{{ s[4] or "" }}</td>
+        <td>
+          <input type="text" id="comment-{{ s[0] }}" class="comment" placeholder="说明">
+          <br>
+          <button class="btn btn-approve" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '通过')">通过</button>
+          <button class="btn btn-reject" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '不通过')">不通过</button>
+          <button class="btn btn-delete" onclick="deleteSubmission({{ form_id }}, {{ s[0] }})">删除</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 
 <script>
 async function updateStatus(form_id, sub_id, status){
