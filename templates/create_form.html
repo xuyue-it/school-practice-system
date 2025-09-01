@@ -6,8 +6,9 @@
   <style>
     body {
       font-family:"Microsoft YaHei", sans-serif;
-      background:#f7f7f7;
+      background:#f5f7fb;
       margin:20px;
+      color:#111;
     }
     h1 {
       text-align:center;
@@ -21,7 +22,7 @@
     }
     .section {
       background:#fff;
-      border-radius:10px;
+      border-radius:12px;
       box-shadow:0 4px 10px rgba(0,0,0,.08);
       padding:20px;
       margin-bottom:20px;
@@ -30,6 +31,9 @@
       font-size:18px;
       font-weight:700;
       margin-bottom:15px;
+      display:flex;
+      align-items:center;
+      gap:6px;
     }
     label {
       font-weight:700;
@@ -39,9 +43,10 @@
     input, textarea, select {
       width:100%;
       padding:10px;
-      border:1px solid #ccc;
-      border-radius:6px;
+      border:1px solid #d1d5db;
+      border-radius:8px;
       font-family:inherit;
+      margin-top:6px;
     }
     textarea { resize:vertical; min-height:100px; }
     button {
@@ -56,16 +61,33 @@
       cursor:pointer;
       font-weight:700;
       font-size:16px;
+      transition:background .2s;
     }
     button:hover { background:#1d4ed8; }
     .hint { font-size:13px; color:#555; margin-top:5px; }
+
+    /* 动态问题卡片 */
     .question-card {
       background:#f9fafb;
-      border:1px solid #ddd;
-      padding:15px;
+      border:1px solid #e5e7eb;
+      padding:20px;
       margin-top:15px;
-      border-radius:8px;
+      border-radius:10px;
       position:relative;
+      box-shadow:0 2px 6px rgba(0,0,0,.05);
+      cursor:grab;
+    }
+    .question-card.dragging {
+      opacity:0.6;
+      border:2px dashed #2563eb;
+    }
+    .question-card h2 {
+      font-size:16px;
+      font-weight:700;
+      margin-bottom:10px;
+      display:flex;
+      align-items:center;
+      gap:6px;
     }
     .remove-btn {
       position:absolute;
@@ -74,19 +96,22 @@
       background:#ef4444;
       border:none;
       color:white;
+      font-size:16px;
       padding:4px 10px;
       border-radius:6px;
       cursor:pointer;
+      line-height:1;
     }
     .remove-btn:hover { background:#dc2626; }
+
     .option-input { display:flex; gap:8px; margin-top:6px; }
     .option-input input { flex:1; }
     .preview {
-      margin-top:10px;
-      padding:10px;
+      margin-top:12px;
+      padding:12px;
       background:#fff;
-      border:1px dashed #ccc;
-      border-radius:6px;
+      border:1px dashed #d1d5db;
+      border-radius:8px;
     }
   </style>
 </head>
@@ -103,43 +128,32 @@
       <div class="hint">⚡ 管理员和用户将通过 <code>/site/[网站名]/...</code> 访问该系统。</div>
     </div>
 
-    <!-- 申请人信息 -->
+    <!-- 固定部分 -->
     <div class="section">
       <h2>🧑 申请人信息</h2>
-      <label>姓名 *</label>
-      <input type="text" placeholder="请输入姓名">
-      <label>联系方式 *</label>
-      <input type="text" placeholder="请输入联系方式">
-      <label>电子邮箱 *</label>
-      <input type="email" placeholder="请输入邮箱">
-      <label>所属团契/小组 *</label>
-      <input type="text" placeholder="请输入团契/小组">
+      <label>姓名 * <input type="text" placeholder="请输入姓名"></label>
+      <label>联系方式 * <input type="text" placeholder="请输入联系方式"></label>
+      <label>电子邮箱 * <input type="email" placeholder="请输入邮箱"></label>
+      <label>所属团契/小组 * <input type="text" placeholder="请输入团契/小组"></label>
     </div>
 
-    <!-- 活动信息 -->
     <div class="section">
       <h2>📅 活动信息</h2>
-      <label>活动名称 *</label>
-      <input type="text" placeholder="请输入活动名称">
-      <label>活动地点 *</label>
-      <input type="text" placeholder="请输入活动地点">
-      <label>开始日期 *</label>
-      <input type="date">
-      <label>结束日期 *</label>
-      <input type="date">
-      <label>开始时间 *</label>
-      <input type="time">
-      <label>结束时间 *</label>
-      <input type="time">
-      <label>预计参与人数 *</label>
-      <input type="number" min="1">
-      <label>活动性质 *</label>
-      <select>
-        <option>聚会</option>
-        <option>比赛</option>
-        <option>演出</option>
-        <option>其他</option>
-      </select>
+      <label>活动名称 * <input type="text" placeholder="请输入活动名称"></label>
+      <label>活动地点 * <input type="text" placeholder="请输入活动地点"></label>
+      <label>开始日期 * <input type="date"></label>
+      <label>结束日期 * <input type="date"></label>
+      <label>开始时间 * <input type="time"></label>
+      <label>结束时间 * <input type="time"></label>
+      <label>预计参与人数 * <input type="number" min="1"></label>
+      <label>活动性质 *
+        <select>
+          <option>聚会</option>
+          <option>比赛</option>
+          <option>演出</option>
+          <option>其他</option>
+        </select>
+      </label>
     </div>
 
     <!-- 动态问题区 -->
@@ -200,42 +214,34 @@
     function renderQuestions() {
       const container = document.getElementById("extra-sections");
       container.innerHTML = "";
-      questions.forEach(q => {
+      questions.forEach((q, index) => {
         const div = document.createElement("div");
         div.className = "section question-card";
-        div.draggable = true;
-        div.ondragstart = (e) => { e.dataTransfer.setData("id", q.id); };
-        div.ondragover = (e) => e.preventDefault();
-        div.ondrop = (e) => {
-          const draggedId = parseInt(e.dataTransfer.getData("id"));
-          const idx1 = questions.findIndex(x => x.id === draggedId);
-          const idx2 = questions.findIndex(x => x.id === q.id);
-          if (idx1 >= 0 && idx2 >= 0) {
-            const [moved] = questions.splice(idx1, 1);
-            questions.splice(idx2, 0, moved);
-            renderQuestions();
-          }
-        };
+        div.setAttribute("draggable", "true");
+        div.setAttribute("data-id", q.id);
+
         div.innerHTML = `
           <button type="button" class="remove-btn" onclick="removeQuestion(${q.id})">×</button>
-          <label>问题标题</label>
-          <input type="text" value="${q.label}" onchange="updateQuestion(${q.id}, 'label', this.value)">
-          <label>题型</label>
-          <select onchange="updateQuestion(${q.id}, 'type', this.value)">
-            <option value="text" ${q.type==="text"?"selected":""}>单行文本</option>
-            <option value="textarea" ${q.type==="textarea"?"selected":""}>多行文本</option>
-            <option value="email" ${q.type==="email"?"selected":""}>邮箱</option>
-            <option value="number" ${q.type==="number"?"selected":""}>数字</option>
-            <option value="date" ${q.type==="date"?"selected":""}>日期</option>
-            <option value="time" ${q.type==="time"?"selected":""}>时间</option>
-            <option value="radio" ${q.type==="radio"?"selected":""}>单选</option>
-            <option value="checkbox" ${q.type==="checkbox"?"selected":""}>多选</option>
-            <option value="select" ${q.type==="select"?"selected":""}>下拉选择</option>
-            <option value="file" ${q.type==="file"?"selected":""}>文件上传</option>
-          </select>
+          <h2>📝 新问题</h2>
+          <label>问题标题 <input type="text" value="${q.label}" onchange="updateQuestion(${q.id}, 'label', this.value)"></label>
+          <label>题型
+            <select onchange="updateQuestion(${q.id}, 'type', this.value)">
+              <option value="text" ${q.type==="text"?"selected":""}>单行文本</option>
+              <option value="textarea" ${q.type==="textarea"?"selected":""}>多行文本</option>
+              <option value="email" ${q.type==="email"?"selected":""}>邮箱</option>
+              <option value="number" ${q.type==="number"?"selected":""}>数字</option>
+              <option value="date" ${q.type==="date"?"selected":""}>日期</option>
+              <option value="time" ${q.type==="time"?"selected":""}>时间</option>
+              <option value="radio" ${q.type==="radio"?"selected":""}>单选</option>
+              <option value="checkbox" ${q.type==="checkbox"?"selected":""}>多选</option>
+              <option value="select" ${q.type==="select"?"selected":""}>下拉</option>
+              <option value="file" ${q.type==="file"?"selected":""}>文件上传</option>
+            </select>
+          </label>
           <label><input type="checkbox" ${q.required?"checked":""} onchange="updateQuestion(${q.id}, 'required', this.checked)"> 必填</label>
           <div class="preview">${renderPreview(q)}</div>
         `;
+
         if (["radio","checkbox","select"].includes(q.type)) {
           const optDiv = document.createElement("div");
           q.options.forEach((opt,i) => {
@@ -256,22 +262,74 @@
         }
         container.appendChild(div);
       });
+
+      enableDragDrop();
       syncSchema();
     }
 
-    function renderPreview(q) {
-      switch (q.type) {
-        case "text": return '<input type="text" placeholder="单行文本">';
-        case "textarea": return '<textarea placeholder="多行文本"></textarea>';
-        case "email": return '<input type="email" placeholder="邮箱">';
-        case "number": return '<input type="number" placeholder="数字">';
-        case "date": return '<input type="date">';
-        case "time": return '<input type="time">';
-        case "radio": return '<label><input type="radio"> 选项</label>';
-        case "checkbox": return '<label><input type="checkbox"> 选项</label>';
-        case "select": return '<select><option>选项</option></select>';
-        case "file": return '<input type="file">';
+    function renderPreview(q){
+      switch(q.type){
+        case "textarea": return `<textarea placeholder="多行文本"></textarea>`;
+        case "email": return `<input type="email" placeholder="邮箱">`;
+        case "number": return `<input type="number" placeholder="数字">`;
+        case "date": return `<input type="date">`;
+        case "time": return `<input type="time">`;
+        case "radio": return q.options.map(opt=>`<label><input type="radio" name="q${q.id}"> ${opt}</label>`).join("<br>");
+        case "checkbox": return q.options.map(opt=>`<label><input type="checkbox" name="q${q.id}"> ${opt}</label>`).join("<br>");
+        case "select": return `<select>${q.options.map(opt=>`<option>${opt}</option>`).join("")}</select>`;
+        case "file": return `<input type="file">`;
+        default: return `<input type="text" placeholder="单行文本">`;
       }
+    }
+
+    function enableDragDrop(){
+      const container = document.getElementById("extra-sections");
+      let dragged = null;
+
+      container.addEventListener("dragstart", (e) => {
+        if (e.target.classList.contains("question-card")) {
+          dragged = e.target;
+          dragged.classList.add("dragging");
+        }
+      });
+
+      container.addEventListener("dragend", (e) => {
+        if (dragged) {
+          dragged.classList.remove("dragging");
+          dragged = null;
+          updateQuestionsOrder();
+        }
+      });
+
+      container.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(container, e.clientY);
+        if (afterElement == null) {
+          container.appendChild(dragged);
+        } else {
+          container.insertBefore(dragged, afterElement);
+        }
+      });
+    }
+
+    function getDragAfterElement(container, y) {
+      const draggableElements = [...container.querySelectorAll(".question-card:not(.dragging)")];
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    function updateQuestionsOrder() {
+      const container = document.getElementById("extra-sections");
+      const newOrder = [...container.querySelectorAll(".question-card")].map(div => parseInt(div.getAttribute("data-id")));
+      questions = newOrder.map(id => questions.find(q => q.id === id));
+      syncSchema();
     }
 
     function syncSchema() {
