@@ -14,6 +14,11 @@ import os
 from functools import wraps
 import psycopg2
 import json
+from collections import OrderedDict
+import io
+import pandas as pd
+from flask import send_file
+from docx import Document
 
 # ========== Flask 应用 ==========
 app = Flask(__name__)
@@ -469,26 +474,82 @@ def create_form():
     return render_template("create_form.html")
 
 # ========== 动态表单 ==========
-@app.route("/site/<site_name>/form", methods=["GET", "POST"])
-def site_form(site_name):
-    if not session.get(f"user_{site_name}"):
-        return redirect(url_for("site_login", site_name=site_name))
+@app.route("/site/<site_name>/admin")
+def site_admin(site_name):
+    if not session.get(f"admin_{site_name}"):
+        return redirect(url_for("site_admin_login", site_name=site_name))
+
     conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT id, name, schema_json, db_url FROM form_defs WHERE site_name=%s", (site_name,))
+    c.execute("SELECT id, name, created_by, db_url FROM form_defs WHERE site_name=%s", (site_name,))
     row = c.fetchone(); conn.close()
     if not row:
         return "❌ 表单不存在", 404
-    form_id, form_name, schema_json, schema_name = row
-    schema = json.loads(schema_json)
-    if request.method == "POST":
-        data = request.form.to_dict(flat=True)
-        conn = get_conn(); c = conn.cursor()
-        c.execute(f"SET search_path TO {schema_name}")
-        c.execute("INSERT INTO submissions (user_id, data) VALUES (%s,%s)",
-                  (session.get(f"user_{site_name}"), json.dumps(data)))
-        conn.commit(); conn.close()
-        return f"<h2>✅ 已提交到表单 {form_name}</h2><a href='/'>返回首页</a>"
-    return render_template("dynamic_form.html", form_name=form_name, site_name=site_name, schema=schema)
+
+    form_id, form_name, owner_id, schema_name = row
+
+    conn = get_conn(); c = conn.cursor()
+    c.execute(f"SET search_path TO {schema_name}")
+    c.execute("SELECT id, user_id, data, status, review_comment, created_at FROM submissions ORDER BY id DESC")
+    rows = c.fetchall(); conn.close()
+
+    import json
+    from collections import OrderedDict
+
+    # 固定字段顺序（可以根据你常见的字段来定义）
+    field_labels = {
+        "name": "姓名",
+        "phone": "电话",
+        "email": "邮箱",
+        "group_name": "团体名称",
+        "event_name": "活动名称",
+        "start_date": "开始日期",
+        "start_time": "开始时间",
+        "end_date": "结束日期",
+        "end_time": "结束时间",
+        "location": "地点",
+        "event_type": "性质",
+        "participants": "人数",
+        "equipment": "器材",
+        "special_request": "特别需求",
+        "donation": "捐款",
+        "donation_method": "方式",
+        "remarks": "备注",
+        "emergency_name": "紧急联系人",
+        "emergency_phone": "紧急电话",
+        "attachment": "附件"
+    }
+
+    field_order = list(field_labels.keys())
+
+    submissions = []
+    for r in rows:
+        try:
+            data_dict = json.loads(r[2], object_pairs_hook=OrderedDict)
+        except Exception:
+            data_dict = {}
+
+        # 按固定顺序重新整理
+        ordered_data = OrderedDict()
+        for f in field_order:
+            ordered_data[f] = data_dict.get(f, "")
+
+        submissions.append((
+            r[0],   # id
+            r[1],   # user_id
+            ordered_data,  # 按固定顺序的 dict
+            r[3],   # status
+            r[4],   # review_comment
+            r[5]    # created_at
+        ))
+
+    return render_template("dynamic_admin.html",
+                           form_name=form_name,
+                           submissions=submissions,
+                           form_id=form_id,
+                           site_name=site_name,
+                           field_order=field_order,
+                           field_labels=field_labels)
+
 
 # ========== 子网站用户管理 ==========
 @app.route("/site/<site_name>/admin/reset_password/<int:user_id>", methods=["POST"])
@@ -538,6 +599,59 @@ def site_admin_users(site_name):
     users = c.fetchall(); conn.close()
 
     return render_template("site_admin_users.html", site_name=site_name, users=users)
+
+
+import io
+import pandas as pd
+from flask import send_file
+from docx import Document
+
+# 导出 Word
+@app.route("/site/<site_name>/admin/export_word/<int:sub_id>")
+def export_word(site_name, sub_id):
+    conn = get_conn(); c = conn.cursor()
+    c.execute(f"SET search_path TO form_{site_name}")
+    c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
+    row = c.fetchone(); conn.close()
+    if not row:
+        return "❌ 记录不存在", 404
+
+    data = json.loads(row[0])
+
+    doc = Document()
+    doc.add_heading(f"提交 #{sub_id}", level=1)
+    for k, v in data.items():
+        doc.add_paragraph(f"{k}: {v}")
+
+    buffer = io.BytesIO()
+    doc.save(buffer)
+    buffer.seek(0)
+
+    return send_file(buffer, as_attachment=True,
+                     download_name=f"submission_{sub_id}.docx",
+                     mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+
+# 导出 Excel
+@app.route("/site/<site_name>/admin/export_excel/<int:sub_id>")
+def export_excel(site_name, sub_id):
+    conn = get_conn(); c = conn.cursor()
+    c.execute(f"SET search_path TO form_{site_name}")
+    c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
+    row = c.fetchone(); conn.close()
+    if not row:
+        return "❌ 记录不存在", 404
+
+    data = json.loads(row[0])
+    df = pd.DataFrame(list(data.items()), columns=["字段", "内容"])
+
+    buffer = io.BytesIO()
+    df.to_excel(buffer, index=False)
+    buffer.seek(0)
+
+    return send_file(buffer, as_attachment=True,
+                     download_name=f"submission_{sub_id}.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
 
 @app.route("/site/<site_name>/admin/delete_user/<int:user_id>", methods=["POST"])
