@@ -34,9 +34,21 @@
     .btn-reset { background:#6b7280; color:#fff; }
     a.btn:hover, button.btn:hover { opacity:0.9; }
 
-    /* 用户表格 */
-    table { border-collapse: collapse; width:100%; background:#fff; border-radius:10px;
-            box-shadow:0 4px 10px rgba(0,0,0,.08); margin-top:10px; }
+    /* ✅ 表格滚动容器 */
+    .table-container {
+      width:100%;
+      overflow-x:auto;
+      background:#fff;
+      border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08);
+      margin-top:10px;
+    }
+
+    table {
+      border-collapse: collapse;
+      min-width: max-content;   /* ✅ 根据内容撑开 */
+      white-space: nowrap;      /* ✅ 不换行，可以横向滚动 */
+    }
     th, td { padding:12px; border:1px solid #ddd; text-align:center; }
     th { background:#f1f5f9; font-weight:700; }
     tr:nth-child(even){ background:#f9fafb; }
@@ -69,57 +81,59 @@
 
   <!-- 用户与管理员 -->
   <h2>👥 用户与管理员</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>用户名</th>
-        <th>角色</th>
-        <th>所属网站</th>
-        <th>数据库</th>
-        <th>注册时间</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for u in users %}
-      <tr>
-        <td>{{ u[0] }}</td>
-        <td>{{ u[1] }}</td>
-        <td>
-          {% if u[2] == "super_admin" %}
-            🌟 超级管理员
-          {% elif u[2] == "admin" %}
-            ⚙️ 管理员
-          {% else %}
-            👤 普通用户
-          {% endif %}
-        </td>
-        <td>{{ u[3] or "平台" }}</td>
-        <td>{{ u[5] or "-" }}</td>
-        <td>{{ u[4] or "-" }}</td>
-        <td>
-          {% if u[3] == "平台" %}
-            <!-- 删除平台用户 -->
-            <form method="post" action="{{ url_for('super_admin_delete_user', user_id=u[0]) }}" style="display:inline">
-              <button type="submit" class="btn btn-delete">🗑 删除</button>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>用户名</th>
+          <th>角色</th>
+          <th>所属网站</th>
+          <th>数据库</th>
+          <th>注册时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u[0] }}</td>
+          <td>{{ u[1] }}</td>
+          <td>
+            {% if u[2] == "super_admin" %}
+              🌟 超级管理员
+            {% elif u[2] == "admin" %}
+              ⚙️ 管理员
+            {% else %}
+              👤 普通用户
+            {% endif %}
+          </td>
+          <td>{{ u[3] or "平台" }}</td>
+          <td>{{ u[5] or "-" }}</td>
+          <td>{{ u[4] or "-" }}</td>
+          <td>
+            {% if u[3] == "平台" %}
+              <!-- 删除平台用户 -->
+              <form method="post" action="{{ url_for('super_admin_delete_user', user_id=u[0]) }}" style="display:inline">
+                <button type="submit" class="btn btn-delete">🗑 删除</button>
+              </form>
+            {% else %}
+              <!-- 删除子网站用户 -->
+              <form method="post" action="{{ url_for('super_admin_delete_subuser', site_name=u[3], user_id=u[0]) }}" style="display:inline">
+                <button type="submit" class="btn btn-delete">🗑 删除</button>
+              </form>
+            {% endif %}
+            <!-- 重置密码 -->
+            <form method="post" action="{{ url_for('super_admin_reset_password', user_id=u[0]) }}" style="display:inline">
+              <input type="hidden" name="site_name" value="{{ u[3] or '平台' }}">
+              <button type="submit" class="btn btn-reset">🔑 重置密码</button>
             </form>
-          {% else %}
-            <!-- 删除子网站用户 -->
-            <form method="post" action="{{ url_for('super_admin_delete_subuser', site_name=u[3], user_id=u[0]) }}" style="display:inline">
-              <button type="submit" class="btn btn-delete">🗑 删除</button>
-            </form>
-          {% endif %}
-          <!-- 重置密码 -->
-          <form method="post" action="{{ url_for('super_admin_reset_password', user_id=u[0]) }}" style="display:inline">
-            <input type="hidden" name="site_name" value="{{ u[3] or '平台' }}">
-            <button type="submit" class="btn btn-reset">🔑 重置密码</button>
-          </form>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 
   <!-- 🔄 自动刷新 -->
   <script>
@@ -133,7 +147,6 @@
       })
       .catch(err => console.error("刷新失败:", err));
   }
-
   // 每 30 秒刷新一次
   setInterval(autoRefresh, 30000);
   </script>

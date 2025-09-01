@@ -20,12 +20,26 @@
     }
     .topbar a:hover { background:#1d4ed8; }
 
-    table {
-      width:100%; border-collapse:collapse; background:#fff;
-      border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,.08);
-      table-layout:auto; word-break:break-word; overflow:hidden;
+    /* ✅ 表格容器，支持左右滑动 */
+    .table-container {
+      width:100%;
+      overflow-x:auto;
+      background:#fff;
+      border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08);
     }
-    th, td { padding:10px; border:1px solid #ddd; text-align:center; font-size:14px; }
+
+    table {
+      border-collapse:collapse;
+      min-width: max-content;   /* ✅ 根据内容宽度撑开 */
+      white-space: nowrap;      /* ✅ 不换行，横向滚动 */
+    }
+    th, td {
+      padding:10px;
+      border:1px solid #ddd;
+      text-align:center;
+      font-size:14px;
+    }
     th { background:#f1f5f9; font-weight:700; }
     tr:nth-child(even){ background:#f9fafb; }
 
@@ -58,53 +72,56 @@
     <a href="/logout/{{ site_name }}">🚪 退出登录</a>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>提交用户</th>
-        <th>提交时间</th>
-        {% for f in field_order %}
-          <th>{{ field_labels[f] }}</th>
+  <!-- ✅ 加上容器 -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>提交用户</th>
+          <th>提交时间</th>
+          {% for f in field_order %}
+            <th>{{ field_labels[f] }}</th>
+          {% endfor %}
+          <th>状态</th>
+          <th>审核说明</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in submissions %}
+        <tr id="row-{{ s[0] }}">
+          <td>{{ s[0] }}</td>
+          <td>{{ s[1] }}</td>
+          <td>{{ s[5] }}</td>
+          {% for f in field_order %}
+            <td>{{ s[2][f] }}</td>
+          {% endfor %}
+          <td>
+            {% if s[3] == "待审核" %}
+              <span class="badge badge-pending">🟡 待审核</span>
+            {% elif s[3] == "通过" %}
+              <span class="badge badge-approved">🟢 已通过</span>
+            {% elif s[3] == "不通过" %}
+              <span class="badge badge-rejected">🔴 已拒绝</span>
+            {% endif %}
+          </td>
+          <td>{{ s[4] or "" }}</td>
+          <td>
+            <input type="text" id="comment-{{ s[0] }}" class="comment" placeholder="说明">
+            <br>
+            <button class="btn btn-approve" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '通过')">通过</button>
+            <button class="btn btn-reject" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '不通过')">不通过</button>
+            <a class="btn btn-delete" href="/form/{{ form_id }}/delete/{{ s[0] }}">删除</a>
+            <a class="btn btn-export" href="/site/{{ site_name }}/admin/export_word/{{ s[0] }}">Word</a>
+            <a class="btn btn-export" href="/site/{{ site_name }}/admin/export_excel/{{ s[0] }}">Excel</a>
+            <button class="btn btn-mail" onclick="sendMail({{ s[0] }})">发送邮件</button>
+          </td>
+        </tr>
         {% endfor %}
-        <th>状态</th>
-        <th>审核说明</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for s in submissions %}
-      <tr id="row-{{ s[0] }}">
-        <td>{{ s[0] }}</td>
-        <td>{{ s[1] }}</td>
-        <td>{{ s[5] }}</td>
-        {% for f in field_order %}
-          <td>{{ s[2][f] }}</td>
-        {% endfor %}
-        <td>
-          {% if s[3] == "待审核" %}
-            <span class="badge badge-pending">🟡 待审核</span>
-          {% elif s[3] == "通过" %}
-            <span class="badge badge-approved">🟢 已通过</span>
-          {% elif s[3] == "不通过" %}
-            <span class="badge badge-rejected">🔴 已拒绝</span>
-          {% endif %}
-        </td>
-        <td>{{ s[4] or "" }}</td>
-        <td>
-          <input type="text" id="comment-{{ s[0] }}" class="comment" placeholder="说明">
-          <br>
-          <button class="btn btn-approve" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '通过')">通过</button>
-          <button class="btn btn-reject" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '不通过')">不通过</button>
-          <a class="btn btn-delete" href="/form/{{ form_id }}/delete/{{ s[0] }}">删除</a>
-          <a class="btn btn-export" href="/site/{{ site_name }}/admin/export_word/{{ s[0] }}">Word</a>
-          <a class="btn btn-export" href="/site/{{ site_name }}/admin/export_excel/{{ s[0] }}">Excel</a>
-          <button class="btn btn-mail" onclick="sendMail({{ s[0] }})">发送邮件</button>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+      </tbody>
+    </table>
+  </div>
 
 <script>
 async function updateStatus(form_id, sub_id, status){
