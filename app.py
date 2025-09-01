@@ -171,6 +171,43 @@ def super_admin_delete(site_name):
         traceback.print_exc()
         return f"<h2>❌ 删除失败: {e}</h2>", 500
 
+@app.route("/super_admin/delete_user/<int:user_id>", methods=["POST"])
+@admin_required
+def super_admin_delete_user(user_id):
+    if session.get("role") != "super_admin":
+        return "❌ 无权限", 403
+    try:
+        conn = get_conn(); c = conn.cursor()
+        # 删除该用户创建的子网站
+        c.execute("SELECT site_name FROM form_defs WHERE created_by=%s", (user_id,))
+        sites = [r[0] for r in c.fetchall()]
+        for site in sites:
+            c.execute(f"DROP SCHEMA IF EXISTS form_{site} CASCADE")
+        c.execute("DELETE FROM form_defs WHERE created_by=%s", (user_id,))
+        # 删除用户
+        c.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        conn.commit(); conn.close()
+        return redirect(url_for("super_admin"))
+    except Exception as e:
+        traceback.print_exc()
+        return f"<h2>❌ 删除平台用户失败: {e}</h2>", 500
+
+@app.route("/super_admin/delete_subuser/<site_name>/<int:user_id>", methods=["POST"])
+@admin_required
+def super_admin_delete_subuser(site_name, user_id):
+    if session.get("role") != "super_admin":
+        return "❌ 无权限", 403
+    try:
+        schema_name = f"form_{site_name}"
+        conn = get_conn(); c = conn.cursor()
+        c.execute(f"SET search_path TO {schema_name}")
+        c.execute("DELETE FROM users WHERE id=%s", (user_id,))
+        conn.commit(); conn.close()
+        return redirect(url_for("super_admin"))
+    except Exception as e:
+        traceback.print_exc()
+        return f"<h2>❌ 删除子网站用户失败: {e}</h2>", 500
+
 # ========== 子网站管理员 ==========
 @app.route("/site/<site_name>/admin")
 def site_admin(site_name):
