@@ -36,17 +36,23 @@
       gap:6px;
     }
     label {
-      font-weight:700;
+      font-weight:600;
       display:block;
       margin-top:12px;
+      margin-bottom:6px;
     }
     input, textarea, select {
       width:100%;
-      padding:10px;
+      padding:12px;
       border:1px solid #d1d5db;
       border-radius:8px;
       font-family:inherit;
-      margin-top:6px;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline:none;
+      border-color:#2563eb;
+      box-shadow:0 0 0 3px rgba(37,99,235,0.2);
     }
     textarea { resize:vertical; min-height:100px; }
     button {
@@ -77,10 +83,6 @@
       box-shadow:0 2px 6px rgba(0,0,0,.05);
       cursor:grab;
     }
-    .question-card.dragging {
-      opacity:0.6;
-      border:2px dashed #2563eb;
-    }
     .question-card h2 {
       font-size:16px;
       font-weight:700;
@@ -93,12 +95,13 @@
       position:absolute;
       top:10px;
       right:10px;
+      width:28px;
+      height:28px;
+      border-radius:50%;
       background:#ef4444;
       border:none;
       color:white;
       font-size:16px;
-      padding:4px 10px;
-      border-radius:6px;
       cursor:pointer;
       line-height:1;
     }
@@ -131,21 +134,21 @@
     <!-- 固定部分 -->
     <div class="section">
       <h2>🧑 申请人信息</h2>
-      <label>姓名 * <input type="text" placeholder="请输入姓名"></label>
-      <label>联系方式 * <input type="text" placeholder="请输入联系方式"></label>
-      <label>电子邮箱 * <input type="email" placeholder="请输入邮箱"></label>
-      <label>所属团契/小组 * <input type="text" placeholder="请输入团契/小组"></label>
+      <label>姓名 *<input type="text" placeholder="请输入姓名"></label>
+      <label>联系方式 *<input type="text" placeholder="请输入联系方式"></label>
+      <label>电子邮箱 *<input type="email" placeholder="请输入邮箱"></label>
+      <label>所属团契/小组 *<input type="text" placeholder="请输入团契/小组"></label>
     </div>
 
     <div class="section">
       <h2>📅 活动信息</h2>
-      <label>活动名称 * <input type="text" placeholder="请输入活动名称"></label>
-      <label>活动地点 * <input type="text" placeholder="请输入活动地点"></label>
-      <label>开始日期 * <input type="date"></label>
-      <label>结束日期 * <input type="date"></label>
-      <label>开始时间 * <input type="time"></label>
-      <label>结束时间 * <input type="time"></label>
-      <label>预计参与人数 * <input type="number" min="1"></label>
+      <label>活动名称 *<input type="text" placeholder="请输入活动名称"></label>
+      <label>活动地点 *<input type="text" placeholder="请输入活动地点"></label>
+      <label>开始日期 *<input type="date"></label>
+      <label>结束日期 *<input type="date"></label>
+      <label>开始时间 *<input type="time"></label>
+      <label>结束时间 *<input type="time"></label>
+      <label>预计参与人数 *<input type="number" min="1"></label>
       <label>活动性质 *
         <select>
           <option>聚会</option>
@@ -214,7 +217,7 @@
     function renderQuestions() {
       const container = document.getElementById("extra-sections");
       container.innerHTML = "";
-      questions.forEach((q, index) => {
+      questions.forEach((q) => {
         const div = document.createElement("div");
         div.className = "section question-card";
         div.setAttribute("draggable", "true");
@@ -223,7 +226,7 @@
         div.innerHTML = `
           <button type="button" class="remove-btn" onclick="removeQuestion(${q.id})">×</button>
           <h2>📝 新问题</h2>
-          <label>问题标题 <input type="text" value="${q.label}" onchange="updateQuestion(${q.id}, 'label', this.value)"></label>
+          <label>问题标题<input type="text" value="${q.label}" onchange="updateQuestion(${q.id}, 'label', this.value)"></label>
           <label>题型
             <select onchange="updateQuestion(${q.id}, 'type', this.value)">
               <option value="text" ${q.type==="text"?"selected":""}>单行文本</option>
@@ -263,7 +266,6 @@
         container.appendChild(div);
       });
 
-      enableDragDrop();
       syncSchema();
     }
 
@@ -282,64 +284,10 @@
       }
     }
 
-    function enableDragDrop(){
-      const container = document.getElementById("extra-sections");
-      let dragged = null;
-
-      container.addEventListener("dragstart", (e) => {
-        if (e.target.classList.contains("question-card")) {
-          dragged = e.target;
-          dragged.classList.add("dragging");
-        }
-      });
-
-      container.addEventListener("dragend", (e) => {
-        if (dragged) {
-          dragged.classList.remove("dragging");
-          dragged = null;
-          updateQuestionsOrder();
-        }
-      });
-
-      container.addEventListener("dragover", (e) => {
-        e.preventDefault();
-        const afterElement = getDragAfterElement(container, e.clientY);
-        if (afterElement == null) {
-          container.appendChild(dragged);
-        } else {
-          container.insertBefore(dragged, afterElement);
-        }
-      });
-    }
-
-    function getDragAfterElement(container, y) {
-      const draggableElements = [...container.querySelectorAll(".question-card:not(.dragging)")];
-      return draggableElements.reduce((closest, child) => {
-        const box = child.getBoundingClientRect();
-        const offset = y - box.top - box.height / 2;
-        if (offset < 0 && offset > closest.offset) {
-          return { offset: offset, element: child };
-        } else {
-          return closest;
-        }
-      }, { offset: Number.NEGATIVE_INFINITY }).element;
-    }
-
-    function updateQuestionsOrder() {
-      const container = document.getElementById("extra-sections");
-      const newOrder = [...container.querySelectorAll(".question-card")].map(div => parseInt(div.getAttribute("data-id")));
-      questions = newOrder.map(id => questions.find(q => q.id === id));
-      syncSchema();
-    }
-
     function syncSchema() {
       const schema = { fields: questions };
       document.getElementById("schema_json").value = JSON.stringify(schema, null, 2);
     }
-
-    document.getElementById("formBuilder").addEventListener("submit", (e) => {
-      syncSchema();
-    });
   </script>
 </body>
 </html>
