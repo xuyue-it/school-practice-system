@@ -59,6 +59,8 @@
     }
     .btn-delete { background:#f59e0b; color:#111; }
     .btn-reset { background:#6b7280; color:#fff; }
+    .btn-word { background:#2563eb; color:#fff; }
+    .btn-excel { background:#16a34a; color:#fff; }
     .btn:hover { opacity:0.9; }
   </style>
 </head>
@@ -101,6 +103,10 @@
           <form method="post" action="{{ url_for('site_admin_reset_password', site_name=site_name, user_id=u[0]) }}" style="display:inline">
             <button type="submit" class="btn btn-reset">🔑 重置密码</button>
           </form>
+          <!-- 导出 Word -->
+          <a href="{{ url_for('export_word', site_name=site_name, sub_id=1) }}" class="btn btn-word">📄 导出Word</a>
+          <!-- 导出 Excel -->
+          <a href="{{ url_for('export_excel', site_name=site_name, sub_id=1) }}" class="btn btn-excel">📊 导出Excel</a>
         </td>
       </tr>
       {% endfor %}
