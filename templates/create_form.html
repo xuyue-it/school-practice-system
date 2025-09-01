@@ -26,6 +26,11 @@
       padding:20px;
       margin-bottom:20px;
     }
+    .section h2 {
+      font-size:18px;
+      font-weight:700;
+      margin-bottom:15px;
+    }
     label {
       font-weight:700;
       display:block;
@@ -76,6 +81,13 @@
     .remove-btn:hover { background:#dc2626; }
     .option-input { display:flex; gap:8px; margin-top:6px; }
     .option-input input { flex:1; }
+    .preview {
+      margin-top:10px;
+      padding:10px;
+      background:#fff;
+      border:1px dashed #ccc;
+      border-radius:6px;
+    }
   </style>
 </head>
 <body>
@@ -93,7 +105,7 @@
 
     <!-- 申请人信息 -->
     <div class="section">
-      <h2>申请人信息</h2>
+      <h2>🧑 申请人信息</h2>
       <label>姓名 *</label>
       <input type="text" placeholder="请输入姓名">
       <label>联系方式 *</label>
@@ -106,7 +118,7 @@
 
     <!-- 活动信息 -->
     <div class="section">
-      <h2>活动信息</h2>
+      <h2>📅 活动信息</h2>
       <label>活动名称 *</label>
       <input type="text" placeholder="请输入活动名称">
       <label>活动地点 *</label>
@@ -121,6 +133,13 @@
       <input type="time">
       <label>预计参与人数 *</label>
       <input type="number" min="1">
+      <label>活动性质 *</label>
+      <select>
+        <option>聚会</option>
+        <option>比赛</option>
+        <option>演出</option>
+        <option>其他</option>
+      </select>
     </div>
 
     <!-- 动态问题区 -->
@@ -198,23 +217,24 @@
           }
         };
         div.innerHTML = `
-          <button type="button" class="remove-btn" onclick="removeQuestion(${q.id})">删除</button>
+          <button type="button" class="remove-btn" onclick="removeQuestion(${q.id})">×</button>
           <label>问题标题</label>
           <input type="text" value="${q.label}" onchange="updateQuestion(${q.id}, 'label', this.value)">
           <label>题型</label>
           <select onchange="updateQuestion(${q.id}, 'type', this.value)">
-            <option value="text" ${q.type==="text"?"selected":""}>文本</option>
-            <option value="textarea" ${q.type==="textarea"?"selected":""}>多行</option>
+            <option value="text" ${q.type==="text"?"selected":""}>单行文本</option>
+            <option value="textarea" ${q.type==="textarea"?"selected":""}>多行文本</option>
             <option value="email" ${q.type==="email"?"selected":""}>邮箱</option>
             <option value="number" ${q.type==="number"?"selected":""}>数字</option>
             <option value="date" ${q.type==="date"?"selected":""}>日期</option>
             <option value="time" ${q.type==="time"?"selected":""}>时间</option>
             <option value="radio" ${q.type==="radio"?"selected":""}>单选</option>
             <option value="checkbox" ${q.type==="checkbox"?"selected":""}>多选</option>
-            <option value="select" ${q.type==="select"?"selected":""}>下拉</option>
+            <option value="select" ${q.type==="select"?"selected":""}>下拉选择</option>
             <option value="file" ${q.type==="file"?"selected":""}>文件上传</option>
           </select>
           <label><input type="checkbox" ${q.required?"checked":""} onchange="updateQuestion(${q.id}, 'required', this.checked)"> 必填</label>
+          <div class="preview">${renderPreview(q)}</div>
         `;
         if (["radio","checkbox","select"].includes(q.type)) {
           const optDiv = document.createElement("div");
@@ -237,6 +257,21 @@
         container.appendChild(div);
       });
       syncSchema();
+    }
+
+    function renderPreview(q) {
+      switch (q.type) {
+        case "text": return '<input type="text" placeholder="单行文本">';
+        case "textarea": return '<textarea placeholder="多行文本"></textarea>';
+        case "email": return '<input type="email" placeholder="邮箱">';
+        case "number": return '<input type="number" placeholder="数字">';
+        case "date": return '<input type="date">';
+        case "time": return '<input type="time">';
+        case "radio": return '<label><input type="radio"> 选项</label>';
+        case "checkbox": return '<label><input type="checkbox"> 选项</label>';
+        case "select": return '<select><option>选项</option></select>';
+        case "file": return '<input type="file">';
+      }
     }
 
     function syncSchema() {

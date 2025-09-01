@@ -10,19 +10,29 @@
     .topbar a { text-decoration:none; padding:8px 14px; border-radius:8px; background:#2563eb; color:white; font-weight:600; }
     .topbar a:hover { background:#1d4ed8; }
 
-    table { border-collapse: collapse; width:100%; background:white; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,.08); }
-    th, td { padding:12px; border:1px solid #ddd; text-align:center; }
-    th { background:#f1f5f9; font-weight:700; }
-    tr:nth-child(even){ background:#f9fafb; }
+    .card {
+      background:#fff;
+      border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08);
+      padding:20px;
+      margin-bottom:20px;
+    }
+    .card h2 {
+      font-size:18px;
+      margin-bottom:10px;
+    }
+    .field { margin-bottom:10px; }
+    .field strong { display:inline-block; width:120px; color:#333; }
 
-    .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; border:none; }
+    .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; }
     .badge-pending { background:#facc15; color:#111; }
     .badge-approved { background:#16a34a; color:#fff; }
     .badge-rejected { background:#dc2626; color:#fff; }
 
-    input.comment { width:200px; padding:6px; border-radius:6px; border:1px solid #ccc; }
+    input.comment { width:100%; padding:8px; border-radius:6px; border:1px solid #ccc; margin-top:5px; }
 
-    button { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+    .actions { margin-top:12px; display:flex; gap:10px; flex-wrap:wrap; }
+    button { padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
     .btn-approve { background:#22c55e; color:#fff; }
     .btn-reject { background:#ef4444; color:#fff; }
     .btn-delete { background:#f59e0b; color:#111; }
@@ -38,49 +48,40 @@
     <a href="/logout">退出登录</a>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>提交用户</th>
-        <th>提交时间</th>
-        <th>数据内容</th>
-        <th>状态</th>
-        <th>审核说明</th>
-        <th>操作</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for s in submissions %}
-      <tr id="row-{{ s[0] }}">
-        <td>{{ s[0] }}</td>
-        <td>{{ s[1] }}</td>
-        <td>{{ s[5] }}</td>
-        <td>
-          <pre style="text-align:left; white-space:pre-wrap; font-size:13px;">{{ s[2] }}</pre>
-        </td>
-        <td>
-          {% if s[3] == "待审核" %}
-            <span class="badge badge-pending">{{ s[3] }}</span>
-          {% elif s[3] == "通过" %}
-            <span class="badge badge-approved">{{ s[3] }}</span>
-          {% elif s[3] == "不通过" %}
-            <span class="badge badge-rejected">{{ s[3] }}</span>
-          {% else %}
-            {{ s[3] }}
-          {% endif %}
-        </td>
-        <td>{{ s[4] or "" }}</td>
-        <td>
-          <input type="text" id="comment-{{ s[0] }}" class="comment" placeholder="审核说明">
-          <button class="btn-approve" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '通过')">通过</button>
-          <button class="btn-reject" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '不通过')">不通过</button>
-          <button class="btn-delete" onclick="deleteSubmission({{ form_id }}, {{ s[0] }})">删除</button>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+  {% for s in submissions %}
+  <div class="card" id="row-{{ s[0] }}">
+    <h2>📝 提交记录 #{{ s[0] }}</h2>
+    <div class="field"><strong>提交用户:</strong> {{ s[1] }}</div>
+    <div class="field"><strong>提交时间:</strong> {{ s[5] }}</div>
+    <div class="field"><strong>数据内容:</strong>
+      <pre style="text-align:left; white-space:pre-wrap; font-size:13px;">{{ s[2] }}</pre>
+    </div>
+    <div class="field">
+      <strong>状态:</strong>
+      {% if s[3] == "待审核" %}
+        <span class="badge badge-pending">{{ s[3] }}</span>
+      {% elif s[3] == "通过" %}
+        <span class="badge badge-approved">{{ s[3] }}</span>
+      {% elif s[3] == "不通过" %}
+        <span class="badge badge-rejected">{{ s[3] }}</span>
+      {% else %}
+        {{ s[3] }}
+      {% endif %}
+    </div>
+    <div class="field"><strong>审核说明:</strong> {{ s[4] or "" }}</div>
+
+    <div class="field">
+      <label>✏️ 填写审核说明:</label>
+      <input type="text" id="comment-{{ s[0] }}" class="comment" placeholder="请输入审核意见">
+    </div>
+
+    <div class="actions">
+      <button class="btn-approve" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '通过')">通过</button>
+      <button class="btn-reject" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '不通过')">不通过</button>
+      <button class="btn-delete" onclick="deleteSubmission({{ form_id }}, {{ s[0] }})">删除</button>
+    </div>
+  </div>
+  {% endfor %}
 
 <script>
 async function updateStatus(form_id, sub_id, status){
