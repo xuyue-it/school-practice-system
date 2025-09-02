@@ -62,6 +62,7 @@ def init_user_table():
     conn.commit(); conn.close()
 init_user_table()
 
+# ========== 首页 ==========
 @app.route("/")
 def index():
     role = session.get("role")
@@ -89,7 +90,6 @@ def index():
         ]
 
     return render_template("index.html", role=role, username=session.get("username"), forms=forms)
-
 
 # ========= 原有 submissions 表（固定表单） =========
 def init_main_submissions():
@@ -259,9 +259,9 @@ def super_admin():
             "id": row[0],
             "name": row[1],
             "site_name": row[2],
-            "db_url": row[3] or "-",  # ✅ 避免 None
+            "db_url": row[3] or "-",
             "created_by": row[4],
-            "created_at": str(row[5]) if row[5] else "-"  # ✅ 避免 datetime 直接传
+            "created_at": str(row[5]) if row[5] else "-"
         }
         for row in form_rows
     ]
@@ -287,9 +287,6 @@ def super_admin():
             print(f"⚠️ 读取 {schema_name}.users 出错:", e)
 
     conn.close()
-
-    print("DEBUG FORMS:", forms)
-    print("DEBUG USERS:", users[:5])  # 打印前 5 个
 
     return render_template("super_admin.html", forms=forms, users=users)
 
@@ -355,7 +352,7 @@ def super_admin_reset_password(user_id):
     if session.get("role") != "super_admin":
         return "❌ 无权限", 403
     try:
-        new_pw = "123456"  # 默认重置密码
+        new_pw = "123456"
         hashed = generate_password_hash(new_pw)
 
         conn = get_conn(); c = conn.cursor()
@@ -383,16 +380,13 @@ def create_form():
 
         conn = get_conn(); c = conn.cursor()
         try:
-            # 保存表单定义
             c.execute("""
                 INSERT INTO form_defs (name, site_name, schema_json, created_by, db_url)
                 VALUES (%s, %s, %s, %s, %s)
             """, (name, site_name, schema_json, created_by, schema_name))
 
-            # 创建 schema
             c.execute(f"CREATE SCHEMA IF NOT EXISTS {schema_name}")
 
-            # 创建 submissions 表
             c.execute(f"""
                 CREATE TABLE IF NOT EXISTS {schema_name}.submissions (
                     id SERIAL PRIMARY KEY,
@@ -404,7 +398,6 @@ def create_form():
                 )
             """)
 
-            # 创建用户表（子网站用户）
             c.execute(f"""
                 CREATE TABLE IF NOT EXISTS {schema_name}.users (
                     id SERIAL PRIMARY KEY,
@@ -423,7 +416,6 @@ def create_form():
 
         conn.close()
         return redirect(url_for("site_admin", site_name=site_name))
-    # GET 请求 → 显示页面
     return render_template("create_form.html")
 
 # ========== 动态表单 ==========
@@ -510,11 +502,6 @@ def export_word(site_name, sub_id):
     return send_file(buffer, as_attachment=True,
                      download_name=f"submission_{sub_id}.docx",
                      mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-
-# ========== 首页 ==========
-@app.route("/")
-def index():
-    return render_template("index.html")
 
 # ========== 导出 Excel ==========
 @app.route("/site/<site_name>/admin/export_excel/<int:sub_id>")
