@@ -62,6 +62,35 @@ def init_user_table():
     conn.commit(); conn.close()
 init_user_table()
 
+@app.route("/")
+def index():
+    role = session.get("role")
+    forms = []
+
+    # 如果是管理员，取出自己创建的表单
+    if role in ["admin", "super_admin"]:
+        user_id = session.get("user_id")
+        conn = get_conn(); c = conn.cursor()
+        if role == "super_admin":
+            c.execute("SELECT id, name, site_name, db_url, created_at FROM form_defs ORDER BY id ASC")
+        else:
+            c.execute("SELECT id, name, site_name, db_url, created_at FROM form_defs WHERE created_by=%s ORDER BY id ASC", (user_id,))
+        rows = c.fetchall(); conn.close()
+
+        forms = [
+            {
+                "id": row[0],
+                "name": row[1],
+                "site_name": row[2],
+                "db_url": row[3],
+                "created_at": str(row[4]) if row[4] else "-"
+            }
+            for row in rows
+        ]
+
+    return render_template("index.html", role=role, username=session.get("username"), forms=forms)
+
+
 # ========= 原有 submissions 表（固定表单） =========
 def init_main_submissions():
     conn = get_conn(); c = conn.cursor()
@@ -109,7 +138,6 @@ def init_form_defs():
 init_form_defs()
 
 # ========== 登录保护 ==========
-# ========== 登录保护 ==========
 def login_required(view_func):
     @wraps(view_func)
     def wrapper(*args, **kwargs):
@@ -147,6 +175,39 @@ def register_admin():
         except Exception:
             error = "注册失败，可能用户名已存在"
     return render_template("register_admin.html", error=error)
+
+# ========== 普通用户注册 ==========
+@app.route("/register_user", methods=["POST"])
+def register_user():
+    username = request.form.get("username")
+    password = request.form.get("password")
+    try:
+        conn = get_conn(); c = conn.cursor()
+        c.execute("INSERT INTO users (username, password_hash, role) VALUES (%s,%s,%s)",
+                  (username, generate_password_hash(password), "user"))
+        conn.commit(); conn.close()
+        return redirect(url_for("index"))
+    except Exception:
+        return "❌ 用户注册失败，可能用户名已存在", 400
+
+# ========== 普通用户登录 ==========
+@app.route("/login_user", methods=["POST"])
+def login_user():
+    username = request.form.get("username")
+    password = request.form.get("password")
+
+    conn = get_conn(); c = conn.cursor()
+    c.execute("SELECT id, password_hash, role FROM users WHERE username=%s", (username,))
+    row = c.fetchone(); conn.close()
+
+    if row and check_password_hash(row[1], password) and row[2] == "user":
+        session.permanent = True
+        session["user_id"] = row[0]
+        session["username"] = username
+        session["role"] = "user"
+        return redirect(url_for("index"))  # 登录成功后回首页
+    else:
+        return "❌ 用户名或密码错误", 400
 
 @app.route("/login_admin", methods=["GET", "POST"])
 def login_admin():
@@ -249,7 +310,6 @@ def super_admin_delete(site_name):
         traceback.print_exc()
         return f"<h2>❌ 删除失败: {e}</h2>", 500
 
-
 # ✅ 删除平台用户
 @app.route("/super_admin/delete_user/<int:user_id>", methods=["POST"])
 @admin_required
@@ -271,7 +331,6 @@ def super_admin_delete_user(user_id):
         traceback.print_exc()
         return f"<h2>❌ 删除平台用户失败: {e}</h2>", 500
 
-
 # ✅ 删除子网站用户
 @app.route("/super_admin/delete_subuser/<site_name>/<int:user_id>", methods=["POST"])
 @admin_required
@@ -288,7 +347,6 @@ def super_admin_delete_subuser(site_name, user_id):
     except Exception as e:
         traceback.print_exc()
         return f"<h2>❌ 删除子网站用户失败: {e}</h2>", 500
-
 
 # ✅ 重置密码
 @app.route("/super_admin/reset_password/<int:user_id>", methods=["POST"])
@@ -368,8 +426,7 @@ def create_form():
     # GET 请求 → 显示页面
     return render_template("create_form.html")
 
-
-# ========== 动态表单 ========== （保留唯一版本）
+# ========== 动态表单 ==========
 @app.route("/site/<site_name>/admin")
 def site_admin(site_name):
     if not session.get(f"admin_{site_name}"):
@@ -417,7 +474,6 @@ def site_admin(site_name):
                            field_labels=field_labels)
 
 # ========== 导出 Word ==========
-# 导出 Word
 @app.route("/site/<site_name>/admin/export_word/<int:sub_id>")
 def export_word(site_name, sub_id):
     conn = get_conn(); c = conn.cursor()
@@ -427,7 +483,6 @@ def export_word(site_name, sub_id):
     if not row:
         return "❌ 记录不存在", 404
 
-    # ✅ 兼容 dict 和 str
     if isinstance(row[0], dict):
         data = row[0]
     else:
@@ -445,7 +500,7 @@ def export_word(site_name, sub_id):
     }
 
     for k, v in data.items():
-        label = field_labels.get(k, k)  # ✅ 映射华语字段
+        label = field_labels.get(k, k)
         doc.add_paragraph(f"{label}: {v}")
 
     buffer = io.BytesIO()
@@ -456,13 +511,12 @@ def export_word(site_name, sub_id):
                      download_name=f"submission_{sub_id}.docx",
                      mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
-
+# ========== 首页 ==========
 @app.route("/")
 def index():
     return render_template("index.html")
 
-
-# 导出 Excel
+# ========== 导出 Excel ==========
 @app.route("/site/<site_name>/admin/export_excel/<int:sub_id>")
 def export_excel(site_name, sub_id):
     conn = get_conn(); c = conn.cursor()
@@ -472,13 +526,11 @@ def export_excel(site_name, sub_id):
     if not row:
         return "❌ 记录不存在", 404
 
-    # ✅ 兼容 dict 和 str
     if isinstance(row[0], dict):
         data = row[0]
     else:
         data = json.loads(row[0])
 
-    # ✅ 在这里定义 field_labels
     field_labels = {
         "name": "姓名", "phone": "电话", "email": "邮箱", "group_name": "团体名称",
         "event_name": "活动名称", "start_date": "开始日期", "start_time": "开始时间",
@@ -490,13 +542,12 @@ def export_excel(site_name, sub_id):
 
     rows = []
     for k, v in data.items():
-        label = field_labels.get(k, k)  # ✅ 转换为中文
+        label = field_labels.get(k, k)
         rows.append((label, v))
 
     df = pd.DataFrame(rows, columns=["字段", "内容"])
 
     buffer = io.BytesIO()
-    # ✅ 强制使用 openpyxl 引擎
     with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
         df.to_excel(writer, index=False)
     buffer.seek(0)
@@ -507,8 +558,6 @@ def export_excel(site_name, sub_id):
         download_name=f"submission_{sub_id}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
-
 
 @app.route("/form/<int:form_id>/delete/<int:sub_id>", methods=["GET", "POST"])
 def delete_submission(form_id, sub_id):
@@ -523,12 +572,9 @@ def delete_submission(form_id, sub_id):
     c.execute("DELETE FROM submissions WHERE id=%s", (sub_id,))
     conn.commit(); conn.close()
 
-    # 如果是 AJAX POST 请求，返回 JSON
     if request.method == "POST" and request.is_json:
         return jsonify({"success": True})
-    # 如果是 GET（直接点击链接），跳回管理页
     return redirect(url_for("site_admin", site_name=schema_name.replace("form_", "")))
-
 
 # ========== 健康检查 ==========
 @app.route("/_health")
