@@ -563,6 +563,12 @@ def delete_submission(form_id, sub_id):
         return jsonify({"success": True})
     return redirect(url_for("site_admin", site_name=schema_name.replace("form_", "")))
 
+# ========== 退出登录 ==========
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("index"))
+
 # ========== 健康检查 ==========
 @app.route("/_health")
 def _health():

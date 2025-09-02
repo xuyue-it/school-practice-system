@@ -10,14 +10,14 @@
       margin: 0; padding: 0;
     }
     .container {
-      max-width: 900px;
-      margin: 50px auto;
+      max-width: 1000px;
+      margin: 40px auto;
       background: #fff;
       padding: 30px;
       border-radius: 12px;
       box-shadow: 0 6px 16px rgba(0,0,0,.1);
     }
-    h1 { font-weight: 900; color: #2563eb; text-align: center; }
+    h1 { font-weight: 900; color: #2563eb; text-align: center; margin-bottom: 20px; }
     h2 { text-align: center; margin-top: 20px; }
     p  { color: #444; text-align: center; }
     .tabs {
@@ -87,6 +87,9 @@
     .btn.admin:hover { background: #1d4ed8; }
     .btn.logout { background: #ef4444; color: #fff; }
     .btn.logout:hover { background: #dc2626; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 15px; margin-top: 20px; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; text-align: center; background: #fafafa; }
+    .card:hover { background: #f0f9ff; }
     footer {
       margin-top: 30px;
       font-size: 13px;
@@ -97,7 +100,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>通用表单平台入口</h1>
+    <h1>通用表单平台</h1>
 
     {% if not role %}
       <!-- 未登录 -->
@@ -137,6 +140,16 @@
         <button type="submit" class="submit">注册</button>
       </form>
 
+      <!-- 模拟Google Forms效果：近期表单 -->
+      <h2 style="margin-top:30px;">近期表单</h2>
+      <div class="grid">
+        <div class="card">空白表单</div>
+        <div class="card">联系信息</div>
+        <div class="card">反馈</div>
+        <div class="card">活动报名</div>
+      </div>
+      <p style="text-align:center; margin-top:15px; color:#666;">尚无表单，请先登录</p>
+
     {% elif role == "user" %}
       <!-- 用户 -->
       <h2>欢迎，{{ username }} 👋</h2>
@@ -156,7 +169,7 @@
           {% for f in forms %}
             <tr>
               <td>{{ f.id }}</td>
-              <td>{{ f.name }}</td>
+              <td><a href="/site/{{f.site_name}}/admin">{{ f.name }}</a></td>
               <td>{{ f.site_name }}</td>
               <td>{{ f.db_url }}</td>
               <td>{{ f.created_at }}</td>
