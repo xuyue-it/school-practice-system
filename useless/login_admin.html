@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>管理员登录</title>
+  <style>
+    body {
+      font-family:"Microsoft YaHei", sans-serif;
+      background:#f5f7fb;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      margin:0;
+      color:#111;
+    }
+    .card {
+      width:100%;
+      max-width:420px;
+      background:#fff;
+      padding:30px;
+      border-radius:12px;
+      box-shadow:0 6px 16px rgba(0,0,0,.1);
+      text-align:center;
+    }
+    h1 {
+      font-weight:900;
+      margin-bottom:24px;
+      font-size:24px;
+      color:#2563eb;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+    }
+    label {
+      font-weight:700;
+      display:block;
+      text-align:left;
+      margin:12px 0 6px;
+    }
+    input {
+      width:90%;
+      padding:12px;
+      border:1px solid #d1d5db;
+      border-radius:8px;
+      font-family:inherit;
+      font-size:14px;
+      margin:0 auto;
+      display:block;
+      transition:border .2s, box-shadow .2s;
+    }
+    input:focus {
+      border-color:#2563eb;
+      outline:none;
+      box-shadow:0 0 0 3px rgba(37,99,235,0.2);
+    }
+    button {
+      margin-top:20px;
+      width:60%;
+      padding:12px;
+      background:#2563eb;
+      color:white;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:16px;
+      transition:all .2s;
+    }
+    button:hover {
+      background:#1d4ed8;
+      transform:translateY(-1px);
+    }
+    .topbar {
+      margin-bottom:20px;
+    }
+    .topbar a {
+      color:#2563eb;
+      text-decoration:none;
+      font-weight:600;
+      margin:0 10px;
+    }
+    .topbar a:hover {
+      text-decoration:underline;
+    }
+    .error {
+      color:#dc2626;
+      margin-top:12px;
+      font-size:14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="topbar">
+      <a href="/static">🏠 首页</a> | <a href="/register">📝 注册管理员</a>
+    </div>
+    <h1>🔑 管理员登录</h1>
+    <form method="post">
+      <label>用户名 *</label>
+      <input type="text" name="username" required placeholder="请输入管理员用户名">
+
+      <label>密码 *</label>
+      <input type="password" name="password" required placeholder="请输入密码">
+
+      <button type="submit">登录</button>
+    </form>
+
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+  </div>
+</body>
+</html>

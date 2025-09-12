@@ -1,121 +1,323 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <title>用户登录</title>
-  <style>
-    body {
-      font-family:"Microsoft YaHei", sans-serif;
-      background:#f5f7fb;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      height:100vh;
-      margin:0;
-      color:#111;
+<meta charset="UTF-8" />
+<title>登录 · Formly</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light dark">
+<script>
+  (function(){
+    try{
+      var lowMem = navigator.deviceMemory && navigator.deviceMemory <= 2;
+      var reduce = window.matchMedia && (
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+        window.matchMedia("(prefers-reduced-transparency: reduce)").matches
+      );
+      if (lowMem || reduce) document.documentElement.classList.add("perf-mode");
+    }catch(e){}
+  })();
+</script>
+
+  <!-- 性能模式 CSS -->
+<style id="perf-style">
+  :root.perf-mode .glass, .perf-mode [data-glass],
+  :root.perf-mode .blur,  .perf-mode [data-blur]{
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* 同时关掉元素本身以及它的 ::before 的 filter（如 .bg-glow::before） */
+  :root.perf-mode [data-blur],
+  :root.perf-mode [data-blur]::before{
+    filter: none !important;
+  }
+  :root.perf-mode *{
+    transition: none !important;
+    animation: none !important;
+    box-shadow: none !important;
+  }
+</style>
+
+<style>
+  :root{
+    --glass-alpha:.78; --field-alpha:.80; --blur:28px;
+    /* 亮色（默认） */
+    --brand:#ff7a2f; --brand2:#ff9955;        /* 统一名 */
+    --brand-1:var(--brand); --brand-2:var(--brand2); /* 兼容页面里已有的 --brand-1/2 */
+    --ink:#0f172a; --muted:#5b5f66;
+    --card-bg: rgba(255,255,255,var(--glass-alpha));
+    --card-border: rgba(255,255,255,.55);
+    --card-shadow: 0 24px 80px rgba(255,140,60,.16), 0 18px 50px rgba(0,0,0,.08);
+    --page-bg:
+      radial-gradient(1100px 800px at 8% -6%, rgba(255,214,231,.18), transparent 60%),
+      radial-gradient(1000px 700px at 92% -8%, rgba(255,226,197,.18), transparent 60%),
+      linear-gradient(180deg,#ffffff 0%,#fbfaf7 45%,#f6f3ee 100%);
+  }
+  :root[data-theme="dark"]{
+    /* 暗色 */
+    --brand:#ff6a2f; --brand2:#e63d3d;
+    --brand-1:var(--brand); --brand-2:var(--brand2);
+    --ink:#e5e7eb; --muted:#9ca3af;
+    --glass-alpha:.22; --field-alpha:.14;
+    --card-bg: rgba(20,20,24,.86);
+    --card-border: rgba(255,255,255,.06);
+    --card-shadow: 0 24px 80px rgba(0,0,0,.65), 0 18px 40px rgba(0,0,0,.45);
+    --page-bg:
+      radial-gradient(1000px 700px at 70% -10%, rgba(255,106,47,.08), transparent 60%),
+      linear-gradient(180deg,#0E0F12 0%,#0E0F12 100%);
+  }
+
+  *,*:before,*:after{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; color:var(--ink);
+    font-family:"Inter","PingFang SC","Microsoft YaHei",ui-sans-serif,-apple-system,system-ui;
+    background: var(--page-bg);
+  }
+
+  .wrap{ min-height:100%; display:grid; place-items:center; padding:24px; }
+  .card{
+    width:min(95vw,980px);
+    display:grid; grid-template-columns:1.1fr 1fr; gap:20px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    backdrop-filter: blur(var(--blur)) saturate(150%) brightness(105%);
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(150%) brightness(105%);
+    border-radius: 26px;
+    box-shadow: var(--card-shadow);
+    padding:26px; position:relative; isolation:isolate;
+  }
+
+  .card:before{
+    content:""; position:absolute; left:14px; right:14px; top:10px; height:64px;
+    background: linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,255,255,0));
+    border-radius:18px; pointer-events:none; opacity:.8;
+  }
+
+  .brand-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; font-weight:900; color:#132030; }
+  .logo-dot{
+    width:24px; height:24px; border-radius:8px;
+    background: linear-gradient(135deg,#6aa4ff,#9bc8ff);
+    box-shadow: inset 0 6px 16px rgba(255,255,255,.55), 0 8px 20px rgba(90,166,255,.22);
+  }
+  .title{ margin:6px 0 8px; font-size:28px; font-weight:1000; letter-spacing:.2px; }
+  .accent{ color:transparent; background:linear-gradient(90deg,var(--brand-1),#ffcaa6); -webkit-background-clip:text; background-clip:text; }
+  .tip{ margin:0 0 16px; color:var(--muted); font-size:12px; }
+
+  .tabs{ display:flex; gap:10px; margin-bottom:10px; }
+  .tab{
+    border:none; padding:8px 14px; border-radius:999px; cursor:pointer;
+    background:rgba(255,255,255,.72); border:1px solid rgba(255,255,255,.75);
+    font-weight:800; color:#2b2b2b;
+  }
+  .tab.active{ background:linear-gradient(135deg,#fff,#ffe8db); border-color:#ffd7bd; color:#873d14; }
+
+  .field{ position:relative; margin:14px 0; }
+  .field input{
+    width:100%; border:none; outline:none;
+    padding:14px 16px 14px 56px;
+    background: rgba(255,255,255,var(--field-alpha));
+    border: 1px solid rgba(255,255,255,.9);
+    border-radius: 999px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,.06), 0 4px 18px rgba(0,0,0,.03);
+    color:#111; font-weight:600;
+  }
+  .field input::placeholder{ color:rgba(30,30,30,.45); }
+  .ball{
+    position:absolute; left:10px; top:50%; transform:translateY(-50%);
+    width:32px; height:32px; border-radius:999px;
+    background: linear-gradient(135deg,#fff,#f3efe9);
+    box-shadow: inset 0 3px 10px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.06);
+    display:grid; place-items:center; color:#6b7280; font-weight:900; font-size:14px;
+  }
+
+  .row{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:6px; font-size:12px; color:#343841; }
+  .row a{ color:#1f3a93; text-decoration:none; }
+  .row a:hover{ text-decoration:underline; }
+
+  .btn{
+    width:100%; margin-top:16px; border:none; cursor:pointer;
+    padding:12px 14px; border-radius:14px; color:#fff; font-weight:900; letter-spacing:.2px;
+    background: linear-gradient(135deg,var(--brand-1),var(--brand-2));
+    box-shadow: 0 14px 36px rgba(255,128,58,.28), inset 0 0 0 1px rgba(255,255,255,.28);
+    transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+  }
+  .btn:hover{ transform: translateY(-1px); filter: brightness(1.03); }
+
+  .alert{
+    background:rgba(255,87,87,.10); border:1px solid rgba(255,87,87,.22);
+    padding:10px 12px; border-radius:12px; font-size:12px; color:#7a1d1d; margin:6px 2px 10px;
+  }
+
+  /* 小入场动画（配合 ?enter=1） */
+  @keyframes rise{
+  0%   { transform: translateY(40px); opacity:0; filter:blur(6px); }
+  100% { transform: translateY(0);    opacity:1; filter:blur(0); }
+  }
+
+  body.enter .card{ animation: rise 2200ms cubic-bezier(.2,1,.2,1) forwards; }
+  body.leaving .card{ transition: transform .36s cubic-bezier(.22,1,.24,1); transform: translateY(-12px); }
+
+  /* 右侧插画 */
+  .art{
+    position:relative; border-radius:20px;
+    background: linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,.2));
+    border:1px solid rgba(255,255,255,.7);
+    box-shadow: inset 0 2px 18px rgba(255,255,255,.5);
+    display:grid; place-items:center;
+  }
+  .art svg{ width:min(60%, 320px); height:auto; filter: drop-shadow(0 24px 40px rgba(255,140,60,.25)); }
+
+  @media (max-width:900px){
+    .card{ grid-template-columns: 1fr; }
+    .art{ order:-1; height:200px; margin-bottom:10px; }
+  }
+
+  /* === 只改背景：暗色方案（自动 + 可选手动） === */
+  @media (prefers-color-scheme: dark) {
+    body{
+      background:
+        radial-gradient(900px 500px at 80% -10%, rgba(255,106,47,.08), transparent 60%),
+        linear-gradient(180deg,#0E0F12 0%,#0E0F12 100%);
     }
-    .card {
-      width:100%;
-      max-width:420px;
-      background:#fff;
-      padding:30px;
-      border-radius:12px;
-      box-shadow:0 6px 16px rgba(0,0,0,.1);
-      text-align:center;
-    }
-    h1 {
-      font-weight:900;
-      margin-bottom:24px;
-      font-size:24px;
-      color:#2563eb;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-    }
-    label {
-      font-weight:700;
-      display:block;
-      text-align:left;
-      margin:12px 0 6px;
-    }
-    input {
-      width:90%;
-      padding:12px;
-      border:1px solid #d1d5db;
-      border-radius:8px;
-      font-family:inherit;
-      font-size:14px;
-      margin:0 auto 14px;
-      display:block;
-      transition:border .2s, box-shadow .2s;
-    }
-    input:focus {
-      border-color:#2563eb;
-      outline:none;
-      box-shadow:0 0 0 3px rgba(37,99,235,0.2);
-    }
-    button {
-      margin-top:10px;
-      width:60%;
-      padding:12px;
-      background:#2563eb;
-      color:white;
-      border:none;
-      border-radius:8px;
-      cursor:pointer;
-      font-weight:700;
-      font-size:16px;
-      transition:all .2s;
-    }
-    button:hover {
-      background:#1d4ed8;
-      transform:translateY(-1px);
-    }
-    .error {
-      color:#dc2626;
-      font-size:14px;
-      margin-top:12px;
-    }
-    .hint {
-      margin-top:12px;
-      font-size:13px;
-      color:#555;
-    }
-    .link {
-      margin-top:16px;
-      font-size:14px;
-    }
-    .link a {
-      color:#2563eb;
-      font-weight:600;
-      text-decoration:none;
-    }
-    .link a:hover {
-      text-decoration:underline;
-    }
-  </style>
+  }
+  :root[data-theme="dark"] body{
+    background:
+      radial-gradient(900px 500px at 80% -10%, rgba(255,106,47,.08), transparent 60%),
+      linear-gradient(180deg,#0E0F12 0%,#0E0F12 100%);
+  }
+</style>
 </head>
 <body>
-  <div class="card">
-    <h1>👤 用户登录</h1>
-    <form method="post">
-      <label for="username">用户名 *</label>
-      <input id="username" name="username" type="text" placeholder="请输入用户名" required>
+  <div class="wrap">
+    <div class="card">
+      <!-- 左：登录/注册 -->
+      <div>
+        <div class="brand-row"><span class="logo-dot" aria-hidden="true"></span><span>Formly</span></div>
+        <h2 class="title">欢迎<span class="accent">登录</span></h2>
+        <p class="tip">请先登录或注册后继续使用</p>
 
-      <label for="password">密码 *</label>
-      <input id="password" name="password" type="password" placeholder="请输入密码" required>
+        <div class="tabs" role="tablist" aria-label="登录与注册">
+          <button class="tab active" id="tab-login" type="button" role="tab" aria-selected="true" aria-controls="form-login">登录</button>
+          <button class="tab" id="tab-register" type="button" role="tab" aria-selected="false" aria-controls="form-register">注册</button>
+        </div>
 
-      <button type="submit">登录</button>
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}<div class="alert" role="alert" aria-live="polite">{{ messages[0] }}</div>{% endif %}
+        {% endwith %}
+        {% if error %}<div class="alert" role="alert" aria-live="polite">{{ error }}</div>{% endif %}
 
-      {% if error %}
-        <div class="error">{{ error }}</div>
-      {% endif %}
-      <div class="hint">登录成功后将跳转到首页。</div>
-    </form>
-    <div class="link">
-      还没有账号？<a href="{{ url_for('register_user') }}">去注册</a>
+        <!-- 登录表单（成功 → /index） -->
+        <form id="form-login" method="POST" action="{{ url_for('login') }}?next=/index" data-smooth role="tabpanel" aria-labelledby="tab-login">
+          <input type="hidden" name="next" value="/index">
+          <label class="field">
+            <span class="ball">@</span>
+            <input type="text" name="username" placeholder="用户名 / 邮箱" required autocomplete="username" aria-label="用户名或邮箱" inputmode="email" autocapitalize="none" spellcheck="false">
+          </label>
+          <label class="field">
+            <span class="ball">●</span>
+            <input type="password" name="password" placeholder="密码" required autocomplete="current-password" aria-label="密码">
+          </label>
+          <div class="row">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" name="remember"> 记住我
+            </label>
+            <a href="#" onclick="alert('请联系管理员重置密码');return false;">忘记密码？</a>
+          </div>
+          <button class="btn" type="submit">登 录</button>
+        </form>
+
+        <!-- 注册表单（注册成功后你可以保持跳回登录页） -->
+        <form id="form-register" method="POST" action="{{ url_for('register') }}?next=/index" style="display:none;" data-smooth role="tabpanel" aria-labelledby="tab-register">
+          <input type="hidden" name="next" value="/index">
+          <label class="field">
+            <span class="ball">@</span>
+            <input type="text" name="username" placeholder="用户名 / 邮箱" required autocomplete="username" aria-label="用户名或邮箱" inputmode="email" autocapitalize="none" spellcheck="false">
+          </label>
+          <label class="field">
+            <span class="ball">●</span>
+            <input type="password" name="password" placeholder="设置密码" required autocomplete="new-password" aria-label="密码">
+          </label>
+          <div class="row" aria-hidden="true"><span></span><span></span></div>
+          <button class="btn" type="submit">注 册</button>
+        </form>
+
+        <p class="tip" style="margin-top:10px;">※ 登录成功会进入 <code>/index</code>，并带入场动画。</p>
+      </div>
+
+      <!-- 右：插画 -->
+      <div class="art" aria-hidden="true">
+        <svg viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#FFC189"/>
+              <stop offset="1" stop-color="#FF8A3C"/>
+            </linearGradient>
+          </defs>
+          <rect x="56" y="104" width="144" height="116" rx="28" fill="url(#g1)"/>
+          <rect x="56" y="104" width="144" height="116" rx="28" stroke="#FFD9B8" stroke-width="10"/>
+          <path d="M88 104V84c0-28 20-48 48-48s48 20 48 48v20" stroke="#FFA25C" stroke-width="16" stroke-linecap="round"/>
+          <circle cx="128" cy="160" r="20" fill="#fff5ec"/>
+          <path d="M128 160v28" stroke="#FF8A3C" stroke-width="12" stroke-linecap="round"/>
+          <circle cx="128" cy="160" r="8" fill="#FF8A3C"/>
+        </svg>
+      </div>
     </div>
   </div>
+
+<script>
+  // 进入动画：?enter=1 时给 body 加 enter，并去掉地址栏参数避免二次刷新再动
+  (function(){
+    const p=new URLSearchParams(location.search);
+    if(p.has('enter')){ document.body.classList.add('enter'); setTimeout(()=>history.replaceState(null,'',location.pathname), 50); }
+  })();
+
+  // 选项卡：登录 / 注册
+  (function(){
+    const tLogin=document.getElementById('tab-login');
+    const tReg  =document.getElementById('tab-register');
+    const fLogin=document.getElementById('form-login');
+    const fReg  =document.getElementById('form-register');
+    function setTab(which){
+      const login=(which==='login');
+      tLogin.classList.toggle('active',login);
+      tReg.classList.toggle('active',!login);
+      tLogin.setAttribute('aria-selected', login ? 'true' : 'false');
+      tReg.setAttribute('aria-selected', login ? 'false' : 'true');
+      fLogin.style.display=login?'block':'none';
+      fReg.style.display=login?'none':'block';
+      document.querySelector('.title').innerHTML = login ? '欢迎<span class="accent">登录</span>' : '欢迎<span class="accent">注册</span>';
+    }
+    tLogin.addEventListener('click',()=>setTab('login'));
+    tReg.addEventListener('click',()=>setTab('reg'));
+  })();
+
+  // 提交时先做 320ms 上移离场再真正提交（更顺滑）
+  (function(){
+    document.querySelectorAll('form[data-smooth]').forEach(form=>{
+      form.addEventListener('submit', e=>{
+        if(form.dataset._submitting) return;
+        e.preventDefault();
+        form.dataset._submitting='1';
+        document.body.classList.add('leaving');
+        setTimeout(()=>form.submit(), 320);
+      });
+    });
+  })();
+</script>
+
+<script>
+(function(){
+  try{
+    document.addEventListener("DOMContentLoaded", function(){
+      document.querySelectorAll('img:not([loading])')
+        .forEach(function(img){ img.setAttribute('loading','lazy'); });
+    }, {passive:true});
+    document.querySelectorAll('script[src]:not([type="module"]):not([defer])')
+      .forEach(function(s){ s.setAttribute('defer',''); });
+  }catch(e){}
+})();
+</script>
+
+
 </body>
 </html>

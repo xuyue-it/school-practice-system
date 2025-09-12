@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>保存成功</title>
+  <!-- 早期开关：首帧决定是否启用 perf-mode -->
+<script>
+  (function(){
+    try{
+      var lowMem = navigator.deviceMemory && navigator.deviceMemory <= 2;
+      var reduce = window.matchMedia && (
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+        window.matchMedia("(prefers-reduced-transparency: reduce)").matches
+      );
+      if (lowMem || reduce) document.documentElement.classList.add("perf-mode");
+    }catch(e){}
+  })();
+  </script>
+
+  <style id="perf-style">
+  :root.perf-mode .glass, .perf-mode [data-glass],
+  :root.perf-mode .blur,  .perf-mode [data-blur]{
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !重要;
+  }
+  /* 同时关掉元素本身以及它的 ::before 的 filter（如 .bg-glow::before） */
+  :root.perf-mode [data-blur],
+  :root.perf-mode [data-blur]::before{
+    filter: none !important;
+  }
+  :root.perf-mode *{
+    transition: none !important;
+    animation: none !important;
+    box-shadow: none !important;
+  }
+</style>
+
+    <style>
+:root{ --accent:#ff6a00; --radius:16px; } /* 默认品牌色，下面脚本会覆盖为管理页设置的颜色 */
+html,body{ height:100%; }
+body{
+  margin:0;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif;
+  /* 在 embed=1 时做成透明背景给外层遮罩用；否则普通页面背景 */
+  background:{% if request.args.get('embed') %}transparent{% else %}#f6f7fb{% endif %};
+}
+.center{
+  min-height:100%;
+  display:flex; align-items:center; justify-content:center;
+  padding:24px;
+}
+.card{
+  width:min(920px, 92vw);
+  border-radius:var(--radius);
+  background:#fff;
+  border:1px solid #e5e7eb;
+  box-shadow:0 30px 60px rgba(0,0,0,.12), 0 8px 20px rgba(0,0,0,.06);
+  padding:24px;
+  /* 从中间弹出动画 */
+  animation: pop .28s cubic-bezier(.2,1,.22,1) both;
+  transform-origin:center center;
+}
+@keyframes pop{
+  0%{ opacity:0; transform: translateY(8px) scale(.98); filter:blur(2px); }
+  100%{ opacity:1; transform: translateY(0) scale(1); filter:blur(0); }
+}
+.h1{display:flex; align-items:center; gap:12px; font-size:22px; font-weight:900; margin:4px 0 14px;}
+.okdot{
+  width:28px; height:28px; display:grid; place-items:center; color:#fff; border-radius:10px;
+  /* 原：linear-gradient(120deg,#ff9c66,#ff6a00) → 使用品牌色变量 */
+  background:linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--accent) 60%, #fff),
+    var(--accent)
+  );
+}
+.note{color:#4b5563; margin-bottom:12px;}
+
+.row{display:flex; align-items:center; gap:12px; margin:12px 0;}
+.tag{font-weight:700; color:#374151; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:10px; padding:8px 12px;}
+.input{flex:1; height:44px; border:1px solid #e5e7eb; border-radius:12px; padding:0 12px; display:flex; align-items:center; color:#111; user-select:text; white-space:nowrap; overflow:auto;}
+.copy{padding:8px 12px; border-radius:10px; border:1px solid #e5e7eb; background:#fff; cursor:pointer;}
+.open{color:var(--accent); font-weight:800; text-decoration:none;}
+
+.actions{display:flex; gap:12px; margin-top:8px; flex-wrap:wrap;}
+.link-btn{display:inline-block; padding:10px 16px; border-radius:12px; background:var(--accent); color:#fff; text-decoration:none; font-weight:800;}
+.link-btn.ghost{background:#fff; color:#111; border:1px solid #e5e7eb;}
+.small{color:#6b7280; font-size:12px; margin-top:8px;}
+</style>
+</head>
+<body>
+{% set __base = request.host_url.rstrip('/') %}
+{% set PUB = public_url if public_url.startswith('http') else __base ~ public_url %}
+{% set ADM = admin_url  if admin_url.startswith('http')  else __base ~ admin_url %}
+
+<div class="center">
+  <div class="card">
+    <div class="h1"><span class="okdot">✓</span>保存成功</div>
+    <div class="note">表单 <b>{{ site_name }}</b> 已创建/更新。复制链接发给用户，或直接进入后台管理。</div>
+
+    <div class="row">
+      <span class="tag">公开</span>
+      <div class="input" id="pubInput" role="textbox" aria-readonly="true" tabindex="0">{{ PUB }}</div>
+      <!-- 修复：应复制公开链接 PUB，而非 ADM -->
+      <button class="copy" type="button" data-copy="{{ PUB }}">复制</button>
+      <a class="open" target="_blank" rel="noopener noreferrer" href="{{ PUB }}">打开</a>
+    </div>
+
+    <div class="row">
+      <span class="tag">后台</span>
+      <div class="input" id="admInput" role="textbox" aria-readonly="true" tabindex="0">{{ ADM }}</div>
+      <!-- 明确 type，避免在某些场景被当作 submit -->
+      <button class="copy" type="button" data-copy="{{ ADM }}">复制</button>
+      <a class="open" target="_top" href="{{ ADM }}">打开</a>
+    </div>
+
+    <div class="actions">
+      <a class="link-btn" target="_top"  href="{{ ADM }}">进入后台</a>
+      <a class="link-btn ghost" target="_blank" rel="noopener noreferrer" href="{{ PUB }}">打开公开表单</a>
+    </div>
+    <div class="small">提示：点击输入框即可全选。</div>
+  </div>
+</div>
+
+<script>
+  // 点击输入区域全选
+  function selectText(el){
+    if(window.getSelection && document.createRange){
+      const r = document.createRange(); r.selectNodeContents(el);
+      const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    }
+  }
+  document.querySelectorAll('.input').forEach(el=> el.addEventListener('click', ()=>selectText(el)));
+
+  // 复制按钮
+  document.querySelectorAll('.copy').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const text = btn.getAttribute('data-copy') || '';
+      try{
+        await navigator.clipboard.writeText(text);
+        btn.textContent = '已复制';
+        setTimeout(()=> btn.textContent='复制', 1200);
+      }catch(e){
+        try{
+          const ta=document.createElement('textarea');
+          ta.value=text; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+          btn.textContent = '已复制';
+          setTimeout(()=> btn.textContent='复制', 1200);
+        }catch(_){ alert('复制失败'); }
+      }
+    });
+  });
+</script>
+
+<!-- 将品牌色同步为管理页设置的颜色（嵌入时优先取父页面 CSS 变量），统一为 --accent 使用 -->
+<script id="accent-sync">
+(function(){
+  // 1) 尝试从父页面读取 --brand 或 --brand-light（同源时可用）
+  let brand = '';
+  try{
+    const cs = window.parent && window.parent.getComputedStyle
+      ? window.parent.getComputedStyle(window.parent.document.documentElement)
+      : null;
+    brand = (cs?.getPropertyValue('--brand') || cs?.getPropertyValue('--brand-light') || '').trim();
+  }catch(_){}
+
+  // 2) 退回到本地存储（如果管理页把颜色存过来）
+  if(!brand){
+    brand = (localStorage.getItem('theme.brand')
+          || localStorage.getItem('schema.theme.brand')
+          || '#2563eb').trim();
+  }
+
+  // 3) 应用到成功页
+  document.documentElement.style.setProperty('--accent', brand || '#2563eb');
+})();
+</script>
+
+<script>
+(function(){
+  try{
+    document.addEventListener("DOMContentLoaded", function(){
+      document.querySelectorAll('img:not([loading])')
+        .forEach(function(img){ img.setAttribute('loading','lazy'); });
+    }, {passive:true});
+    document.querySelectorAll('script[src]:not([type="module"]):not([defer])')
+      .forEach(function(s){ s.setAttribute('defer',''); });
+  }catch(e){}
+})();
+</script>
+
+<script>
+try{
+  // 清掉构建器草稿
+  localStorage.removeItem('draft:create_form');
+}catch(e){}
+</script>
+<script>try{localStorage.removeItem('draft:create_form');}catch(e){}</script>
+
+<script>
+try{
+  var k = localStorage.getItem('builder:currentKey');
+  if (k) localStorage.removeItem(k);
+  localStorage.removeItem('builder:currentKey');
+}catch(e){}
+</script>
+
+</body>
+</html>

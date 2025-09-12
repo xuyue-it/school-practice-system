@@ -2,143 +2,364 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>{{ form_name }} - 管理审核</title>
+  <title>{{ form_name }} - 表单管理</title>
   <style>
     body {
-      font-family:"Microsoft YaHei", sans-serif;
-      background:#f5f7fb;
-      margin:20px;
-      color:#111;
+      font-family: "Microsoft YaHei", sans-serif;
+      background: #f5f7fb;
+      margin: 0;
+      padding: 0;
+      color: #111;
     }
-    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
-    .topbar {
-      display:flex; justify-content:center; gap:16px; margin-bottom:20px;
+    header {
+      background: #2563eb;
+      color: #fff;
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 6px rgba(0,0,0,.1);
     }
-    .topbar a {
-      text-decoration:none; padding:8px 14px; border-radius:8px;
-      background:#2563eb; color:white; font-weight:600;
+    header h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 900;
     }
-    .topbar a:hover { background:#1d4ed8; }
-
-    /* ✅ 表格容器，支持左右滑动 */
-    .table-container {
-      width:100%;
-      overflow-x:auto;
-      background:#fff;
-      border-radius:10px;
-      box-shadow:0 4px 10px rgba(0,0,0,.08);
+    header .actions a {
+      margin-left: 12px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      color: #fff;
+      background: #10b981;
+      transition: 0.2s;
     }
-
+    header .actions a.logout { background: #ef4444; }
+    header .actions a:hover { opacity: 0.9; }
+    main {
+      max-width: 1000px;
+      margin: 30px auto;
+      background: #fff;
+      padding: 30px;
+      border-radius: 14px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.08);
+    }
+    h2 {
+      margin: 0 0 20px 0;
+      font-size: 20px;
+      font-weight: 900;
+      border-left: 6px solid #2563eb;
+      padding-left: 10px;
+    }
     table {
-      border-collapse:collapse;
-      min-width: max-content;   /* ✅ 根据内容宽度撑开 */
-      white-space: nowrap;      /* ✅ 不换行，横向滚动 */
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
     }
     th, td {
-      padding:10px;
-      border:1px solid #ddd;
-      text-align:center;
-      font-size:14px;
+      border: 1px solid #e5e7eb;
+      padding: 12px;
+      text-align: center;
+      font-size: 14px;
     }
-    th { background:#f1f5f9; font-weight:700; }
-    tr:nth-child(even){ background:#f9fafb; }
-
-    .badge {
-      display:inline-block; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600;
+    th {
+      background: #f3f4f6;
+      font-weight: 700;
     }
-    .badge-pending { background:#facc15; color:#111; }
-    .badge-approved { background:#16a34a; color:#fff; }
-    .badge-rejected { background:#dc2626; color:#fff; }
-
-    input.comment { width:100px; padding:4px; border-radius:6px; border:1px solid #ccc; }
+    tr:hover { background: #f9fafb; }
     .btn {
-      padding:6px 10px; border:none; border-radius:6px;
-      cursor:pointer; font-weight:600; margin:2px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: bold;
+      display: inline-block;
+      font-size: 13px;
     }
-    .btn-approve { background:#22c55e; color:#fff; }
-    .btn-reject { background:#ef4444; color:#fff; }
-    .btn-delete { background:#f59e0b; color:#111; }
-    .btn-export { background:#3b82f6; color:#fff; }
-    .btn-mail { background:#8b5cf6; color:#fff; }
-    .btn:hover { opacity:0.9; }
+    .btn.export { background: #2563eb; color: #fff; }
+    .btn.export:hover { background: #1d4ed8; }
+    .btn.delete { background: #ef4444; color: #fff; }
+    .btn.delete:hover { background: #dc2626; }
+    .status {
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+    .status.待审核 { background: #fef9c3; color: #92400e; }
+    .status.通过 { background: #dcfce7; color: #166534; }
+    .status.拒绝 { background: #fee2e2; color: #991b1b; }
+    footer {
+      margin-top: 30px;
+      font-size: 13px;
+      color: #888;
+      text-align: center;
+    }
+
+    /* ====== 新增：外观与主题面板的轻量样式（只作用于面板） ====== */
+    #theme-bg-panel .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0}
+    #theme-bg-panel .box{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px}
+    #theme-bg-panel .muted{color:#6b7280;font-size:12px}
+    #theme-bg-panel .preview-card{
+      border:1px solid #e5e7eb;border-radius:12px;padding:12px;margin-top:12px;
+      max-width:420px;background:#fff;
+    }
+    #theme-bg-panel .preview-card h5{margin:0 0 8px 0}
+    #theme-bg-panel .preview-card .btn-demo{
+      display:inline-block;padding:10px 14px;border-radius:8px;border:0;cursor:pointer;
+      color:#fff;background:var(--brand, #2563eb);font-weight:700
+    }
+    #theme-bg-panel .img-wrap{
+      position:relative;margin-top:8px;border:1px dashed #d1d5db;border-radius:12px;overflow:hidden;height:180px;
+      background:#f9fafb
+    }
+    #theme-bg-panel .img{
+      width:100%;height:100%;object-fit:cover;display:none;object-position:50% 50%;
+    }
+    #theme-bg-panel .del{
+      position:absolute;top:8px;right:8px;border:none;border-radius:50%;
+      width:28px;height:28px;line-height:28px;text-align:center;
+      background:rgba(0,0,0,.55);color:#fff;font-weight:900;cursor:pointer;display:none;
+    }
+    #theme-bg-panel .img-wrap:hover .del{display:block;}
+    #theme-bg-panel input[type="color"]{width:42px;height:42px;border:none;cursor:pointer}
+    #theme-bg-panel input[type="text"].color-text{width:120px;padding:8px;border:1px solid #ddd;border-radius:8px}
+    #theme-bg-panel input[type="range"]{width:160px}
   </style>
 </head>
 <body>
-  <h1>📊 {{ form_name }} - 管理审核</h1>
+  <header>
+    <h1>📑 表单后台管理 - {{ form_name }}</h1>
+    <div class="actions">
+      <a href="/" class="home">🏠 返回首页</a>
+      <a href="/logout" class="logout">退出</a>
+    </div>
+  </header>
 
-  <div class="topbar">
-    <a href="/">🏠 返回首页</a>
-    <a href="/site/{{ site_name }}/admin/users">👥 用户管理</a>
-    <a href="/logout/{{ site_name }}">🚪 退出登录</a>
-  </div>
+  <main>
 
-  <!-- ✅ 加上容器 -->
-  <div class="table-container">
-    <table>
-      <thead>
+    <!-- ====== 新增：外观与主题（实时预览）面板 ====== -->
+    <div id="theme-bg-panel" style="margin:0 0 22px;">
+      <div class="box">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <h4 style="margin:0;">外观与主题（实时预览）</h4>
+          <button id="saveTheme" type="button"
+                  style="padding:8px 14px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer">
+            保存外观
+          </button>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <label>主题色：</label>
+          <input id="brandColor" type="color" value="#2563eb">
+          <input id="brandColorText" class="color-text" type="text" value="#2563eb" placeholder="#2563eb">
+          <span class="muted">保存时将写入 <code>schema.theme.brand</code></span>
+        </div>
+
+        <div class="row" style="align-items:flex-start;">
+          <div style="flex:1;min-width:280px">
+            <label>背景图片：</label>
+            <input id="bgFile" type="file" accept="image/*">
+            <div class="img-wrap" id="bgWrap">
+              <img id="bgImg" class="img" alt="">
+              <button id="bgDel" class="del" title="删除">×</button>
+            </div>
+            <div class="muted">提示：按住预览区拖动即可移动背景；下面滑杆可微调。</div>
+            <div class="row">
+              <label>水平</label><input id="bgX" type="range" min="0" max="100" value="50">
+              <label>垂直</label><input id="bgY" type="range" min="0" max="100" value="50">
+              <span id="bgPosText" class="muted">50% 50%</span>
+            </div>
+          </div>
+
+          <div class="preview-card" style="flex:1;min-width:260px">
+            <h5>预览</h5>
+            <div class="muted">示意按钮会使用主题色；背景图位置仅作参考。</div>
+            <div style="margin-top:10px">
+              <input type="text" placeholder="示例输入框" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px">
+            </div>
+            <div style="margin-top:10px">
+              <button class="btn-demo" type="button">提交（示意）</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ====== 新增面板结束 ====== -->
+
+    <h2>提交记录</h2>
+    {% if submissions %}
+      <table>
         <tr>
           <th>ID</th>
-          <th>提交用户</th>
-          <th>提交时间</th>
-          {% for f in field_order %}
-            <th>{{ field_labels[f] }}</th>
+          {% for field in field_order %}
+            <th>{{ field_labels[field] }}</th>
           {% endfor %}
           <th>状态</th>
-          <th>审核说明</th>
+          <th>审核意见</th>
           <th>操作</th>
         </tr>
-      </thead>
-      <tbody>
-        {% for s in submissions %}
-        <tr id="row-{{ s[0] }}">
-          <td>{{ s[0] }}</td>
-          <td>{{ s[1] }}</td>
-          <td>{{ s[5] }}</td>
-          {% for f in field_order %}
-            <td>{{ s[2][f] }}</td>
-          {% endfor %}
-          <td>
-            {% if s[3] == "待审核" %}
-              <span class="badge badge-pending">🟡 待审核</span>
-            {% elif s[3] == "通过" %}
-              <span class="badge badge-approved">🟢 已通过</span>
-            {% elif s[3] == "不通过" %}
-              <span class="badge badge-rejected">🔴 已拒绝</span>
-            {% endif %}
-          </td>
-          <td>{{ s[4] or "" }}</td>
-          <td>
-            <input type="text" id="comment-{{ s[0] }}" class="comment" placeholder="说明">
-            <br>
-            <button class="btn btn-approve" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '通过')">通过</button>
-            <button class="btn btn-reject" onclick="updateStatus({{ form_id }}, {{ s[0] }}, '不通过')">不通过</button>
-            <a class="btn btn-delete" href="/form/{{ form_id }}/delete/{{ s[0] }}">删除</a>
-            <a class="btn btn-export" href="/site/{{ site_name }}/admin/export_word/{{ s[0] }}">Word</a>
-            <a class="btn btn-export" href="/site/{{ site_name }}/admin/export_excel/{{ s[0] }}">Excel</a>
-            <button class="btn btn-mail" onclick="sendMail({{ s[0] }})">发送邮件</button>
-          </td>
-        </tr>
+        {% for sub in submissions %}
+          <tr>
+            <td>{{ sub[0] }}</td>
+            {% for field in field_order %}
+              <td>{{ sub[2][field] }}</td>
+            {% endfor %}
+            <td><span class="status {{ sub[3] }}">{{ sub[3] }}</span></td>
+            <td>{{ sub[4] or '-' }}</td>
+            <td>
+              <a href="/site/{{ site_name }}/admin/export_word/{{ sub[0] }}" class="btn export">导出 Word</a>
+              <a href="/site/{{ site_name }}/admin/export_excel/{{ sub[0] }}" class="btn export">导出 Excel</a>
+              <a href="/form/{{ form_id }}/delete/{{ sub[0] }}" class="btn delete">删除</a>
+            </td>
+          </tr>
         {% endfor %}
-      </tbody>
-    </table>
-  </div>
+      </table>
+    {% else %}
+      <p style="color:#666;">暂无提交记录。</p>
+    {% endif %}
+  </main>
 
-<script>
-async function updateStatus(form_id, sub_id, status){
-  const comment = document.getElementById(`comment-${sub_id}`).value;
-  const res = await fetch(`/form/${form_id}/update_status/${sub_id}`, {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({status:status, comment:comment})
-  });
-  const data = await res.json();
-  if(data.success){ alert("✅ 状态已更新为 " + status); location.reload(); }
-  else{ alert("❌ " + (data.message || "更新失败")); }
-}
+  <footer>
+    Powered by Flask · 表单提交与管理平台
+  </footer>
 
-async function sendMail(sub_id){
-  alert("📧 发送邮件功能可以在 app.py 里补充实现 send_email(sub_id)");
-}
-</script>
+  <!-- ====== 新增：外观与主题脚本（零依赖） ====== -->
+  <script>
+  (function(){
+    // 站点名提供给上传/删除/保存接口
+    const site = {{ site_name|tojson }};
+    // 若存在全局 schema，则复用，否则初始化一个空的，仅用于保存时合并
+    const schema = window.currentSchema || (window.currentSchema = { fields: [], theme: {} });
+
+    // DOM
+    const $ = s => document.querySelector(s);
+    const brandInput = $('#brandColor');
+    const brandText  = $('#brandColorText');
+    const bgFile     = $('#bgFile');
+    const bgImg      = $('#bgImg');
+    const bgWrap     = $('#bgWrap');
+    const bgDel      = $('#bgDel');
+    const bgX        = $('#bgX');
+    const bgY        = $('#bgY');
+    const bgPosText  = $('#bgPosText');
+    const saveBtn    = $('#saveTheme');
+
+    // 初始化主题/背景（从 schema 读，若无则取默认）
+    const initBrand = (schema.theme && schema.theme.brand) || '#2563eb';
+    brandInput.value = initBrand;
+    brandText.value  = initBrand;
+    document.documentElement.style.setProperty('--brand', initBrand);
+
+    const initBg = schema.bg || "";
+    const initPos = (schema.bg_position || "50% 50%").split(" ");
+    if(initBg){ bgImg.src = initBg; bgImg.style.display='block'; }
+    bgX.value = parseFloat(initPos[0]) || 50;
+    bgY.value = parseFloat(initPos[1]) || 50;
+    bgPosText.textContent = `${bgX.value}% ${bgY.value}%`;
+    bgImg.style.objectPosition = `${bgX.value}% ${bgY.value}%`;
+
+    // —— 主题色同步 —— //
+    function setBrand(v){
+      if(!schema.theme) schema.theme = {};
+      schema.theme.brand = v;
+      brandInput.value = v; brandText.value = v;
+      document.documentElement.style.setProperty('--brand', v);
+    }
+    brandInput.addEventListener('input', e => setBrand(e.target.value));
+    brandText.addEventListener('change', e => setBrand(e.target.value));
+
+    // —— 上传背景 —— //
+    bgFile.addEventListener('change', async (e)=>{
+      const f = e.target.files && e.target.files[0];
+      if(!f) return;
+      const fd = new FormData();
+      fd.append('file', f);
+      try{
+        const res = await fetch(`/site/${encodeURIComponent(site)}/admin/api/upload_asset`, { method:'POST', body: fd });
+        const j = await res.json();
+        if(!j.ok) return alert(j.error || '上传失败');
+        schema.bg = j.url;
+        bgImg.src = j.url; bgImg.style.display='block';
+      }catch(err){ alert('上传失败'); console.error(err); }
+    });
+
+    // —— 删除背景（悬浮右上角 ×） —— //
+    bgDel.addEventListener('click', async ()=>{
+      if(!schema.bg) return;
+      const name = (schema.bg.split('/').pop()||'').split('?')[0];
+      try{
+        await fetch(`/site/${encodeURIComponent(site)}/admin/api/delete_asset`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ filename: name })
+        });
+      }catch(_){}
+      schema.bg = ""; bgImg.src=""; bgImg.style.display='none';
+    });
+
+    // —— 背景位置：滑杆 + 拖动 —— //
+    function applyPos(){
+      const pos = `${bgX.value}% ${bgY.value}%`;
+      schema.bg_position = pos;
+      bgPosText.textContent = pos;
+      bgImg.style.objectPosition = pos;
+    }
+    bgX.addEventListener('input', applyPos);
+    bgY.addEventListener('input', applyPos);
+
+    let dragging=false, startX=0, startY=0, startPX=+bgX.value, startPY=+bgY.value;
+    bgWrap.addEventListener('mousedown', e=>{
+      dragging=true; startX=e.clientX; startY=e.clientY;
+      startPX=+bgX.value; startPY=+bgY.value;
+    });
+    window.addEventListener('mouseup', ()=> dragging=false);
+    window.addEventListener('mousemove', e=>{
+      if(!dragging) return;
+      const dx = e.clientX - startX, dy = e.clientY - startY;
+      let nx = Math.max(0, Math.min(100, startPX + dx*0.1));
+      let ny = Math.max(0, Math.min(100, startPY + dy*0.1));
+      bgX.value = nx.toFixed(1);
+      bgY.value = ny.toFixed(1);
+      applyPos();
+    });
+
+    // —— 直接保存外观到数据库 —— //
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async ()=>{
+        try{
+          const res = await fetch(`/site/${encodeURIComponent(site)}/admin/api/save_theme_bg`, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({
+              theme: { brand: (schema.theme && schema.theme.brand) || '#2563eb' },
+              bg: schema.bg || "",
+              bg_position: schema.bg_position || "50% 50%"
+            })
+          });
+          const j = await res.json();
+          if(!j.ok){ alert(j.error||'保存失败'); return; }
+          alert('已保存外观设置');
+        }catch(e){ console.error(e); alert('保存失败'); }
+      });
+    }
+
+    // —— 隐藏“提交规则 / 合作与隐私”两个设置区块（若存在于页面） —— //
+    function hideBlocks(){
+      const keyTitles = ['提交规则','合作与隐私'];
+      const candidates = document.querySelectorAll('h1,h2,h3,h4,.section-title,.tab-title,label,span');
+      candidates.forEach(el=>{
+        const t = (el.textContent||'').trim();
+        if(!t) return;
+        if(keyTitles.some(k => t.includes(k))){
+          const box = el.closest('.section, .card, .panel, fieldset, .setting-block, .block, .tab-pane, .box, .tab-content');
+          if(box) box.style.display='none';
+        }
+      });
+    }
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', hideBlocks);
+    }else{ hideBlocks(); setTimeout(hideBlocks, 500); }
+  })();
+  </script>
 </body>
 </html>

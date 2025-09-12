@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>超级管理员总览</title>
+  <style>
+    body { font-family:"Microsoft YaHei", sans-serif; background:#f7f7f7; margin:20px; color:#111; }
+    h1 { text-align:center; font-weight:900; margin-bottom:20px; }
+    h2 { margin-top:30px; margin-bottom:15px; font-size:22px; }
+
+    .card {
+      background:#fff;
+      border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08);
+      padding:20px;
+      margin-bottom:20px;
+    }
+    .card h3 { font-size:18px; margin-bottom:10px; }
+    .field { margin-bottom:6px; }
+    .field strong { display:inline-block; width:120px; color:#333; }
+
+    .actions { margin-top:15px; display:flex; gap:10px; flex-wrap:wrap; }
+    a.btn, button.btn {
+      text-decoration:none;
+      padding:8px 14px;
+      border:none;
+      border-radius:6px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .btn-user { background:#2563eb; color:#fff; }
+    .btn-admin { background:#16a34a; color:#fff; }
+    .btn-delete { background:#f59e0b; color:#111; }
+    .btn-reset { background:#6b7280; color:#fff; }
+    a.btn:hover, button.btn:hover { opacity:0.9; }
+
+    /* ✅ 表格滚动容器 */
+    .table-container {
+      width:100%;
+      overflow-x:auto;
+      background:#fff;
+      border-radius:10px;
+      box-shadow:0 4px 10px rgba(0,0,0,.08);
+      margin-top:10px;
+    }
+
+    table {
+      border-collapse: collapse;
+      min-width: max-content;   /* ✅ 根据内容撑开 */
+      white-space: nowrap;      /* ✅ 不换行，可以横向滚动 */
+    }
+    th, td { padding:12px; border:1px solid #ddd; text-align:center; }
+    th { background:#f1f5f9; font-weight:700; }
+    tr:nth-child(even){ background:#f9fafb; }
+  </style>
+</head>
+<body>
+  <h1>📊 超级管理员总览</h1>
+
+  <!-- 子网站表单 -->
+  <h2>📑 子网站表单</h2>
+  {% for form in forms %}
+  <div class="card">
+    <h3>{{ form.name }} ({{ form.site_name }})</h3>
+    <div class="field"><strong>ID:</strong> {{ form.id }}</div>
+    <div class="field"><strong>数据库 Schema:</strong> {{ form.db_url }}</div>
+    <div class="field"><strong>创建者 ID:</strong> {{ form.created_by }}</div>
+    <div class="field"><strong>创建时间:</strong> {{ form.created_at }}</div>
+
+    <div class="actions">
+      <a href="{{ form.user_url }}" target="_blank" class="btn btn-user">🌐 用户入口</a>
+      <a href="{{ form.admin_url }}" target="_blank" class="btn btn-admin">⚙️ 管理员入口</a>
+
+      <form method="post" action="{{ url_for('super_admin_delete', site_name=form.site_name) }}"
+            onsubmit="return confirm('⚠️ 确定要删除 {{ form.site_name }} 吗？这会同时删除数据库 schema 和网站入口！');">
+        <button type="submit" class="btn btn-delete">🗑 删除表单</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- 用户与管理员 -->
+  <h2>👥 用户与管理员</h2>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>用户名</th>
+          <th>角色</th>
+          <th>所属网站</th>
+          <th>数据库</th>
+          <th>注册时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ u[0] }}</td>
+          <td>{{ u[1] }}</td>
+          <td>
+            {% if u[2] == "super_admin" %}
+              🌟 超级管理员
+            {% elif u[2] == "admin" %}
+              ⚙️ 管理员
+            {% else %}
+              👤 普通用户
+            {% endif %}
+          </td>
+          <td>{{ u[3] if u[3] else "平台" }}</td>
+          <td>{{ u[5] if u[5] else "-" }}</td>
+          <td>{{ u[4] if u[4] else "-" }}</td>
+          <td>
+            {% if u[3] == "平台" %}
+              <!-- 删除平台用户 -->
+              <form method="post" action="{{ url_for('super_admin_delete_user', user_id=u[0]) }}" style="display:inline">
+                <button type="submit" class="btn btn-delete">🗑 删除</button>
+              </form>
+            {% else %}
+              <!-- 删除子网站用户 -->
+              <form method="post" action="{{ url_for('super_admin_delete_subuser', site_name=u[3], user_id=u[0]) }}" style="display:inline">
+                <button type="submit" class="btn btn-delete">🗑 删除</button>
+              </form>
+            {% endif %}
+            <!-- 重置密码 -->
+            <form method="post" action="{{ url_for('super_admin_reset_password', user_id=u[0]) }}" style="display:inline">
+              <input type="hidden" name="site_name" value="{{ u[3] or '平台' }}">
+              <button type="submit" class="btn btn-reset">🔑 重置密码</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 🔄 自动刷新 -->
+  <script>
+  function autoRefresh() {
+    fetch(window.location.href, { credentials: "same-origin" })
+      .then(r => r.text())
+      .then(html => {
+        document.open();
+        document.write(html);
+        document.close();
+      })
+      .catch(err => console.error("刷新失败:", err));
+  }
+  // 每 30 秒刷新一次
+  setInterval(autoRefresh, 30000);
+  </script>
+
+</body>
+</html>

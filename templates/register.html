@@ -1,127 +1,217 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <title>用户注册</title>
-  <style>
-    body {
-      font-family:"Microsoft YaHei", sans-serif;
-      background:#f5f7fb;
-      display:flex;
-      justify-content:center;
-      align-items:center;
-      height:100vh;
-      margin:0;
-      color:#111;
-    }
-    .card {
-      width:100%;
-      max-width:420px;
-      background:#fff;
-      padding:30px;
-      border-radius:12px;
-      box-shadow:0 6px 16px rgba(0,0,0,.1);
-      text-align:center;
-    }
-    h1 {
-      font-weight:900;
-      margin-bottom:24px;
-      font-size:24px;
-      color:#2563eb;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:8px;
-    }
-    label {
-      font-weight:700;
-      display:block;
-      text-align:left;
-      margin:12px 0 6px;
-    }
-    input, select {
-      width:90%;
-      padding:12px;
-      border:1px solid #d1d5db;
-      border-radius:8px;
-      font-family:inherit;
-      font-size:14px;
-      margin:0 auto 14px;
-      display:block;
-      transition:border .2s, box-shadow .2s;
-    }
-    input:focus, select:focus {
-      border-color:#2563eb;
-      outline:none;
-      box-shadow:0 0 0 3px rgba(37,99,235,0.2);
-    }
-    button {
-      margin-top:10px;
-      width:60%;
-      padding:12px;
-      background:#2563eb;
-      color:white;
-      border:none;
-      border-radius:8px;
-      cursor:pointer;
-      font-weight:700;
-      font-size:16px;
-      transition:all .2s;
-    }
-    button:hover {
-      background:#1d4ed8;
-      transform:translateY(-1px);
-    }
-    .error {
-      color:#dc2626;
-      margin-top:12px;
-      font-size:14px;
-    }
-    .hint {
-      margin-top:12px;
-      font-size:13px;
-      color:#555;
-    }
-    .link {
-      margin-top:16px;
-      font-size:14px;
-    }
-    .link a {
-      color:#2563eb;
-      font-weight:600;
-      text-decoration:none;
-    }
-    .link a:hover {
-      text-decoration:underline;
-    }
-  </style>
+  <meta charset="UTF-8" />
+  <title>注册 · Formly</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark">
+
+  <!-- 早期开关：首帧决定是否启用 perf-mode -->
+  <script>
+  (function(){
+    try{
+      var lowMem = navigator.deviceMemory && navigator.deviceMemory <= 2;
+      var reduce = window.matchMedia && (
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+        window.matchMedia("(prefers-reduced-transparency: reduce)").matches
+      );
+      if (lowMem || reduce) document.documentElement.classList.add("perf-mode");
+    }catch(e){}
+  })();
+  </script>
+
+  <style id="perf-style">
+  :root.perf-mode .glass, .perf-mode [data-glass],
+  :root.perf-mode .blur,  .perf-mode [data-blur]{
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* 同时关掉元素本身以及它的 ::before 的 filter（如 .bg-glow::before） */
+  :root.perf-mode [data-blur],
+  :root.perf-mode [data-blur]::before{
+    filter: none !important;
+  }
+  :root.perf-mode *{
+    transition: none !important;
+    animation: none !important;
+    box-shadow: none !important;
+  }
+</style>
+
+<style>
+  :root{
+    --glass-alpha: .76;
+    --field-alpha: .78;
+    --blur: 28px;
+    --brand-1:#2E6AFF; --brand-2:#3C8BFF;
+    --ink:#0f172a; --muted:#5b5f66;
+    --bg-url: none;
+  }
+  *,*:before,*:after{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; color:var(--ink);
+    font-family:"Inter","SF Pro Display","PingFang SC","Microsoft YaHei",ui-sans-serif,-apple-system,system-ui;
+    background:
+      radial-gradient(1100px 800px at 8% -6%, rgba(255,214,231,.18), transparent 60%),
+      radial-gradient(1000px 700px at 92% -8%, rgba(255,226,197,.18), transparent 60%),
+      linear-gradient(180deg,#ffffff 0%,#fbfaf7 45%,#f6f3ee 100%);
+  }
+  .bg-photo{ position:fixed; inset:0; pointer-events:none; background-image:var(--bg-url); background-size:cover; background-position:center; filter:saturate(106%) contrast(104%) brightness(102%); opacity:.82; }
+  /* 背景辉光（修正：只保留渐变，不再误用 bg-url） */
+  .bg-glow{ position:fixed; inset:-20%; pointer-events:none; filter: blur(40px) saturate(120%); background: radial-gradient(720px 520px at 12% 10%, rgba(255, 190, 150, .18), transparent 60%); }
+  .bg-glow::before{ content:""; position:fixed; inset:-20%; pointer-events:none; filter: blur(40px) saturate(120%); background: radial-gradient(680px 520px at 85% 8%, rgba(200, 220, 255, .18), transparent 60%); }
+
+  .brand{ position:fixed; top:18px; left:20px; z-index:3; display:flex; align-items:center; gap:10px; text-decoration:none; color:#111827; font-weight:900; mix-blend-mode:multiply; }
+  .logo{ width:28px; height:28px; border-radius:10px; background: linear-gradient(135deg,#6aa4ff,#9bc8ff); box-shadow: inset 0 6px 16px rgba(255,255,255,.55), 0 8px 20px rgba(90,166,255,.22); }
+
+  .wrap{ min-height:100%; display:grid; place-items:center; padding:24px; }
+  .card{
+    width:min(92vw, 460px);
+    background: rgba(255,255,255,var(--glass-alpha));
+    border: 1px solid rgba(255,255,255,.55);
+    backdrop-filter: blur(var(--blur)) saturate(150%) brightness(105%);
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(150%) brightness(105%);
+    border-radius: 26px;
+    box-shadow: 0 40px 120px rgba(40,30,20,.18), 0 10px 30px rgba(0,0,0,.06);
+    padding: 26px 24px 26px;
+    position:relative; isolation:isolate;
+  }
+  .card:before{
+    content:""; position:absolute; left:14px; right:14px; top:10px; height:66px;
+    background: linear-gradient(180deg, rgba(255,255,255,.65), rgba(255,255,255,0));
+    border-radius:18px; pointer-events:none; opacity:.7;
+  }
+
+  .title{ margin:4px 0 8px; text-align:center; font-size:30px; font-weight:1000; letter-spacing:.2px; }
+  .sub{ margin:0 0 16px; text-align:center; color:var(--muted); font-size:12px; }
+
+  .field{ position:relative; margin:14px 0; }
+  .field input{
+    width:100%; border:none; outline:none;
+    padding:14px 16px 14px 56px;
+    background: rgba(255,255,255,var(--field-alpha));
+    border: 1px solid rgba(255,255,255,.7);
+    border-radius: 999px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,.06), 0 4px 18px rgba(0,0,0,.03);
+    color:#111;
+    transition: box-shadow .18s ease, background .18s ease, border-color .18s ease;
+  }
+  .field input::placeholder{ color:rgba(30,30,30,.48); }
+  .field input:focus{
+    background: rgba(255,255,255,.88);
+    border-color: rgba(255,255,255,.9);
+    box-shadow: 0 0 0 6px rgba(255,255,255,.32), inset 0 2px 6px rgba(0,0,0,.06);
+  }
+  .ball{
+    position:absolute; left:10px; top:50%; transform:translateY(-50%);
+    width:32px; height:32px; border-radius:999px;
+    background: linear-gradient(135deg,#fff,#f3efe9);
+    box-shadow: inset 0 3px 10px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.06);
+    display:grid; place-items:center; color:#6b7280; font-weight:900; font-size:14px;
+  }
+  .toggle{
+    position:absolute; right:14px; top:50%; transform:translateY(-50%);
+    width:24px; height:24px; border:none; background:transparent; color:#4f5d75; opacity:.75; cursor:pointer;
+  }
+
+  .btn{
+    width:100%; margin-top:14px; border:none; cursor:pointer;
+    padding:12px 14px; border-radius:14px; color:white; font-weight:900; letter-spacing:.2px;
+    background: linear-gradient(135deg,var(--brand-1),var(--brand-2));
+    box-shadow: 0 12px 26px rgba(46,106,255,.28), inset 0 0 0 1px rgba(255,255,255,.28);
+    transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+  }
+  .btn:hover{ transform: translateY(-1px); filter: brightness(1.03); }
+
+  .links{ margin-top:10px; display:flex; justify-content:space-between; font-size:12px; color:#43464d; }
+  .links a{ color:#1f3a93; text-decoration:none; }
+  .links a:hover{ text-decoration:underline; }
+
+  .alert{
+    background:rgba(255,87,87,.10); border:1px solid rgba(255,87,87,.22);
+    padding:10px 12px; border-radius:12px; font-size:12px; color:#7a1d1d; margin:6px 2px 10px;
+  }
+
+  /* 进场动画（与登录一致） */
+  @keyframes riseAndSettle{
+    0%   { transform: translateY(60vh) scale(.98); opacity:0; filter: blur(10px); }
+    55%  { transform: translateY(-1.5vh) scale(1); opacity:1; filter: blur(0); animation-timing-function:cubic-bezier(.2,1,.2,1); }
+    72%  { transform: translateY(.6vh); }
+    100% { transform: translateY(0); }
+  }
+  body.enter .wrap{ overflow:visible; }
+  body.enter .card{ animation: riseAndSettle 900ms forwards; }
+  @media (prefers-reduced-motion: reduce){
+    body.enter .card{ animation:none; }
+  }
+</style>
 </head>
 <body>
-  <div class="card">
-    <h1>📝 用户注册</h1>
-    <form method="post">
-      <label for="username">用户名 *</label>
-      <input id="username" name="username" type="text" placeholder="请输入用户名" required>
+  <div class="bg-photo" data-blur aria-hidden="true"></div>
+  <div class="bg-glow"  data-blur aria-hidden="true"></div>
+  <a class="brand" href="/"><span class="logo" aria-hidden="true"></span><span>Formly</span></a>
 
-      <label for="password">密码 *</label>
-      <input id="password" name="password" type="password" placeholder="请输入密码" required>
+  <div class="wrap">
+    <form class="card glass" method="POST" action="/register">
+      <h1 class="title">注册</h1>
+      <div class="sub">创建你的工作空间 · Create your workspace</div>
 
-      <label for="role">角色</label>
-      <select name="role" id="role">
-        <option value="user" selected>普通用户</option>
-        <option value="admin">管理员</option>
-      </select>
+      {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
 
-      <button type="submit">注册</button>
+      <label class="field">
+        <span class="ball">@</span>
+          <input type="text" name="username"
+                 placeholder="用户名 / e-mail"
+                 required autocomplete="username"
+                 inputmode="email" autocapitalize="none" spellcheck="false">
+      </label>
 
-      {% if error %}
-        <div class="error">{{ error }}</div>
-      {% endif %}
-      <div class="hint">注册成功后请使用新账户登录。</div>
+      <label class="field">
+        <span class="ball">●</span>
+        <input id="pwd2" type="password" name="password" placeholder="密码" required autocomplete="new-password">
+        <button class="toggle" type="button" id="togglePwd2" aria-label="显示或隐藏密码">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7Zm0 12a5 5 0 1 1 5-5 5.006 5.006 0 0 1-5 5Z"/></svg>
+        </button>
+      </label>
+
+      <button class="btn" type="submit">注 册</button>
+
+      <div class="links">
+        <span>已经有账号？ <a href="/login">登录</a></span>
+        <a href="/">返回首页</a>
+      </div>
     </form>
-    <div class="link">
-      已有账号？<a href="{{ url_for('login_user') }}">点击这里登录</a>
-    </div>
   </div>
+
+  <script>
+    (function(){
+      const p=new URLSearchParams(location.search);
+      if(p.has('enter')){
+        document.body.classList.add('enter');
+        setTimeout(()=>{ history.replaceState(null,'',location.pathname); }, 50);
+      }
+    })();
+    (function(){
+      const btn=document.getElementById('togglePwd2'); const input=document.getElementById('pwd2');
+      if(btn&&input){ btn.addEventListener('click',()=>{ input.type=input.type==='password'?'text':'password'; }); }
+    })();
+  </script>
+
+<script>
+(function(){
+  try{
+    document.addEventListener("DOMContentLoaded", function(){
+      document.querySelectorAll('img:not([loading])')
+        .forEach(function(img){ img.setAttribute('loading','lazy'); });
+    }, {passive:true});
+    document.querySelectorAll('script[src]:not([type="module"]):not([defer])')
+      .forEach(function(s){ s.setAttribute('defer',''); });
+  }catch(e){}
+})();
+</script>
+
+
+
 </body>
 </html>

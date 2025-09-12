@@ -1,0 +1,1022 @@
+<!doctype html>
+<html lang="zh" class="no-js" data-theme="{{ theme_mode or 'system' }}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+  <title>{{ form_title or site_name }} · 表单</title>
+
+  <!-- 将 no-js 切换为 js（必修补 #3） -->
+  <script>(function(d){d.className=d.className.replace(/\bno-js\b/,'js')})(document.documentElement)</script>
+
+  <!-- 早期开关：首帧决定是否启用 perf-mode -->
+<script>
+  (function(){
+    try{
+      var lowMem = navigator.deviceMemory && navigator.deviceMemory <= 2;
+      var reduce = window.matchMedia && (
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+        window.matchMedia("(prefers-reduced-transparency: reduce)").matches
+      );
+      if (lowMem || reduce) document.documentElement.classList.add("perf-mode");
+    }catch(e){}
+  })();
+  </script>
+
+  <style id="perf-style">
+  :root.perf-mode .glass, .perf-mode [data-glass],
+  :root.perf-mode .blur,  .perf-mode [data-blur]{
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  /* 同时关掉元素本身以及它的 ::before 的 filter（如 .bg-glow::before） */
+  :root.perf-mode [data-blur],
+  :root.perf-mode [data-blur]::before{
+    filter: none !important;
+  }
+  :root.perf-mode *{
+    transition: none !important;
+    animation: none !important;
+    box-shadow: none !important;
+  }
+</style>
+
+  <!-- 纯静态 CSS，提供默认值 -->
+  <style>
+    :root{
+      --brand-light:#2563eb;  /* 默认亮色 */
+      --brand-dark:#0ea5e9;   /* 默认暗色 */
+      --brand: var(--brand-light); /* 默认先用亮色 */
+
+      --brand-600: color-mix(in hsl, var(--brand) 85%, #000);
+      --brand-500: var(--brand);
+      --brand-400: color-mix(in hsl, var(--brand) 85%, #fff);
+      --text:#0f172a; --muted:#64748b; --card:rgba(255,255,255,.78);
+      --ring: color-mix(in hsl, var(--brand) 55%, #fff);
+      --shadow: 0 10px 30px rgba(17,24,39,.18), 0 4px 14px rgba(17,24,39,.10);
+      --radius:16px;
+      --page-bg-light:#f6f7fb;
+      --page-bg-dark:#0b1220;
+    }
+    /* 跟随系统（只有在没锁定主题时才生效） */
+    @media (prefers-color-scheme: dark){
+      :root:not([data-theme-fixed]){ --brand: var(--brand-dark); }
+    }
+
+    /* 当上面 JS 把 data-theme-fixed 设为 dark/light 时，背景切换为默认深/浅色 */
+    html[data-theme-fixed="dark"]  body{ background: var(--page-bg-dark);  color:#e5e7eb; }
+    html[data-theme-fixed="light"] body{ background: var(--page-bg-light); color:var(--text); }
+
+
+    .field .ctrl,
+    .field .drop,
+    .field .chips,
+    .field select.ctrl,
+    .field textarea.ctrl {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .drop { width: 100%; }
+
+    body {
+        margin: 0;
+        font-family: "Inter", ui-sans-serif, -apple-system, "Microsoft YaHei", system-ui, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: var(--text);
+        background: var(--page-bg-light); /* ← 恢复默认浅色背景 */
+    }
+
+
+    .shell{min-height:100svh; display:grid; grid-template-rows:auto 1fr auto;}
+    header{
+      position:sticky; top:0; z-index:10;
+      backdrop-filter:saturate(140%) blur(10px);
+      background: linear-gradient(180deg, rgba(255,255,255,.75), rgba(255,255,255,.55));
+      border-bottom: 1px solid rgba(15,23,42,.08);
+    }
+    .brandbar{
+      max-width: 960px; margin: 0 auto; padding: 14px 20px;
+      display:flex; align-items:center; gap:14px;
+    }
+    .brandbar .spacer{flex:1}
+    .logoDot{
+      width:14px; height:14px; border-radius:999px; background:var(--brand);
+      box-shadow: 0 0 0 6px color-mix(in hsl, var(--brand) 25%, transparent);
+    }
+    .title{font-weight: 900; font-size: 18px; letter-spacing:.2px}
+    .sub{color:var(--muted); font-size:13px}
+
+    .btn-ghost{
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff;
+      color:var(--text);
+      border-radius:10px;
+      padding:8px 12px;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .btn-ghost:hover{filter:brightness(1.03)}
+
+    main{ display:grid; place-items:start center; padding:32px 16px 40px }
+    .card{
+      width:min(960px, 100%);
+      background: var(--card);
+      backdrop-filter: blur(16px) saturate(130%);
+      border: 1px solid rgba(15,23,42,.08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: clip;
+    }
+    .hero{
+      padding: 28px 26px 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,.3));
+      border-bottom: 1px solid rgba(15,23,42,.06);
+    }
+    .hero h1{
+      margin:0 0 10px 0; font-size: clamp(20px, 2.4vw, 28px); font-weight: 900;
+      letter-spacing:.2px;
+    }
+    .desc{ color: var(--muted); line-height: 1.7; font-size: 14.5px }
+
+    form{ padding: 20px 26px 26px; }
+
+    .grid{ display:grid; gap:18px; }
+    .field{ display:block; }
+
+    .qtitle{
+      font-weight: 800; font-size: 16px; margin: 4px 2px 8px;
+      letter-spacing:.2px;
+    }
+    .qtitle .req{ color:#dc2626; margin-left:.25em }
+
+    .ctrl{
+      width:100%;
+      background:#fff;
+      border:1.2px solid rgba(15,23,42,.12);
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
+      transition: .18s border, .18s box-shadow, .18s transform, .18s background;
+    }
+    .ctrl:hover{ border-color: rgba(15,23,42,.22); }
+    .ctrl:focus{
+      border-color: var(--brand-400);
+      box-shadow: 0 0 0 6px color-mix(in hsl, var(--brand) 18%, transparent);
+    }
+    textarea.ctrl{ min-height: 120px; resize: vertical; }
+
+    select.ctrl{ appearance:none; background-image:
+      linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+      linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+      background-position: calc(100% - 18px) 50%, calc(100% - 12px) 50%;
+      background-size: 6px 6px, 6px 6px; background-repeat: no-repeat;
+    }
+
+    .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+    .chip{
+      position:relative; display:inline-flex; align-items:center; gap:8px;
+      padding:10px 14px; border-radius:999px;
+      border:1px solid rgba(15,23,42,.12);
+      background:#fff; cursor:pointer; user-select:none;
+      transition:.18s transform, .18s border, .18s box-shadow, .18s background;
+    }
+    .chip:hover{ transform: translateY(-1px); border-color: rgba(15,23,42,.2); }
+    .chip input{ position:absolute; inset:0; opacity:0; }
+    .chip[data-checked="1"]{
+      border-color: var(--brand-400);
+      box-shadow: 0 6px 16px color-mix(in hsl, var(--brand) 20%, transparent);
+      background: linear-gradient(180deg, #fff, color-mix(in hsl, var(--brand) 9%, #fff));
+    }
+    .dot{ width:10px; height:10px; border-radius:999px; background: rgba(15,23,42,.16); }
+    .chip[data-checked="1"] .dot{ background: var(--brand); }
+
+    .drop{
+      border: 1.2px dashed rgba(15,23,42,.22);
+      background: #fff;
+      border-radius: 12px;
+      padding: 18px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      transition:.18s border, .18s box-shadow, .18s background;
+    }
+    .drop .meta{ color:var(--muted); font-size: 14px }
+
+    .btn{
+      display:inline-flex; align-items:center; gap:8px; justify-content:center;
+      border:0; cursor:pointer; user-select:none;
+      padding: 12px 18px; border-radius: 12px; font-weight: 800; letter-spacing:.2px;
+      background: linear-gradient(180deg, var(--brand-500), color-mix(in hsl, var(--brand) 92%, #000));
+      color:#fff; box-shadow: 0 10px 20px color-mix(in hsl, var(--brand) 25%, transparent);
+      transition: .18s transform, .18s filter, .18s box-shadow;
+    }
+    .btn:hover{ filter: brightness(1.02); transform: translateY(-1px); }
+
+    .hint{ font-size: 12.5px; color: var(--muted); padding-top:6px }
+    .actions{ display:flex; gap:10px; padding-top: 8px }
+
+    footer{ padding: 24px 16px 30px; text-align:center; color: #6b7280; font-size: 13px; }
+
+    /* 题图显示（控件上方） */
+    .qimg{ margin:8px 2px 10px; }
+    .qimg img{
+      max-width:min(640px, 100%);
+      border-radius:10px;
+      border:1px solid rgba(15,23,42,.08);
+      display:block;
+    }
+
+    /* 状态弹窗 */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:50;padding:16px}
+    .modal.show{display:flex}
+    .modal .box{background:#fff;width:min(520px,100%);border-radius:14px;box-shadow:var(--shadow);padding:16px;border:1px solid rgba(15,23,42,.10)}
+    .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-weight:700;font-size:12px}
+    .pill.good{background:#dcfce7;color:#15803d}
+    .pill.bad{background:#fee2e2;color:#b91c1c}
+    .pill.wait{background:#e5e7eb;color:#111827}
+  </style>
+
+<!-- ★ 亮色外观的浅暖背景（与管理页相同） -->
+<style id="page-bg-override">
+  html, body { height: 100%; }
+  body:not([data-appearance="dark"]) {
+    background:
+      radial-gradient(1000px 780px at 8% 85%, rgba(234, 242, 255, .60) 0%, rgba(234, 242, 255, 0) 60%),
+      radial-gradient(760px 540px at 96% 0%,  rgba(255, 224, 210, .38) 0%, rgba(255, 224, 210, 0) 58%),
+      linear-gradient(180deg, #FFF2EB 0%, #FFFFFF 46%, #F6F8FC 100%) !important;
+    background-attachment: fixed, fixed, fixed;
+    background-repeat: no-repeat;
+    background-color: #FFFFFF;
+    color: #0e1726;
+  }
+</style>
+
+<!-- ★ 暗色外观背景（与管理页相同） -->
+<style id="dark-bg-override">
+  body[data-appearance="dark"] {
+    --bg-1: #0b0b0c;
+    --bg-2: color-mix(in srgb, var(--brand) 24%, #0a0a0a);
+    background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%) !important;
+    background-attachment: fixed !important;
+    background-repeat: no-repeat !important;
+  }
+</style>
+
+</head>
+<body>
+<div class="shell">
+  <header>
+    <div class="brandbar">
+      <div class="logoDot" aria-hidden="true"></div>
+      <div class="title">{{ form_title or site_name }}</div>
+      <div class="sub">在线表单</div>
+      <div class="spacer"></div>
+      <!-- 新增：查看状态按钮（必修补 #2：显式 type="button"） -->
+      <button class="btn-ghost" id="btnCheck" type="button">查看状态</button>
+      <!-- 放在 查看状态 按钮左边或右边都行 -->
+      <!-- 新增：切换亮/暗 -->
+        <button class="btn-ghost" id="btnTheme" type="button" title="切换亮/暗">🌗</button>
+      <div class="actions">
+        <button class="btn" type="button" id="btnDraft">保存</button>
+        <button class="btn" type="submit" form="xForm">提交表单</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="card">
+      <div class="hero">
+        <h1>{{ form_title or site_name }}</h1>
+        {% if form_desc %}<div class="desc">{{ form_desc|safe }}</div>{% endif %}
+        <div style="color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;margin:10px 2px 6px;font-size:13px">
+          <span style="color:#dc2626">*</span> 表示必填
+        </div>
+      </div>
+
+      <!-- 必修补 #1：移除 novalidate，恢复原生校验 -->
+      <form method="post" {% if has_file %}enctype="multipart/form-data"{% endif %} id="xForm">
+        <div class="grid" id="fieldGrid">
+          {% for f in fields %}
+          {% set _title  = f.labelHTML or f.label or f.title or f.name or f.question or f.text or f.placeholder or f.key or f.id %}
+          {% set L_html  = _title %}
+          {% set L_plain = (_title)|striptags %}
+          {% set P = f.image or f.img or f.src or f.picture or f.get('图片') or f.get('照片') %}
+          {% set input_name = f.key or f.id %}
+
+          <div class="field" data-type="{{ f.type or 'text' }}" data-key="{{ input_name }}">
+            <div class="qtitle">
+              {{ L_html|safe }}{% if f.required %}<span class="req">*</span>{% endif %}
+            </div>
+
+            {% if P %}<figure class="qimg"><img src="{{ P }}" alt=""></figure>{% endif %}
+
+            {# —— 题目控件渲染：只有一个 if/elif/else 链 —— #}
+            {% if f.type in ['text','email','number','date','time'] %}
+              <input class="ctrl" type="{{ f.type }}" name="{{ input_name }}" aria-label="{{ L_plain }}"
+                     placeholder="您的回答" {% if f.required %}required{% endif %}>
+
+            {% elif f.type == 'textarea' %}
+              <textarea class="ctrl" name="{{ input_name }}" aria-label="{{ L_plain }}" placeholder="您的回答" {% if f.required %}required{% endif %}></textarea>
+
+            {% elif f.type in ['radio','checkbox'] %}
+              <div class="chips" role="group" aria-label="{{ L_plain }}">
+                {% for opt in f.options or [] %}
+                <label class="chip" data-chip>
+                  <span class="dot" aria-hidden="true"></span>
+                  <span>{{ opt }}</span>
+                  <input type="{{ 'radio' if f.type == 'radio' else 'checkbox' }}"
+                         name="{{ input_name }}{% if f.type=='checkbox' %}[]{% endif %}"
+                         value="{{ opt }}"
+                         {% if f.required and loop.first and f.type=='radio' %}required{% endif %}>
+                </label>
+                {% endfor %}
+              </div>
+
+            {% elif f.type == 'select' %}
+              <select class="ctrl" name="{{ input_name }}" aria-label="{{ L_plain }}" {% if f.required %}required{% endif %}>
+                {# 必修补 #4：必填时提供占位选项，避免默认选中第一项 #}
+                {% if f.required %}<option value="" disabled selected>请选择</option>{% endif %}
+                {% for opt in f.options or [] %}
+                <option value="{{ opt }}">{{ opt }}</option>
+                {% endfor %}
+              </select>
+
+            {% elif f.type == 'file' %}
+              <div class="drop" data-dropzone data-max="{{ upload_max_files|default(3) }}" aria-label="{{ L_plain }}">
+                <div class="meta">
+                  <div class="hint">拖拽到此处或点击右侧按钮选择文件（最多 {{ upload_max_files|default(3) }} 个）</div>
+                </div>
+                <div>
+                  <label class="btn">
+                    选择文件
+                    <input type="file"
+                           name="{{ input_name }}"
+                           {% if (upload_max_files|default(3))|int> 1 %}multiple{% endif %}
+                           style="display:none"
+                           {% if f.required %}required{% endif %}>
+                  </label>
+                </div>
+              </div>
+              <div class="hint" data-file-hint></div>
+              <div class="preview" data-file-preview></div>
+
+            {% else %}
+              <input class="ctrl" type="text" name="{{ input_name }}" aria-label="{{ L_plain }}" placeholder="您的回答"
+                     {% if f.required %}required{% endif %}>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- 用于把“已上传 URL + 草稿 token”一并提交 -->
+        <div id="uploadedHidden" hidden></div>
+
+        <div class="actions">
+          <button class="btn" type="submit">提交表单</button>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <footer>Powered by 通用表单平台</footer>
+</div>
+
+<!-- 状态弹窗 -->
+<div class="modal" id="statusModal" aria-hidden="true">
+  <div class="box">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <strong>查看审核状态</strong>
+      <button class="btn-ghost" id="closeStatus">关闭</button>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <input id="statusName" class="ctrl" placeholder="请输入姓名">
+      <button class="btn" id="goQuery" type="button">查看</button>
+    </div>
+    <div id="statusResult" style="font-size:14px;color:#111"></div>
+  </div>
+</div>
+
+<script>
+  // 打开/关闭状态弹窗
+  const btnCheck = document.getElementById('btnCheck');
+  const modal = document.getElementById('statusModal');
+  const closeStatus = document.getElementById('closeStatus');
+  const goQuery = document.getElementById('goQuery');
+  const statusName = document.getElementById('statusName');
+  const statusResult = document.getElementById('statusResult');
+
+  btnCheck?.addEventListener('click', ()=>{ modal.classList.add('show'); statusName.focus(); });
+  closeStatus?.addEventListener('click', ()=> modal.classList.remove('show'));
+  modal?.addEventListener('click', (e)=>{ if(e.target===modal) modal.classList.remove('show'); });
+
+  async function doQuery(){
+    const name = (statusName.value||'').trim();
+    if(!name){ statusResult.innerHTML='<span style="color:#b91c1c">请输入姓名</span>'; return; }
+    statusResult.textContent='查询中…';
+    try{
+      const res = await fetch('/site/{{ site_name }}/status_query?name='+encodeURIComponent(name));
+      const j = await res.json();
+      if(!res.ok || !j.ok){ statusResult.innerHTML='查询失败：'+(j.error||res.status); return; }
+      if(!j.found){ statusResult.innerHTML='没有找到相关记录'; return; }
+      let pill = '<span class="pill wait">待审核</span>';
+      if(j.status==='已通过') pill='<span class="pill good">已通过</span>';
+      else if(j.status==='未通过') pill='<span class="pill bad">未通过</span>';
+      const cmt = j.review_comment ? ('<div style="margin-top:6px;color:#374151">说明：'+j.review_comment+'</div>') : '';
+      const when = j.created_at ? ('<div class="hint" style="margin-top:6px">提交时间：'+j.created_at+'</div>') : '';
+      statusResult.innerHTML = '<div>最新状态：'+pill+'</div>'+cmt+when;
+    }catch(e){
+      statusResult.innerHTML='查询失败';
+    }
+  }
+  goQuery?.addEventListener('click', doQuery);
+  statusName?.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); doQuery(); } });
+
+  // 单/多选 Chips 选中态
+  document.querySelectorAll('[data-chip]').forEach(ch=>{
+    const inp = ch.querySelector('input');
+    const refresh = ()=>{
+      if (inp.type==='radio') {
+        document.querySelectorAll('input[name="'+inp.name+'"]').forEach(i=>{
+          i.closest('[data-chip]')?.setAttribute('data-checked', i.checked? '1':'0');
+        });
+      } else {
+        ch.setAttribute('data-checked', inp.checked? '1':'0');
+      }
+    };
+    inp.addEventListener('change', refresh);
+    refresh();
+  });
+
+  /* —— 简易 IndexedDB 封装：把每个文件字段的文件列表持久化，刷新也能恢复 —— */
+  const PF_IDB = (() => {
+    const DB = 'pubform_files_v1', STORE = 'files';
+    function open() {
+      return new Promise((res, rej) => {
+        const r = indexedDB.open(DB, 1);
+        r.onupgradeneeded = e => {
+          const db = r.result;
+          if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+        };
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => rej(r.error);
+      });
+    }
+    async function set(key, value) {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).put(value, key);
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+      });
+    }
+    async function get(key) {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readonly');
+        const req = tx.objectStore(STORE).get(key);
+        req.onsuccess = () => res(req.result);
+        req.onerror = () => rej(req.error);
+      });
+    }
+    async function del(key) {
+      const db = await open();
+      return new Promise((res, rej) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).delete(key);
+        tx.oncomplete = () => res();
+        tx.onerror = () => rej(tx.error);
+      });
+    }
+    return {set, get, del};
+  })();
+
+  /* —— 文件字段增强：合并选择、删除、预览、持久化、恢复 —— */
+  (function () {
+    const SITE = "{{ site_name }}";
+    const form = document.getElementById('xForm');
+    if (!form) return;
+
+    // 每个 file 字段用 fieldKey 区分（后端已给 .field[data-key]）
+    const ZONES = [];
+
+    function uniqKey(f) { return [f.name, f.size, f.lastModified].join('#'); }
+    function toFile(meta) {
+      return new File([meta.blob], meta.name, {type: meta.type, lastModified: meta.lastModified});
+    }
+    function toMeta(f) {
+      return new Promise(res => {
+        const fr = new FileReader();
+        fr.onload = () => res({
+          name: f.name,
+          type: f.type,
+          lastModified: f.lastModified,
+          blob: new Blob([fr.result], {type: f.type}),
+          size: f.size
+        });
+        fr.readAsArrayBuffer(f);
+      });
+    }
+    async function persist(fieldKey, files) {
+      const metas = [];
+      for (const f of files) metas.push(await toMeta(f));
+      await PF_IDB.set(`F::${SITE}::${fieldKey}`, metas);
+    }
+    async function restore(fieldKey) {
+      const metas = await PF_IDB.get(`F::${SITE}::${fieldKey}`) || [];
+      return metas.map(toFile);
+    }
+    async function clear(fieldKey) { await PF_IDB.del(`F::${SITE}::${fieldKey}`); }
+
+    function renderPreview(zone, files) {
+      const field = zone.closest('.field');
+      const hint = field?.querySelector('[data-file-hint]');
+      const preview = field?.querySelector('[data-file-preview]');
+      if (hint) {
+        hint.textContent = files.length ? `已选择 ${files.length}/${zone.MAX}：` + files.map(f => f.name).join('、') : '';
+      }
+      if (!preview) return;
+      preview.innerHTML = '';
+      if (!files.length) { preview.classList.remove('show'); return; }
+      preview.classList.add('show');
+
+      files.forEach((f, idx) => {
+        const item = document.createElement('div');
+        item.className = 'item';
+        const title = document.createElement('div');
+        title.className = 'name';
+        title.textContent = `${f.name}${f.size ? '（' + (f.size / 1024 / 1024).toFixed(2) + ' MB）' : ''}`;
+        const rm = document.createElement('button');
+        rm.className = 'rm';
+        rm.type = 'button';
+        rm.textContent = '×';
+        rm.title = '移除该文件';
+        rm.addEventListener('click', async () => {
+          zone.VFILES.splice(idx, 1);
+          await persist(zone.fieldKey, zone.VFILES);
+          applyToInput(zone);
+          renderPreview(zone, zone.VFILES);
+        });
+
+        item.appendChild(title);
+        item.appendChild(rm);
+
+        const url = URL.createObjectURL(f);
+        const ext = (f.name.split('.').pop() || '').toLowerCase();
+        if (f.type.startsWith('image/') || ['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext)) {
+          const img = new Image();
+          img.src = url;
+          img.onload = () => URL.revokeObjectURL(url);
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+          img.style.borderRadius = '8px';
+          item.appendChild(img);
+        } else if (f.type === 'application/pdf' || f.type.startsWith('text/')) {
+          const ifr = document.createElement('iframe');
+          ifr.src = url;
+          ifr.onload = () => URL.revokeObjectURL(url); /* 必修补 #5：iframe 也 revoke */
+          ifr.style.width = '100%';
+          ifr.style.height = '360px';
+          item.appendChild(ifr);
+        } else if (f.type.startsWith('video/')) {
+          const v = document.createElement('video');
+          v.src = url;
+          v.controls = true;
+          v.style.width = '100%';
+          v.onloadeddata = () => URL.revokeObjectURL(url);
+          item.appendChild(v);
+        } else if (f.type.startsWith('audio/')) {
+          const a = document.createElement('audio');
+          a.src = url;
+          a.controls = true;
+          a.onloadeddata = () => URL.revokeObjectURL(url);
+          item.appendChild(a);
+        } else {
+          const tip = document.createElement('div');
+          tip.className = 'hint';
+          tip.textContent = '此文件类型暂不支持在线预览';
+          item.appendChild(tip);
+        }
+        preview.appendChild(item);
+      });
+    }
+
+    function applyToInput(zone) {
+      const dt = new DataTransfer();
+      zone.VFILES.slice(0, zone.MAX).forEach(f => dt.items.add(f));
+      zone.fileInput.files = dt.files;
+    }
+    function mergeAdd(zone, incoming) {
+      const map = new Map(zone.VFILES.map(f => [uniqKey(f), f]));
+      incoming.forEach(f => {
+        if (!map.has(uniqKey(f)) && map.size < zone.MAX) map.set(uniqKey(f), f);
+      });
+      zone.VFILES = Array.from(map.values()).slice(0, zone.MAX);
+    }
+
+    // 初始化每个 dropzone
+    document.querySelectorAll('[data-dropzone]').forEach(zone => {
+      const fieldEl = zone.closest('.field');
+      const fieldKey = fieldEl?.dataset.key || zone.querySelector('input[type=file]')?.name || '';
+      const fileInput = zone.querySelector('input[type=file]');
+      const MAX = parseInt(zone.getAttribute('data-max') || '3', 10) || 3;
+
+      zone.fieldKey = fieldKey;
+      zone.fileInput = fileInput;
+      zone.MAX = MAX;
+      zone.VFILES = []; // 虚拟文件列表（真实以它为准）
+
+      // 拖拽
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+      zone.addEventListener('drop', async e => {
+        e.preventDefault();
+        zone.classList.remove('drag');
+        const incoming = Array.from(e.dataTransfer.files || []);
+        if (!incoming.length) return;
+        mergeAdd(zone, incoming);
+        applyToInput(zone);
+        renderPreview(zone, zone.VFILES);
+        await persist(fieldKey, zone.VFILES);
+      });
+
+      // 选择（支持分批选，自动合并）
+      fileInput.addEventListener('change', async e => {
+        const incoming = Array.from(e.target.files || []);
+        if (!incoming.length) { renderPreview(zone, zone.VFILES); return; }
+        mergeAdd(zone, incoming);
+        applyToInput(zone);
+        renderPreview(zone, zone.VFILES);
+        await persist(fieldKey, zone.VFILES);
+      });
+
+      ZONES.push(zone);
+    });
+
+    // 首次载入：从 IndexedDB 恢复每个字段的文件
+    (async function restoreAll() {
+      for (const z of ZONES) {
+        try {
+          const files = await restore(z.fieldKey);
+          if (files && files.length) {
+            z.VFILES = files.slice(0, z.MAX);
+            applyToInput(z);
+            renderPreview(z, z.VFILES);
+          }
+        } catch (_) {}
+      }
+    })();
+
+    // 表单提交成功后清理文件草稿（提交前已把 files 写回 input 了）
+    form.addEventListener('submit', () => {
+      ZONES.forEach(z => clear(z.fieldKey).catch(() => {}));
+    });
+
+    // “保存草稿”：文本 + 文件 -> /site/<site>/draft/save
+    (function () {
+      const SITE = "{{ site_name }}";
+      const btnDraft = document.getElementById('btnDraft');
+      const hiddenBox = document.getElementById('uploadedHidden');
+      const DRAFT_TOKEN_LS = `draft_token:${SITE}`;
+      // 维护“已上传 URL”映射（fieldKey -> [urls]）
+      let UPLOADED = JSON.parse(localStorage.getItem(`uploaded_urls:${SITE}`) || "{}");
+      let DRAFT_TOKEN = localStorage.getItem(DRAFT_TOKEN_LS) || "";
+
+      function setUploadedHidden() {
+        if (!hiddenBox) return;
+        hiddenBox.innerHTML = "";
+        Object.entries(UPLOADED).forEach(([field, urls]) => {
+          (urls || []).forEach(u => {
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = `__uploaded__${field}[]`;
+            inp.value = u;
+            hiddenBox.appendChild(inp);
+          });
+        });
+        if (DRAFT_TOKEN) {
+          const t = document.createElement('input');
+          t.type = 'hidden';
+          t.name = '__draft_token';
+          t.value = DRAFT_TOKEN;
+          hiddenBox.appendChild(t);
+        }
+      }
+      setUploadedHidden();
+
+      if (btnDraft) {
+        btnDraft.addEventListener('click', async () => {
+          // 1) 把本地 File 写回 input
+          ZONES.forEach(z => applyToInput(z));
+
+          // 2) 组装 FormData：文本 + 文件 + 已上传URL + token
+          const fd = new FormData(form);
+          Object.entries(UPLOADED).forEach(([field, urls]) => {
+            (urls || []).forEach(u => fd.append(`__uploaded__${field}[]`, u));
+          });
+          if (DRAFT_TOKEN) fd.append('__draft_token', DRAFT_TOKEN);
+
+          // 3) 发送
+          try {
+            const res = await fetch(`/site/${encodeURIComponent(SITE)}/draft/save`, {
+              method: 'POST',
+              body: fd,
+              credentials: 'same-origin'
+            });
+            const j = await res.json();
+            if (!res.ok || j.ok === false) throw new Error(j.error || res.statusText);
+
+            // 4) 保存 token 与服务器返回的 URL 映射
+            DRAFT_TOKEN = j.token || DRAFT_TOKEN || "";
+            localStorage.setItem(DRAFT_TOKEN_LS, DRAFT_TOKEN);
+
+            const sv = j.files || {};
+            Object.keys(sv).forEach(k => {
+              const prev = new Set(UPLOADED[k] || []);
+              (sv[k] || []).forEach(u => prev.add(u));
+              UPLOADED[k] = Array.from(prev);
+            });
+            localStorage.setItem(`uploaded_urls:${SITE}`, JSON.stringify(UPLOADED));
+
+            // 5) 清空本地 File 列表，避免再次保存重复上传
+            ZONES.forEach(z => {
+              z.VFILES = [];
+              applyToInput(z);
+              renderPreview(z, z.VFILES);
+            });
+            setUploadedHidden();
+
+            alert('草稿已保存（文件已上传到服务器）');
+          } catch (e) {
+            alert('保存失败：' + e.message);
+          }
+        });
+      }
+
+      // 最终提交前，确保把“已上传 URL”和 token 一起带上
+      form.addEventListener('submit', () => {
+        setUploadedHidden();
+        // 提交后清理草稿标记（可选）
+        localStorage.removeItem(DRAFT_TOKEN_LS);
+        localStorage.removeItem(`uploaded_urls:${SITE}`);
+      });
+    })();
+
+  })();
+</script>
+
+<script>
+  (function(){
+    const root = document.documentElement;
+    const MODE = "{{ theme_mode or 'auto' }}";
+    const BRAND_LIGHT = "{{ brand_light }}";
+    const BRAND_DARK  = "{{ brand_dark }}";
+
+    if (BRAND_LIGHT) root.style.setProperty('--brand-light', BRAND_LIGHT);
+    if (BRAND_DARK)  root.style.setProperty('--brand-dark',  BRAND_DARK);
+
+    if (MODE === 'dark') {
+      root.style.setProperty('--brand', 'var(--brand-dark)');
+      root.setAttribute('data-theme-fixed', 'dark');
+    } else if (MODE === 'light') {
+      root.style.setProperty('--brand', 'var(--brand-light)');
+      root.setAttribute('data-theme-fixed', 'light');
+    } else {
+      root.removeAttribute('data-theme-fixed'); // 跟随系统
+    }
+
+    // ★ 同步到 body，让渐变背景按管理页规则切换
+    document.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('appearance') === 'dark') {
+        document.body.setAttribute('data-appearance','dark');
+        return;
+      }
+      if (localStorage.getItem('appearance') === 'light') {
+        document.body.setAttribute('data-appearance','light');
+        return;
+      }
+      if (MODE === 'dark') document.body.setAttribute('data-appearance','dark');
+      else if (MODE === 'light') document.body.setAttribute('data-appearance','light');
+      else document.body.removeAttribute('data-appearance'); // auto 交给 CSS
+    });
+  })();
+</script>
+
+
+<script>
+  // ============ 自动保存/恢复（除文件控件外） ============
+  (function(){
+    const LS_KEY = 'pubform:{{ site_name }}';
+    const form = document.getElementById('xForm');
+    if (!form) return;
+
+    // 必修补 #6：CSS.escape 兜底
+    const esc = (window.CSS && CSS.escape) ? CSS.escape : s => s.replace(/[^a-zA-Z0-9_\-]/g, '\\$&');
+
+    // 恢复
+    try{
+      const data = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+      for (const [k,v] of Object.entries(data)) {
+        const els = form.querySelectorAll(`[name="${esc(k)}"]`);
+        if (!els || !els.length) continue;
+        const el = els[0];
+        if (el.type === 'file') continue; // 浏览器不允许回填文件
+        if (els.length > 1 && (el.type === 'radio' || el.type === 'checkbox')) {
+          els.forEach(x => x.checked = Array.isArray(v) ? v.includes(x.value) : (x.value === v));
+        } else {
+          el.value = v;
+        }
+      }
+    }catch(e){}
+
+    // 保存（防抖）
+    let t = null;
+    const save = () => {
+      const data = {};
+      const fdEls = form.querySelectorAll('input[name], select[name], textarea[name]');
+      fdEls.forEach(el => {
+        const name = el.name;
+        if (!name) return;
+        if (el.type === 'file') return; // 文件不保存
+        if (el.type === 'radio') {
+          if (el.checked) data[name] = el.value;
+        } else if (el.type === 'checkbox') {
+          (data[name] ||= []);
+          if (el.checked) data[name].push(el.value);
+        } else {
+          data[name] = el.value;
+        }
+      });
+      localStorage.setItem(LS_KEY, JSON.stringify(data));
+    };
+    form.addEventListener('input', () => { clearTimeout(t); t = setTimeout(save, 250); });
+    form.addEventListener('change', () => { clearTimeout(t); t = setTimeout(save, 0); });
+    form.addEventListener('submit', () => { localStorage.removeItem(LS_KEY); }); // 提交后清空
+  })();
+</script>
+
+<script id="smooth-theme-toggle-public">
+(function () {
+  const html = document.documentElement;
+  const body = document.body;
+  const btn  = document.getElementById('btnTheme');
+
+  // 读取本地记忆并同步 brand
+  const saved = localStorage.getItem('appearance');
+  if (saved === 'dark' || saved === 'light') {
+    body.setAttribute('data-appearance', saved);
+    document.documentElement.style.setProperty('--brand',
+      saved === 'dark' ? 'var(--brand-dark)' : 'var(--brand-light)');
+  }
+
+  function flip(next) {
+    html.classList.add('no-anim');            // 关闭过渡避免闪烁
+    body.setAttribute('data-appearance', next);
+
+    // ★ 同步按钮/高亮色到当前外观使用的品牌色
+    document.documentElement.style.setProperty('--brand',
+      next === 'dark' ? 'var(--brand-dark)' : 'var(--brand-light)');
+
+    localStorage.setItem('appearance', next);
+    void body.offsetWidth;
+    requestAnimationFrame(() => html.classList.remove('no-anim'));
+  }
+
+  // 点击按钮：亮/暗互切
+  btn && btn.addEventListener('click', () => {
+    const next = body.getAttribute('data-appearance') === 'dark' ? 'light' : 'dark';
+    flip(next);
+  });
+})();
+</script>
+
+
+<!-- 关闭过渡的辅助样式（已有则忽略） -->
+<style id="kill-transitions-public">
+  html.no-anim *, html.no-anim *::before, html.no-anim *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+</style>
+
+
+<style>
+
+  /* 在线预览 */
+  .preview {
+    display: none;
+    margin-top: 10px;
+    border: 1px dashed rgba(15,23,42,.12);
+    background: #fff;
+    border-radius: 12px;
+    padding: 10px;
+  }
+  .preview.show { display: block; }
+  .preview .item { margin: 10px 0; }
+  .preview img,
+  .preview video,
+  .preview iframe { width: 100%; height: auto; border: 0; border-radius: 8px; }
+  .preview iframe { height: 480px; }
+
+  /* 预览项 + 右上角删除 X */
+  .preview .item { position: relative; margin: 10px 0; }
+  .preview .rm {
+    position:absolute; top:6px; right:6px;
+    width:28px; height:28px; line-height:28px; text-align:center;
+    border:0; border-radius:999px; cursor:pointer;
+    background:rgba(0,0,0,.7); color:#fff; font-weight:900;
+  }
+  .preview .name { font-size:13px; color:#334155; margin:0 34px 6px 0; }
+</style>
+
+<style id="public-qa-text-fix">
+  /* 仅影响表单卡片内部的可读性，不改其它地方 */
+  .card .hero h1{ color:#0e1726 !important; }
+  .card .qtitle{ color:#0e1726 !important; }
+  .card .qtitle .req{ color:#dc2626 !important; }
+  .card .desc{ color: var(--muted) !important; }
+
+  /* 选择项/输入框在白底里也用深色文字 */
+  .card .chip{ color:#0e1726 !important; }
+  .card .ctrl{ color:#0f172a !important; }
+  .card input::placeholder,
+  .card textarea::placeholder{ color:#94a3b8 !important; }
+</style>
+
+
+<script>
+(function(){
+  try{
+    document.addEventListener("DOMContentLoaded", function(){
+      document.querySelectorAll('img:not([loading])')
+        .forEach(function(img){ img.setAttribute('loading','lazy'); });
+    }, {passive:true});
+    document.querySelectorAll('script[src]:not([type="module"]):not([defer])')
+      .forEach(function(s){ s.setAttribute('defer',''); });
+  }catch(e){}
+})();
+</script>
+
+<script>
+(function(){
+  const SITE = "{{ site_name }}";
+  const KEY  = "draft:public:" + (SITE||"__default__");
+  const form = document.querySelector('form');
+  if(!form) return;
+
+  const debounce=(fn,d=300)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),d);}};
+
+  function serialize(){
+    const data={};
+    const fd = new FormData(form);
+    for (const [k,v] of fd.entries()){
+      if (data[k] === undefined) data[k] = v;
+      else if (Array.isArray(data[k])) data[k].push(v);
+      else data[k] = [data[k], v];
+    }
+    return data;
+  }
+  function restore(data){
+    if(!data) return;
+    for (const [k,v] of Object.entries(data)){
+      const els = form.querySelectorAll(`[name="${CSS.escape(k)}"]`);
+      if (!els.length) continue;
+      const values = Array.isArray(v)? v : [v];
+      els.forEach(el=>{
+        if (el.type==='checkbox' || el.type==='radio'){
+          el.checked = values.includes(el.value);
+        }else{
+          el.value = values[0];
+        }
+      });
+    }
+    toast('已从本地草稿恢复');
+  }
+
+  const saveNow = ()=> localStorage.setItem(KEY, JSON.stringify(serialize()));
+  const saveDebounced = debounce(saveNow, 250);
+
+  document.addEventListener('input', saveDebounced, true);
+  document.addEventListener('change', saveDebounced, true);
+
+  try{
+    const raw = localStorage.getItem(KEY);
+    if (raw) restore(JSON.parse(raw));
+  }catch(e){}
+
+  // 提交后清理
+  form.addEventListener('submit', ()=>{ localStorage.removeItem(KEY); }, {once:true});
+
+  function toast(msg){
+    let t=document.getElementById('draft-toast');
+    if(!t){ t=document.createElement('div'); t.id='draft-toast';
+      t.style.cssText='position:fixed;z-index:2147483647;top:12px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:999px;font-weight:800;box-shadow:0 10px 20px rgba(0,0,0,.2)';
+      document.body.appendChild(t);
+    }
+    t.textContent=msg; t.style.opacity='1';
+    setTimeout(()=>{ t.style.transition='opacity .6s'; t.style.opacity='0'; }, 1600);
+  }
+})();
+</script>
+
+</body>
+</html>

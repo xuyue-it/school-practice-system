@@ -1,62 +1,167 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-  <meta charset="UTF-8">
-  <title>管理员控制面板</title>
-  <style>
-    body {
-      font-family: "Microsoft YaHei", sans-serif;
-      background: #f7f7f7;
-      margin: 0; padding: 0;
-    }
-    .container {
-      max-width: 900px;
-      margin: 40px auto;
-      background: #fff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 6px 16px rgba(0,0,0,.1);
-    }
-    h1 { font-weight: 900; color: #2563eb; margin-bottom: 10px; text-align:center; }
-    p { text-align:center; color:#555; margin-bottom:30px; }
-    .btn-group {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 20px;
-    }
-    a.btn {
-      display: inline-block;
-      padding: 14px 24px;
-      border-radius: 8px;
-      text-decoration: none;
-      font-weight: bold;
-      transition: 0.2s;
-      min-width: 200px;
-      text-align: center;
-    }
-    a.create { background: #2563eb; color: #fff; }
-    a.create:hover { background: #1d4ed8; }
-    a.manage { background: #10b981; color: #fff; }
-    a.manage:hover { background: #059669; }
-    a.logout { background: #ef4444; color: #fff; }
-    a.logout:hover { background: #dc2626; }
-    footer { margin-top:40px; text-align:center; font-size:13px; color:#888; }
-  </style>
+<meta charset="UTF-8" />
+<title>通用表单平台</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{
+    --brand:#ff7a2f; --brand2:#ff9955;
+    --ink:#0f172a; --muted:#5b5f66;
+    --card:rgba(255,255,255,.88);
+  }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{
+    margin:0; font-family:"Inter","PingFang SC","Microsoft YaHei",ui-sans-serif;
+    color:var(--ink);
+    background:
+      radial-gradient(1200px 800px at 5% -8%, rgba(255,214,231,.16), transparent 60%),
+      radial-gradient(1100px 700px at 95% -6%, rgba(255,226,197,.16), transparent 60%),
+      linear-gradient(180deg,#ffffff 0%,#f7f9ff 48%,#eef4ff 100%);
+  }
+  header{
+    position:sticky; top:0; z-index:5;
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 18px; background:rgba(255,255,255,.65); backdrop-filter:saturate(140%) blur(10px);
+    border-bottom:1px solid rgba(255,255,255,.6);
+  }
+  header h1{margin:0; font-size:18px; letter-spacing:.2px}
+  header .right{display:flex; align-items:center; gap:10px; font-size:14px; color:#556}
+  header .logout{padding:8px 12px; border-radius:999px; background:#ffe9e9; color:#9a2d2d; text-decoration:none}
+
+  main{ max-width:1080px; margin:26px auto; padding:0 16px; }
+
+  .panel{
+    background:var(--card); border:1px solid rgba(255,255,255,.7);
+    border-radius:18px; box-shadow:0 18px 60px rgba(0,0,0,.06), 0 10px 24px rgba(255,140,60,.08);
+    padding:18px 18px 6px;
+  }
+  .panel h2{margin:6px 0 8px; font-size:18px}
+  .quick{
+    display:grid; grid-template-columns:repeat(4,1fr); gap:16px; padding:8px 4px 16px;
+  }
+  .q{
+    height:82px; border-radius:14px; display:grid; place-items:center;
+    background:linear-gradient(180deg,#fff, #fff3eb); border:1px solid #ffe0cb;
+    font-weight:800; color:#5b3a2a;
+  }
+
+  .list{ margin-top:18px; }
+  table{ width:100%; border-collapse:separate; border-spacing:0 10px; }
+  thead th{ font-weight:800; font-size:13px; color:#6b7280; text-align:left; padding:0 14px; }
+  tbody tr{ background:#fff; box-shadow:0 4px 14px rgba(0,0,0,.05); }
+  tbody td{ padding:14px; font-size:14px; }
+  tbody tr td:first-child{ border-radius:12px 0 0 12px; }
+  tbody tr td:last-child{ border-radius:0 12px 12px 0; }
+
+  .tag{padding:6px 10px; border-radius:999px; background:#f4f6ff; font-weight:700; font-size:12px; color:#3146a7}
+  .actions{ display:flex; gap:10px; justify-content:flex-end; }
+  .btn{
+    border:none; padding:10px 14px; border-radius:999px; cursor:pointer;
+    font-weight:900; letter-spacing:.2px;
+  }
+  .btn.primary{
+    color:#fff; background:linear-gradient(135deg,var(--brand),var(--brand2));
+    box-shadow:0 10px 26px rgba(255,128,58,.25), inset 0 0 0 1px rgba(255,255,255,.25);
+  }
+  .btn.danger{ background:#ffe5e5; color:#8b1d1d; }
+  .create-bar{ display:flex; justify-content:center; margin:16px 0 10px; }
+  .create{ display:inline-flex; align-items:center; gap:8px; }
+  .create .plus{ font-weight:900; }
+  .muted{ color:#6b7280; font-size:12px; }
+
+  @media (max-width:900px){
+    .quick{ grid-template-columns:1fr 1fr; }
+    thead{ display:none; }
+    tbody tr{ display:grid; grid-template-columns: 1fr; gap:6px; }
+    tbody td{ padding:10px 12px; }
+    .actions{ justify-content:flex-start; }
+  }
+</style>
 </head>
 <body>
-  <div class="container">
-    <h1>管理员控制面板</h1>
-    <p>欢迎回来，{{ session["username"] }} 👋</p>
+  <header>
+    <h1>通用表单平台</h1>
+    <div class="right">
+      <span>欢迎，{{ username or '' }}</span>
+      <a class="logout" href="/logout">退出</a>
+    </div>
+  </header>
 
-    <div class="btn-group">
-      <a href="/create_form" class="btn create">➕ 创建新表单</a>
-      <a href="/logout" class="btn logout">🚪 退出登录</a>
+  <main class="panel">
+      <h2>常用表单</h2>
+      <div class="quick">
+          <a class="q" href="{{ url_for('create_form_new', tpl='blank',   enter=1) }}">空白表单</a>
+          <a class="q" href="{{ url_for('create_form_new', tpl='contact', enter=1) }}">联系信息</a>
+          <a class="q" href="{{ url_for('create_form_new', tpl='feedback',enter=1) }}">反馈</a>
+          <a class="q" href="{{ url_for('create_form_new', tpl='event',   enter=1) }}">活动报名</a>
+      </div>
+
+
+
+    <h2 style="margin-top:4px">我的表单</h2>
+    <div class="list">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:60px;">ID</th>
+            <th>表单名称</th>
+            <th>站点名</th>
+            <th>数据库</th>
+            <th style="min-width:180px;">创建时间</th>
+            <th style="width:220px; text-align:right;">操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for f in forms %}
+          <tr>
+            <td>{{ f.id }}</td>
+            <td>{{ f.name }}</td>
+            <td><span class="tag">{{ f.site_name }}</span></td>
+            <td class="muted">{{ f.db_url or ('form_' ~ f.site_name) }}</td>
+            <td class="muted">{{ f.created_at }}</td>
+            <td>
+              <div class="actions">
+                <!-- 进入“这个站点自己”的 create_form（路径路由） -->
+                <a class="btn primary" href="{{ url_for('create_form_site', site=f.site_name, enter=1) }}">进入后台</a>
+                <!-- 删除 -->
+                <button class="btn danger" data-del data-id="{{ f.id }}" data-name="{{ f.name }}">删除</button>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="muted">你还没有表单，点击下方按钮创建一个吧。</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
 
-    <footer>
-      Powered by Flask · 管理员可独立创建表单系统
-    </footer>
-  </div>
+    <div class="create-bar">
+      <!-- 全新空白的 create_form（路径路由） -->
+      <a class="btn primary create" href="{{ url_for('create_form_new', enter=1) }}">
+        <span class="plus">＋</span> 创建新表单
+      </a>
+    </div>
+  </main>
+
+<script>
+  // 删除（走已有的后端 /form/<id>/delete，POST）
+  document.querySelectorAll('[data-del]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      if(!confirm(`确定删除表单「${btn.dataset.name}」？此操作会删除数据库与站点，且不可恢复！`)) return;
+      btn.disabled = true;
+      try{
+        const res = await fetch(`/form/${btn.dataset.id}/delete`, {method:'POST'});
+        if(!res.ok) throw new Error(await res.text());
+        location.reload();
+      }catch(e){
+        alert('删除失败：' + (e.message||''));
+        btn.disabled=false;
+      }
+    });
+  });
+</script>
 </body>
 </html>

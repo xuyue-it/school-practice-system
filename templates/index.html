@@ -1,206 +1,556 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <title>通用表单平台入口</title>
-  <style>
-    body {
-      font-family: "Microsoft YaHei", sans-serif;
-      background: #f7f7f7;
-      margin: 0; padding: 0;
-    }
-    .container {
-      max-width: 1000px;
-      margin: 40px auto;
-      background: #fff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 6px 16px rgba(0,0,0,.1);
-    }
-    h1 { font-weight: 900; color: #2563eb; text-align: center; margin-bottom: 20px; }
-    h2 { text-align: center; margin-top: 20px; }
-    p  { color: #444; text-align: center; }
-    .tabs {
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-      margin: 20px 0;
-      flex-wrap: wrap;
-    }
-    .tabs button {
-      padding: 10px 20px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      background: #e5e7eb;
-      transition: 0.2s;
-    }
-    .tabs button.active { background: #2563eb; color: #fff; }
-    form {
-      max-width: 400px;
-      margin: 0 auto 30px;
-      text-align: left;
-      display: none;
-    }
-    form.active { display: block; }
-    input {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-    button.submit {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      border: none;
-      border-radius: 6px;
-      background: #2563eb;
-      color: #fff;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-    button.submit:hover { background: #1d4ed8; }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    table, th, td { border: 1px solid #ddd; }
-    th, td { padding: 8px; text-align: center; }
-    th { background: #f3f4f6; }
-    .btn {
-      display: inline-block;
-      padding: 10px 16px;
-      margin-top: 15px;
-      border-radius: 6px;
-      text-decoration: none;
-      font-weight: bold;
-      transition: 0.2s;
-    }
-    .btn.user { background: #10b981; color: #fff; }
-    .btn.user:hover { background: #059669; }
-    .btn.admin { background: #2563eb; color: #fff; }
-    .btn.admin:hover { background: #1d4ed8; }
-    .btn.logout { background: #ef4444; color: #fff; }
-    .btn.logout:hover { background: #dc2626; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(200px,1fr)); gap: 15px; margin-top: 20px; }
-    .card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; text-align: center; background: #fafafa; }
-    .card:hover { background: #f0f9ff; }
-    footer {
-      margin-top: 30px;
-      font-size: 13px;
-      color: #888;
-      text-align: center;
-    }
+  <meta charset="UTF-8" />
+  <title>Formly</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- 早期开关：首帧决定是否启用 perf-mode -->
+  <script>
+  (function(){
+    try{
+      var lowMem = navigator.deviceMemory && navigator.deviceMemory <= 2;
+      var reduce = window.matchMedia && (
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+        window.matchMedia("(prefers-reduced-transparency: reduce)").matches
+      );
+      if (lowMem || reduce) document.documentElement.classList.add("perf-mode");
+    }catch(e){}
+  })();
+  </script>
+
+  <!-- 性能模式 CSS（补充：同时关掉 data-blur 及其 ::before 的 filter） -->
+  <style id="perf-style">
+  :root.perf-mode .glass, .perf-mode [data-glass],
+  :root.perf-mode .blur,  .perf-mode [data-blur]{
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  :root.perf-mode [data-blur],
+  :root.perf-mode [data-blur]::before{
+    filter: none !important;
+  }
+  :root.perf-mode *{
+    transition: none !important;
+    animation: none !important;
+    box-shadow: none !important;
+  }
   </style>
+
+  <!-- 这里紧跟你的“大样式” <style>...</style>，保持原样即可 -->
+  <!-- 你现有的整段大样式粘在这里（不需要改动） -->
+
+<style>
+  :root{
+    /* 更慢更顺的开场节奏 */
+    --splash-appear: 1500ms;  /* 底部 → 中间 */
+    --splash-hold:   2100ms;  /* 中间停留 */
+    --splash-exit:   1800ms;  /* 中间 → 顶部 */
+    --splash-total: calc(var(--splash-appear) + var(--splash-hold) + var(--splash-exit));
+
+    /* 整页上滑：比开场离场更早一点开始，自然交接 */
+    --auth-delay: calc(var(--splash-appear) + var(--splash-hold) - 1200ms);
+    --auth-rise:  1800ms;  /* 慢一档 */
+
+    /* 主题与玻璃 */
+    --brand:#ff7a2f; --brand2:#ff9955;
+    --glass-alpha:.76;     /* 70~80% 透明度 */
+    --blur:28px;           /* 静态磨砂 */
+    --ink:#0f172a; --muted:#5b5f66;
+  }
+
+  *,*:before,*:after{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{
+    margin:0; color:var(--ink);
+    font-family:"Inter","PingFang SC","Microsoft YaHei",ui-sans-serif,-apple-system,system-ui;
+    background:
+      radial-gradient(1100px 800px at 8% -6%, rgba(255,214,231,.18), transparent 60%),
+      radial-gradient(1000px 700px at 92% -8%, rgba(255,226,197,.18), transparent 60%),
+      linear-gradient(180deg,#ffffff 0%,#f7faff 50%,#eef4ff 100%);
+    overflow-x:hidden;
+  }
+
+  /* ========= 开场（容器淡出，与下方页面交叉） ========= */
+  #splash{
+    position:fixed; inset:0; z-index:9999;
+    background:
+      radial-gradient(1100px 700px at 10% -10%, rgba(255, 214, 231, .35), transparent 60%),
+      radial-gradient(900px 600px at 92% -6%, rgba(214, 241, 255, .32), transparent 60%),
+      radial-gradient(900px 600px at 50% 115%, rgba(253, 233, 217, .28), transparent 60%),
+      linear-gradient(180deg, #ffffff 0%, #fffcfa 45%, #f7fbff 100%);
+    display:flex; align-items:flex-start; justify-content:center; overflow:hidden;
+    animation: splashFade var(--splash-total) forwards;
+  }
+  @keyframes splashFade{
+    0%,70%{ opacity:1 }
+    100% { opacity:0 }
+  }
+  #splash::before{
+    content:""; position:absolute; inset:-20%;
+    background: radial-gradient(860px 620px at 20% -10%, rgba(255, 182, 193, .22), transparent 60%);
+    transform: translateY(28%);
+    animation: parallax var(--splash-total) ease-in-out forwards;
+    pointer-events:none;
+  }
+  @keyframes parallax{
+    0%{transform:translateY(28%);opacity:.9}
+    70%{transform:translateY(0%);opacity:1}
+    100%{transform:translateY(-22%);opacity:0}
+  }
+  .splash-inner{
+    position:relative; width:100%; text-align:center;
+    top:120vh; animation: splashSlide var(--splash-total) forwards;
+  }
+  .splash-title{
+    margin:0; padding:0 20px;
+    font-size: clamp(38px,8vw,78px); font-weight:1000; letter-spacing:.6px;
+    color:transparent;
+    background: linear-gradient(90deg,var(--brand) 0%,#ffcaa6 40%,#fff 70%);
+    -webkit-background-clip:text; background-clip:text;
+    text-shadow: 0 6px 22px rgba(255,140,60,.28);
+  }
+  .splash-sub{
+    margin:12px 0 0; color:#5b6472; font-weight:700; font-size:clamp(12px,2.6vw,16px);
+  }
+  /* 无模糊，只做位移透明 */
+  @keyframes splashSlide{
+  0%  { top:120vh; opacity:0; }
+  50% { top:20vh;  opacity:1; }  /* 中段只到位，不再回弹 */
+  100%{ top:-60vh; opacity:0; }
+  }
+
+
+  /* ========= 背景波浪/气泡 ========= */
+  .scene{ position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden; }
+  .wave{
+    position:absolute; left:-10vw; right:-10vw; height:360px;
+    background: radial-gradient(1200px 260px at 30% 0%, rgba(255,180,120,.35), transparent 60%),
+                linear-gradient(180deg, rgba(255,136,64,.18), rgba(255,136,64,0));
+    filter: blur(12px) saturate(120%);
+    border-radius:100% / 40%;
+    transform: translateY(40vh);
+  }
+  .wave.w2{
+    top:18vh; height:420px;
+    background: radial-gradient(1200px 260px at 70% 0%, rgba(255,205,160,.35), transparent 60%),
+                linear-gradient(180deg, rgba(255,180,120,.16), rgba(255,180,120,0));
+  }
+  .bubble{
+    position:absolute; width:44px; height:44px; border-radius:50%;
+    background: radial-gradient(circle at 30% 30%, #fff, #ffd4b9 70%, var(--brand2));
+    filter: blur(.6px) saturate(120%); opacity:.85;
+  }
+  .b1{ top:22%; left:16%; }
+  .b2{ top:28%; right:22%; width:36px; height:36px; }
+  .b3{ top:40%; left:72%; width:52px; height:52px; }
+
+  /* ========= 整页登录/注册：提前缓慢上滑（无模糊） ========= */
+  #authScreen{
+    min-height:100svh; display:grid; place-items:center; padding:24px;
+    opacity:1;                          /* 不从 0，避免“跳出感” */
+    transform:translateY(18vh);         /* 初始在下方一点点 */
+    animation: riseIn var(--auth-rise) var(--auth-delay) forwards;
+    will-change: transform;
+  }
+  @keyframes riseIn{
+  0%   { transform:translateY(18vh); }
+  100% { transform:translateY(0); }
+  }
+
+
+  /* 提交时做一个 380ms 的“上移离场”，让跨页也顺 */
+  body.leaving #authScreen{
+    transition: transform 380ms cubic-bezier(.22,1,.24,1);
+    transform: translateY(-6vh);
+  }
+  body.leaving{ cursor:progress; }
+
+  /* ========= 玻璃卡 ========= */
+  .card{
+    width:min(95vw, 980px);
+    display:grid; grid-template-columns: 1.1fr 1fr; gap:20px;
+    background: rgba(255,255,255,var(--glass-alpha));
+    border: 1px solid rgba(255,255,255,.55);
+    backdrop-filter: blur(var(--blur)) saturate(150%) brightness(105%);
+    -webkit-backdrop-filter: blur(var(--blur)) saturate(150%) brightness(105%);
+    border-radius: 26px;
+    box-shadow: 0 24px 80px rgba(255,140,60,.16), 0 18px 50px rgba(0,0,0,.08);
+    padding: 26px; position:relative;
+  }
+  .card:before{
+    content:""; position:absolute; left:14px; right:14px; top:10px; height:64px;
+    background: linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,255,255,0));
+    border-radius:18px; pointer-events:none; opacity:.8;
+  }
+
+  .brand-row{ display:flex; align-items:center; gap:10px; margin-bottom:8px; font-weight:900; color:#132030; }
+  .brand-dot{
+    width:24px; height:24px; border-radius:8px;
+    background: linear-gradient(135deg,#6aa4ff,#9bc8ff);
+    box-shadow: inset 0 6px 16px rgba(255,255,255,.55), 0 8px 20px rgba(90,166,255,.22);
+  }
+  .title{ margin:6px 0 8px; font-size:28px; font-weight:1000; letter-spacing:.2px; }
+  .accent{ color:transparent; background:linear-gradient(90deg,var(--brand),#ffcaa6); -webkit-background-clip:text; background-clip:text; }
+  .tip{ margin:0 0 16px; color:var(--muted); font-size:12px; }
+
+  .tabs{ display:flex; gap:10px; margin-bottom:10px; }
+  .tab{
+    border:none; padding:8px 14px; border-radius:999px; cursor:pointer;
+    background:rgba(255,255,255,.72); border:1px solid rgba(255,255,255,.75);
+    font-weight:800; color:#2b2b2b;
+  }
+  .tab.active{ background:linear-gradient(135deg,#fff,#ffe8db); border-color:#ffd7bd; color:#873d14; }
+
+  .field{ position:relative; margin:14px 0; }
+  .field input{
+    width:100%; border:none; outline:none;
+    padding:14px 16px 14px 56px;
+    background: rgba(255,255,255,.78);
+    border: 1px solid rgba(255,255,255,.9);
+    border-radius: 999px;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,.06), 0 4px 18px rgba(0,0,0,.03);
+    color:#111; font-weight:600;
+  }
+  .field input::placeholder{ color:rgba(30,30,30,.45); }
+  .ball{
+    position:absolute; left:10px; top:50%; transform:translateY(-50%);
+    width:32px; height:32px; border-radius:999px;
+    background: linear-gradient(135deg,#fff,#f3efe9);
+    box-shadow: inset 0 3px 10px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.06);
+    display:grid; place-items:center; color:#6b7280; font-weight:900; font-size:14px;
+  }
+
+  .row{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:6px; font-size:12px; color:#343841; }
+  .row a{ color:#1f3a93; text-decoration:none; }
+  .row a:hover{ text-decoration:underline; }
+
+  .btn{
+    width:100%; margin-top:16px; border:none; cursor:pointer;
+    padding:12px 14px; border-radius:14px; color:#fff; font-weight:900; letter-spacing:.2px;
+    background: linear-gradient(135deg,var(--brand),var(--brand2));
+    box-shadow: 0 14px 36px rgba(255,128,58,.28), inset 0 0 0 1px rgba(255,255,255,.28);
+    transition: transform .12s ease, filter .12s ease, box-shadow .12s ease;
+  }
+  .btn:hover{ transform: translateY(-1px); filter: brightness(1.03); }
+
+  .alert{
+    background:rgba(255,87,87,.10); border:1px solid rgba(255,87,87,.22);
+    padding:10px 12px; border-radius:12px; font-size:12px; color:#7a1d1d; margin:6px 2px 10px;
+  }
+
+  .art{
+    position:relative; border-radius:20px;
+    background: linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,.2));
+    border:1px solid rgba(255,255,255,.7);
+    box-shadow: inset 0 2px 18px rgba(255,255,255,.5);
+    display:grid; place-items:center;
+  }
+  .art svg{ width:min(60%, 320px); height:auto; filter: drop-shadow(0 24px 40px rgba(255,140,60,.25)); }
+
+  @media (max-width:900px){
+    .card{ grid-template-columns: 1fr; }
+    .art{ order:-1; height:200px; margin-bottom:10px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    #splash .splash-inner{ animation:none; top:-60vh; }
+    #splash{ animation:none; opacity:0; }
+    #splash::before{ animation:none; opacity:0; }
+    #authScreen{ animation:none; transform:none; }
+  }
+
+  /* === 只改背景：暗色方案（自动 + 可选手动） === */
+  @media (prefers-color-scheme: dark) {
+    body{
+      background:
+        radial-gradient(900px 500px at 80% -10%, rgba(255,106,47,.08), transparent 60%),
+        linear-gradient(180deg,#0E0F12 0%,#0E0F12 100%);
+    }
+  }
+  :root[data-theme="dark"] body{
+    background:
+      radial-gradient(900px 500px at 80% -10%, rgba(255,106,47,.08), transparent 60%),
+      linear-gradient(180deg,#0E0F12 0%,#0E0F12 100%);
+  }
+
+  /* ===== 手动滑动（scrub）支持：只在 html.scrub 下生效，不影响原动画 ===== */
+  :root{ --p: 0; } /* 进度 0~1 */
+  /* 停掉原动画，用变量驱动 */
+  html.scrub #splash,
+  html.scrub #splash::before,
+  html.scrub .splash-inner,
+  html.scrub #authScreen{ animation: none !important; }
+  /* 进度映射 */
+  html.scrub #splash{ opacity: calc(1 - var(--p)); }
+  html.scrub #splash::before{
+    opacity: calc(.9 - .9 * var(--p));
+    transform: translateY(calc(28% - 50% * var(--p)));
+  }
+  html.scrub .splash-inner{ top: calc(120vh - 180vh * var(--p)); } /* 120vh → -60vh */
+  html.scrub #authScreen{ transform: translateY(calc(18vh * (1 - var(--p)))); }
+</style>
 </head>
 <body>
-  <div class="container">
-    <h1>通用表单平台</h1>
-
-    {% if not role %}
-      <!-- 未登录 -->
-      <h2>请选择身份登录/注册</h2>
-      <div class="tabs">
-        <button onclick="showTab('user_login')" id="btn_user_login">用户登录</button>
-        <button onclick="showTab('user_register')" id="btn_user_register">用户注册</button>
-        <button onclick="showTab('admin_login')" id="btn_admin_login">管理员登录</button>
-        <button onclick="showTab('admin_register')" id="btn_admin_register">管理员注册</button>
-      </div>
-
-      <!-- 用户登录 -->
-      <form id="user_login" method="POST" action="/login_user">
-        <input type="text" name="username" placeholder="用户名" required>
-        <input type="password" name="password" placeholder="密码" required>
-        <button type="submit" class="submit">登录</button>
-      </form>
-
-      <!-- 用户注册 -->
-      <form id="user_register" method="POST" action="/register_user">
-        <input type="text" name="username" placeholder="用户名" required>
-        <input type="password" name="password" placeholder="密码" required>
-        <button type="submit" class="submit">注册</button>
-      </form>
-
-      <!-- 管理员登录 -->
-      <form id="admin_login" method="POST" action="/login_admin">
-        <input type="text" name="username" placeholder="管理员用户名" required>
-        <input type="password" name="password" placeholder="密码" required>
-        <button type="submit" class="submit">登录</button>
-      </form>
-
-      <!-- 管理员注册 -->
-      <form id="admin_register" method="POST" action="/register_admin">
-        <input type="text" name="username" placeholder="管理员用户名" required>
-        <input type="password" name="password" placeholder="密码" required>
-        <button type="submit" class="submit">注册</button>
-      </form>
-
-      <!-- 模拟Google Forms效果：近期表单 -->
-      <h2 style="margin-top:30px;">近期表单</h2>
-      <div class="grid">
-        <div class="card">空白表单</div>
-        <div class="card">联系信息</div>
-        <div class="card">反馈</div>
-        <div class="card">活动报名</div>
-      </div>
-      <p style="text-align:center; margin-top:15px; color:#666;">尚无表单，请先登录</p>
-
-    {% elif role == "user" %}
-      <!-- 用户 -->
-      <h2>欢迎，{{ username }} 👋</h2>
-      <p>您可以创建新的表单：</p>
-      <div style="text-align:center;">
-        <a href="/create_form" class="btn user">➕ 创建表单</a>
-        <a href="/logout" class="btn logout">退出登录</a>
-      </div>
-
-    {% else %}
-      <!-- 管理员 -->
-      <h2>欢迎，管理员 {{ username }} 👋</h2>
-      <p>您创建过的表单：</p>
-      {% if forms %}
-        <table>
-          <tr><th>ID</th><th>表单名称</th><th>站点名</th><th>数据库</th><th>创建时间</th></tr>
-          {% for f in forms %}
-            <tr>
-              <td>{{ f.id }}</td>
-              <td><a href="/site/{{f.site_name}}/admin">{{ f.name }}</a></td>
-              <td>{{ f.site_name }}</td>
-              <td>{{ f.db_url }}</td>
-              <td>{{ f.created_at }}</td>
-            </tr>
-          {% endfor %}
-        </table>
-      {% else %}
-        <p>您还没有创建任何表单。</p>
-      {% endif %}
-      <div style="text-align:center;">
-        <a href="/create_form" class="btn admin">➕ 创建新表单</a>
-        <a href="/logout" class="btn logout">退出登录</a>
-      </div>
-    {% endif %}
-
-    <footer>
-      Powered by Flask · 支持管理员独立建站 · 支持用户提交与审核
-    </footer>
+  <!-- 开场：中文 -->
+  <div id="splash" aria-hidden="true">
+    <div class="splash-inner">
+      <h1 class="splash-title">设计平台</h1>
+      <p class="splash-sub">快速创建 · 高效收集 · 轻量审核</p>
+    </div>
   </div>
 
-  <script>
-    function showTab(id) {
-      document.querySelectorAll("form").forEach(f => f.classList.remove("active"));
-      document.querySelectorAll(".tabs button").forEach(b => b.classList.remove("active"));
-      document.getElementById(id).classList.add("active");
-      document.getElementById("btn_" + id).classList.add("active");
+  <!-- 背景装饰（标记 data-blur，perf-mode 下关闭滤镜） -->
+  <div class="scene" aria-hidden="true">
+    <div class="wave" data-blur></div>
+    <div class="wave w2" data-blur></div>
+    <span class="bubble b1" data-blur></span>
+    <span class="bubble b2" data-blur></span>
+    <span class="bubble b3" data-blur></span>
+  </div>
+
+  <!-- 整页从底部“慢慢地、顺顺地”滑上来 -->
+  <section id="authScreen">
+    <div class="card">
+      <!-- 左：登录/注册 -->
+      <div>
+        <div class="brand-row"><span class="brand-dot"></span><span>Formly</span></div>
+        <h2 class="title">欢迎<span class="accent">登录</span></h2>
+        <p class="tip">请先登录或注册后继续使用</p>
+
+        <div class="tabs">
+          <button class="tab active" id="tab-login" type="button">登录</button>
+          <button class="tab" id="tab-register" type="button">注册</button>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+          {% if messages %}<div class="alert">{{ messages[0] }}</div>{% endif %}
+        {% endwith %}
+        {% if error %}<div class="alert">{{ error }}</div>{% endif %}
+
+        <!-- 登录表单（登录成功 → 跳到管理页 /create_form） -->
+        <form id="form-login" method="POST" action="/login?next=/create_form" data-smooth-submit>
+          <input type="hidden" name="next" value="/create_form"><!-- 双保险：后端也可从表单读 next -->
+          <label class="field">
+            <span class="ball">@</span>
+            <input type="text" name="username" placeholder="用户名 / 邮箱" required autocomplete="username">
+          </label>
+          <label class="field">
+            <span class="ball">●</span>
+            <input type="password" name="password" placeholder="密码" required autocomplete="current-password">
+          </label>
+          <div class="row">
+            <label style="display:flex;align-items:center;gap:8px;">
+              <input type="checkbox" name="remember"> 记住我
+            </label>
+            <a href="#" onclick="alert('请联系管理员重置密码');return false;">忘记密码？</a>
+          </div>
+          <button class="btn" type="submit">登 录</button>
+        </form>
+
+        <!-- 注册表单（注册成功 → 跳到管理页 /create_form） -->
+        <form id="form-register" method="POST" action="{{ url_for('register') }}?next=/create_form" style="display:none;" data-smooth-submit>
+          <input type="hidden" name="next" value="/create_form">
+          <label class="field">
+            <span class="ball">@</span>
+            <input type="text" name="username" placeholder="用户名 / 邮箱" required autocomplete="username">
+          </label>
+          <label class="field">
+            <span class="ball">●</span>
+            <input type="password" name="password" placeholder="设置密码" required autocomplete="new-password">
+          </label>
+          <div class="row" aria-hidden="true"><span></span><span></span></div>
+          <button class="btn" type="submit">注 册</button>
+        </form>
+
+        <p class="tip" style="margin-top:10px;">※ 如果你的管理首页不是 <code>/create_form</code>，把上面的 next 改成你的路径即可。</p>
+      </div>
+
+      <!-- 右：插画（同色系） -->
+      <div class="art">
+        <svg viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="g1" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#FFC189"/>
+              <stop offset="1" stop-color="#FF8A3C"/>
+            </linearGradient>
+          </defs>
+          <rect x="56" y="104" width="144" height="116" rx="28" fill="url(#g1)"/>
+          <rect x="56" y="104" width="144" height="116" rx="28" stroke="#FFD9B8" stroke-width="10"/>
+          <path d="M88 104V84c0-28 20-48 48-48s48 20 48 48v20" stroke="#FFA25C" stroke-width="16" stroke-linecap="round"/>
+          <circle cx="128" cy="160" r="20" fill="#fff5ec"/>
+          <path d="M128 160v28" stroke="#FF8A3C" stroke-width="12" stroke-linecap="round"/>
+          <circle cx="128" cy="160" r="8" fill="#FF8A3C"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+<script>
+  /* 选项卡：登录 / 注册（中文） */
+  (function(){
+    const tLogin=document.getElementById('tab-login');
+    const tReg  =document.getElementById('tab-register');
+    const fLogin=document.getElementById('form-login');
+    const fReg  =document.getElementById('form-register');
+    function setTab(which){
+      const login=which==='login';
+      tLogin.classList.toggle('active',login);
+      tReg.classList.toggle('active',!login);
+      fLogin.style.display=login?'block':'none';
+      fReg.style.display=login?'none':'block';
+      document.querySelector('.title').innerHTML = login ? '欢迎<span class="accent">登录</span>' : '欢迎<span class="accent">注册</span>';
     }
-    // 默认显示用户登录
-    {% if not role %}
-      showTab("user_login");
-    {% endif %}
-  </script>
+    tLogin.addEventListener('click',()=>setTab('login'));
+    tReg.addEventListener('click',()=>setTab('reg'));
+  })();
+
+  /* 提交时先做 380ms 的“上移离场”，再真正提交（更连贯） */
+  (function(){
+    document.querySelectorAll('form[data-smooth-submit]').forEach(form=>{
+      form.addEventListener('submit', e=>{
+        if(form.dataset._submitting) return;
+        e.preventDefault();
+        form.dataset._submitting = '1';
+        document.body.classList.add('leaving');
+        setTimeout(()=>form.submit(), 380);  // 380ms 小过渡后提交，后端处理并重定向
+      });
+    });
+  })();
+
+  /* 开场 whoosh + 最后移除遮罩（页面已提前上滑，不会“跳”） */
+  (function(){
+    const appear = get('--splash-appear',1500);
+    const hold   = get('--splash-hold',2100);
+    const exit   = get('--splash-exit',1200);
+    const total  = appear + hold + exit;
+
+    whoosh(.7);
+    setTimeout(()=>whoosh(.5), total - 900);
+
+    setTimeout(()=>{
+      const s=document.getElementById('splash');
+      if(s) s.remove();
+      // 通知其它脚本（如手动滑动脚本）完成，清理监听
+      try{ window.dispatchEvent(new Event('splashdone')); }catch(_){}
+    }, total + 200);
+
+    function get(name,fallback){
+      const v=getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      if(!v) return fallback;
+      if(v.endsWith('ms')) return parseFloat(v);
+      if(v.endsWith('s'))  return parseFloat(v)*1000;
+      const n=parseFloat(v); return isNaN(n)?fallback:n;
+    }
+    function whoosh(volume){
+      try{
+        const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return;
+        const ctx=new AC(), dur=.6, rate=44100;
+        const buf=ctx.createBuffer(1, rate*dur, rate), data=buf.getChannelData(0);
+        for(let i=0;i<data.length;i++){ const t=i/rate; data[i]=(Math.random()*2-1)*Math.pow(1-t/dur,1.8); }
+        const src=ctx.createBufferSource(); src.buffer=buf;
+        const gain=ctx.createGain(); gain.gain.value=0.0001;
+        const biq=ctx.createBiquadFilter(); biq.type='highpass'; biq.frequency.value=650;
+        src.connect(biq); biq.connect(gain); gain.connect(ctx.destination);
+        const now=ctx.currentTime;
+        gain.gain.setValueAtTime(0.0001,now);
+        gain.gain.exponentialRampToValueAtTime(Math.max(.10,volume*.10), now+.06);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now+dur);
+        src.start(now);
+        setTimeout(()=>ctx.close().catch(()=>{}),(dur+.12)*1000);
+      }catch{}
+    }
+  })();
+</script>
+
+<!-- === 手动滑动（scrub）控制：修复移除后仍拦截滚动的问题 === -->
+<script>
+(function(){
+  var p = 0;               // 0 ~ 1 进度
+  var active = false;      // 是否已进入手动模式
+  var lastY = 0;           // 触控用
+  var finished = false;    // 是否已结束（已移除 splash）
+
+  function ensureScrub(){
+    if(!active){
+      active = true;
+      document.documentElement.classList.add('scrub'); // 启用 CSS 覆盖，改用 --p 驱动
+    }
+  }
+  function setP(v){
+    p = Math.max(0, Math.min(1, v));
+    document.documentElement.style.setProperty('--p', p);
+    if(p >= 1) finishEarly(); // 手动滑到头则提前结束
+  }
+  function finishEarly(){
+    if(finished) return;
+    finished = true;
+    var s = document.getElementById('splash');
+    if(s) s.remove();
+    // 退出手动模式，移除监听，避免影响后续页面滚动
+    document.documentElement.classList.remove('scrub');
+    window.removeEventListener('wheel', onWheel, wheelOpts);
+    window.removeEventListener('touchmove', onTouchMove, touchMoveOpts);
+    window.removeEventListener('touchstart', onTouchStart, touchStartOpts);
+    window.removeEventListener('keydown', onKey);
+  }
+
+  // 鼠标滚轮
+  function onWheel(e){
+    ensureScrub();
+    e.preventDefault();
+    setP(p + e.deltaY * 0.0015);
+  }
+  // 触控
+  function onTouchStart(e){
+    ensureScrub();
+    lastY = (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+  }
+  function onTouchMove(e){
+    ensureScrub();
+    e.preventDefault();
+    var y = e.touches && e.touches[0] ? e.touches[0].clientY : lastY;
+    setP(p + (lastY - y) * 0.006);
+    lastY = y;
+  }
+  // 键盘 ↑↓
+  function onKey(e){
+    if(e.key === 'ArrowDown' || e.key === 'PageDown'){ ensureScrub(); e.preventDefault(); setP(p + 0.08); }
+    if(e.key === 'ArrowUp'   || e.key === 'PageUp'){   ensureScrub(); e.preventDefault(); setP(p - 0.08); }
+    if(e.key === 'Home'){ ensureScrub(); e.preventDefault(); setP(0); }
+    if(e.key === 'End'){  ensureScrub(); e.preventDefault(); setP(1); }
+  }
+
+  // 绑定监听（passive:false 才能阻止默认滚动）
+  var wheelOpts = {passive:false};
+  var touchMoveOpts = {passive:false};
+  var touchStartOpts = {passive:true};
+  window.addEventListener('wheel', onWheel, wheelOpts);
+  window.addEventListener('touchstart', onTouchStart, touchStartOpts);
+  window.addEventListener('touchmove', onTouchMove, touchMoveOpts);
+  window.addEventListener('keydown', onKey);
+
+  // 如果开场动画自动结束，通知这里释放监听
+  window.addEventListener('splashdone', finishEarly);
+
+  // 兜底：若一开始就没有 splash，也立即清理
+  if(!document.getElementById('splash')) finishEarly();
+})();
+</script>
+
+<script>
+(function(){
+  try{
+    document.addEventListener("DOMContentLoaded", function(){
+      document.querySelectorAll('img:not([loading])')
+        .forEach(function(img){ img.setAttribute('loading','lazy'); });
+    }, {passive:true});
+    document.querySelectorAll('script[src]:not([type="module"]):not([defer])')
+      .forEach(function(s){ s.setAttribute('defer',''); });
+  }catch(e){}
+})();
+</script>
+
+
 </body>
 </html>

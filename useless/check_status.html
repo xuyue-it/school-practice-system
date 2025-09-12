@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>按手机号查询审核状态</title>
+</head>
+<body>
+  <h1>按手机号查询审核状态</h1>
+  <form method="POST">
+    <label>手机号：</label>
+    <input type="text" name="phone" required>
+    <button type="submit">查询</button>
+  </form>
+
+  {% if result is not none %}
+    {% if result %}
+      <h2>查询结果</h2>
+      <ul>
+        {% for event_name, status in result %}
+          <li>活动名称：{{ event_name }} | 状态：{{ status }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>未找到记录。</p>
+    {% endif %}
+  {% endif %}
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>提交成功</title>
+
+  <!-- 早期开关：首帧决定是否启用 perf-mode（移入 <head>，保证结构正确） -->
+  <script>
+    (function(){
+      try{
+        var lowMem = navigator.deviceMemory && navigator.deviceMemory <= 2;
+        var reduce = window.matchMedia && (
+          window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+          window.matchMedia("(prefers-reduced-transparency: reduce)").matches
+        );
+        if (lowMem || reduce) document.documentElement.classList.add("perf-mode");
+      }catch(e){}
+    })();
+  </script>
+
+  <style id="perf-style">
+    :root.perf-mode .glass, .perf-mode [data-glass],
+    :root.perf-mode .blur,  .perf-mode [data-blur]{
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    /* 同时关掉元素本身以及它的 ::before 的 filter（如 .bg-glow::before） */
+    :root.perf-mode [data-blur],
+    :root.perf-mode [data-blur]::before{
+      filter: none !important;
+    }
+    :root.perf-mode *{
+      transition: none !important;
+      animation: none !important;
+      box-shadow: none !important;
+    }
+  </style>
+
+  <style>
+    body{font-family:"Microsoft YaHei",sans-serif;background:#f6f7fb;margin:0}
+    .wrap{max-width:660px;margin:40px auto;background:#fff;padding:28px;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.08);text-align:center}
+    a.btn{display:inline-block;padding:12px 18px;border-radius:8px;background:#2563eb;color:#fff;text-decoration:none;font-weight:700}
+  </style>
+</head>
+<body>
+  <div class="wrap" role="status" aria-live="polite">
+    <h1>✅ 提交成功</h1>
+    <p>感谢你的填写！</p>
+    <p><a class="btn" href="{{ home_url }}">返回表单</a></p>
+  </div>
+
+  <script>
+    (function(){
+      try{
+        document.addEventListener("DOMContentLoaded", function(){
+          document.querySelectorAll('img:not([loading])')
+            .forEach(function(img){ img.setAttribute('loading','lazy'); });
+        }, {passive:true});
+        document.querySelectorAll('script[src]:not([type="module"]):not([defer])')
+          .forEach(function(s){ s.setAttribute('defer',''); });
+      }catch(e){}
+    })();
+  </script>
+
+<script>
+try{
+  // 根据访问时的站点名清掉对应草稿（如果后端能把 site_name 透出，这里就用它）
+  const site = "{{ site_name|default('', true) }}";
+  if (site) localStorage.removeItem('draft:public:'+site);
+}catch(e){}
+</script>
+
+<script>
+try{
+  const site = "{{ site_name|default('', true) }}";
+  if (site) localStorage.removeItem('draft:public:'+site);
+}catch(e){}
+</script>
+
+
+</body>
+</html>
