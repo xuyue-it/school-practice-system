@@ -975,6 +975,76 @@
             -webkit-text-stroke-width: 0 !important;
         }
     </style>
+
+    <!-- ★★★ 只在“数据”Tab激活时才允许请求 /admin/api/responses ★★★ -->
+<script id="responses-guard">
+(function () {
+  // 当前是否正处在“数据”页
+  const inResponsesTab = () =>
+    !!document.getElementById('tab-responses')?.classList.contains('active');
+
+  // 识别 /admin/api/responses 接口
+  const isResponsesApi = (input) => {
+    try {
+      const url = typeof input === 'string' ? input : (input && input.url) || '';
+      return /\/admin\/api\/responses(?:\?|$)/.test(url);
+    } catch { return false; }
+  };
+
+  // 拦截 fetch
+  const _fetch = window.fetch;
+  window.fetch = function(input, init) {
+    if (isResponsesApi(input) && !inResponsesTab()) {
+      try { console.debug('[responses-guard] blocked', typeof input==='string'?input:input.url); } catch {}
+      return Promise.resolve(new Response(
+        JSON.stringify({ ok: true, items: [] }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      ));
+    }
+    return _fetch.apply(this, arguments);
+  };
+
+  // 拦截 XHR（兜底）
+  const _open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+    this.__rg_block = /\/admin\/api\/responses(?:\?|$)/.test(String(url)) && !inResponsesTab();
+    return _open.call(this, method, url, ...rest);
+  };
+  const _send = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function(body) {
+    if (this.__rg_block) { try { this.abort(); } catch {} return; }
+    return _send.call(this, body);
+  };
+
+  // 防 sendBeacon（几乎用不到，但顺手挡上）
+  if (navigator.sendBeacon) {
+    const _beacon = navigator.sendBeacon.bind(navigator);
+    navigator.sendBeacon = function(url, data) {
+      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && !inResponsesTab()) {
+        try { console.debug('[responses-guard] beacon blocked', url); } catch {}
+        return true;
+      }
+      return _beacon(url, data);
+    };
+  }
+
+  // 防 EventSource（万一有人用 SSE）
+  if (window.EventSource) {
+    const _ES = window.EventSource;
+    window.EventSource = function(url, conf) {
+      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && !inResponsesTab()) {
+        try { console.debug('[responses-guard] EventSource blocked', url); } catch {}
+        const dummy = new EventTarget();
+        dummy.readyState = 2; // CLOSED
+        dummy.close = function(){};
+        return dummy;
+      }
+      return new _ES(url, conf);
+    };
+    window.EventSource.prototype = _ES.prototype;
+  }
+})();
+</script>
 </head>
 
 <body data-appearance="light" data-site="{{ site_name or '' }}" data-tpl="{{ tpl or '' }}">
@@ -2643,48 +2713,7 @@ document.addEventListener('DOMContentLoaded', function () {
     })();
 </script>
 
-<!-- ★★★ 只在“数据”Tab激活时才允许请求 /admin/api/responses ★★★ -->
-<script id="responses-guard">
-(function () {
-  // 当前是否正处在“数据”页
-  const inResponsesTab = () =>
-    !!document.getElementById('tab-responses')?.classList.contains('active');
 
-  // 只拦 /admin/api/responses（不动其它接口）
-  const isResponsesApi = (u) => {
-    const url = typeof u === 'string' ? u : (u && u.url) || '';
-    return /\/admin\/api\/responses(\?|$)/.test(url);
-  };
-
-  // fetch 拦截：非“数据”页时，直接返回空数据，避免后端日志刷屏
-  const _fetch = window.fetch;
-  window.fetch = function(input, init) {
-    if (isResponsesApi(input) && !inResponsesTab()) {
-      try { console.warn('[blocked:/responses]', typeof input==='string'?input:input.url); } catch(_) {}
-      return Promise.resolve(new Response(
-        JSON.stringify({ ok: true, items: [] }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      ));
-    }
-    return _fetch.apply(this, arguments);
-  };
-
-  // XHR 拦截（极少用到 /responses 的旧代码兜底）
-  const _open = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-    this.__blockResponses = isResponsesApi(String(url)) && !inResponsesTab();
-    return _open.call(this, method, url, ...rest);
-  };
-  const _send = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function(body) {
-    if (this.__blockResponses) {
-      try { this.abort(); } catch(_) {}
-      return;
-    }
-    return _send.call(this, body);
-  };
-})();
-</script>
 
 
 </body>
