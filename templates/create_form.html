@@ -5,50 +5,54 @@
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
     <title>创建新表单</title>
 
-  <!-- 早期开关：首帧决定是否启用 perf-mode -->
-<script>
-  (function(){
-    try{
-      var lowMem = navigator.deviceMemory && navigator.deviceMemory <= 2;
-      var reduce = window.matchMedia && (
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
-        window.matchMedia("(prefers-reduced-transparency: reduce)").matches
-      );
-      if (lowMem || reduce) document.documentElement.classList.add("perf-mode");
-    }catch(e){}
-  })();
-  </script>
+    <!-- 早期开关：首帧决定是否启用 perf-mode -->
+    <script>
+        (function () {
+            try {
+                var lowMem = navigator.deviceMemory && navigator.deviceMemory <= 2;
+                var reduce = window.matchMedia && (
+                    window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+                    window.matchMedia("(prefers-reduced-transparency: reduce)").matches
+                );
+                if (lowMem || reduce) document.documentElement.classList.add("perf-mode");
+            } catch (e) {
+            }
+        })();
+    </script>
 
-  <style id="perf-style">
-  :root.perf-mode .glass, .perf-mode [data-glass],
-  :root.perf-mode .blur,  .perf-mode [data-blur]{
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-  /* 同时关掉元素本身以及它的 ::before 的 filter（如 .bg-glow::before） */
-  :root.perf-mode [data-blur],
-  :root.perf-mode [data-blur]::before{
-    filter: none !important;
-  }
-  :root.perf-mode *{
-    transition: none !important;
-    animation: none !important;
-    box-shadow: none !important;
-  }
-  :root.perf-mode header,
-  :root.perf-mode .nav-rail,
-  :root.perf-mode .greet-card,
-  :root.perf-mode .card,
-  :root.perf-mode .modal .box {
-      backdrop-filter: none !important;
-      -webkit-backdrop-filter: none !important;
-  }
+    <style id="perf-style">
+        :root.perf-mode .glass, .perf-mode [data-glass],
+        :root.perf-mode .blur, .perf-mode [data-blur] {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
 
-  :root.perf-mode .nav-rail::before {
-      filter: none !important;
-  }
+        /* 同时关掉元素本身以及它的 ::before 的 filter（如 .bg-glow::before） */
+        :root.perf-mode [data-blur],
+        :root.perf-mode [data-blur]::before {
+            filter: none !important;
+        }
 
-</style>
+        :root.perf-mode * {
+            transition: none !important;
+            animation: none !important;
+            box-shadow: none !important;
+        }
+
+        :root.perf-mode header,
+        :root.perf-mode .nav-rail,
+        :root.perf-mode .greet-card,
+        :root.perf-mode .card,
+        :root.perf-mode .modal .box {
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+        }
+
+        :root.perf-mode .nav-rail::before {
+            filter: none !important;
+        }
+
+    </style>
     <style>
         /* =====================
            主题与玻璃风格 Token
@@ -659,16 +663,19 @@
             opacity: 1;
             transform: translateX(-50%) translateY(0);
         }
+
         /* 设置面板（容器） */
         .grid {
             display: grid;
             gap: 12px
         }
+
         @media (min-width: 960px) {
             .grid.cols-2 {
                 grid-template-columns:1fr 1fr
             }
         }
+
         .gcard {
             background: #ffffffee;
             border: 1px solid #e8eef6;
@@ -842,7 +849,10 @@
         body[data-appearance="light"] .chip {
             color: var(--text-light) !important; /* #0e1726 */
         }
-        :root { --text-light: #0e1726; }
+
+        :root {
+            --text-light: #0e1726;
+        }
 
         body[data-appearance="dark"] .btn,
         body[data-appearance="dark"] .btn.gray,
@@ -1251,15 +1261,14 @@
 
 <!-- 文件预览 Modal（新增） -->
 <div class="modal" id="filePreview" aria-hidden="true">
-  <div class="box">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <strong>文件预览</strong>
-      <button class="btn icon" id="closeFilePreview">✖</button>
+    <div class="box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <strong>文件预览</strong>
+            <button class="btn icon" id="closeFilePreview">✖</button>
+        </div>
+        <div id="filePreviewBody"></div>
     </div>
-    <div id="filePreviewBody"></div>
-  </div>
 </div>
-
 
 
 <!-- 顶部提示 -->
@@ -1556,7 +1565,6 @@
         if (nonRandom.length) FIELDS = nonRandom;
 
 
-
         const onlyRandom = FIELDS.length && FIELDS.every(f => f.label === f.key || /^q[a-z0-9]{5,}$/i.test(f.label || ''));
         if (onlyRandom) {
             FIELDS = FIELDS.map(f => {
@@ -1575,8 +1583,19 @@
         const btnGallery = document.getElementById("btnGallery");
 
         // 本地转义，专供表头/属性使用（避免与下方的 escHtml/escAttr 顺序冲突）
-        function __escHtml(s){return String(s==null?'':s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
-        function __escAttr(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+        function __escHtml(s) {
+            return String(s == null ? '' : s).replace(/[&<>]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[m]));
+        }
+
+        function __escAttr(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[m]));
+        }
 
         function buildHeader() {
             thead.innerHTML = `<tr>
@@ -1606,7 +1625,13 @@
 
         function fileCell(href, text) {
             const u = fileUrl(href);
-            const attr = (s)=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+            const attr = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[m]));
             const t = escHtml(text || href);
             return `<a href="${attr(u)}" data-preview title="预览">${t}</a> <a href="${attr(u)}" download title="下载">⬇</a>`;
         }
@@ -1656,8 +1681,19 @@
             }).join("");
         }
 
-        function escHtml(s){return String(s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));}
-        function escAttr(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+        function escHtml(s) {
+            return String(s).replace(/[&<>]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[m]));
+        }
+
+        function escAttr(s) {
+            return String(s).replace(/[&<>"']/g, m => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            }[m]));
+        }
 
         function looksAllRandom(fields) {
             return fields.length && fields.every(f => f.label === f.key || /^q[a-z0-9]{5,}$/i.test(f.label || ''));
@@ -1741,7 +1777,11 @@
         });
 
         window.rebuildRespHeader = buildHeader;
-        window.loadResponses = load;
+        window.rebuildRespHeader && window.rebuildRespHeader();
+        if (document.getElementById('tab-responses')?.classList.contains('active')) {
+            window.loadResponses && window.loadResponses();
+        }
+
     })();
 </script>
 
@@ -1753,58 +1793,97 @@
 </style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('#respPreviewMask,.resp-preview-mask').forEach(n => n.remove());
+document.addEventListener('DOMContentLoaded', function () {
+  // 把旧预览遮罩移除
+  document.querySelectorAll('#respPreviewMask,.resp-preview-mask').forEach(n => n.remove());
 
-        function rewire(id, type, handler) {
-            const old = document.getElementById(id);
-            if (!old || !old.parentNode) return null;
-            const clone = old.cloneNode(true);
-            old.parentNode.replaceChild(clone, old);
-            clone.addEventListener(type, function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-                handler(e);
-            }, {capture: true});
-            return clone;
-        }
+  // 事件重绑工具
+  function rewire(id, type, handler) {
+    const old = document.getElementById(id);
+    if (!old || !old.parentNode) return null;
+    const clone = old.cloneNode(true);
+    old.parentNode.replaceChild(clone, old);
+    clone.addEventListener(type, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+      handler(e);
+    }, { capture: true });
+    return clone;
+  }
 
-        const SITE = document.body.dataset.site || "";
+  const SITE = document.body.dataset.site || "";
 
-        rewire('btnRefresh', 'click', () => window.loadResponses && window.loadResponses());
-        rewire('btnSearch', 'click', () => window.loadResponses && window.loadResponses());
-        rewire('btnExportAll', 'click', () => {
-            location.href = `/site/${encodeURIComponent(SITE)}/admin/api/export_all_excel`;
-        });
-        rewire('btnGallery', 'click', async () => {
-            try {
-                const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/gallery`);
-                const data = await r.json().catch(() => ({items: []}));
-                alert(`找到图片 ${(data.items || []).length} 张`);
-            } catch (e) {
-                alert('加载失败');
-            }
-        });
+  rewire('btnRefresh', 'click', () => window.loadResponses && window.loadResponses());
+  rewire('btnSearch',  'click', () => window.loadResponses && window.loadResponses());
+  rewire('btnExportAll', 'click', () => {
+    location.href = `/site/${encodeURIComponent(SITE)}/admin/api/export_all_excel`;
+  });
+  rewire('btnGallery', 'click', async () => {
+    try {
+      const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/gallery`);
+      const data = await r.json().catch(() => ({ items: [] }));
+      alert(`找到图片 ${(data.items || []).length} 张`);
+    } catch (e) {
+      alert('加载失败');
+    }
+  });
 
-        let autoTimer = null;
-        rewire('autoTick', 'change', (e) => {
-            if (autoTimer) {
-                clearInterval(autoTimer);
-                autoTimer = null;
-            }
-            if (e.currentTarget.checked) {
-                autoTimer = setInterval(() => window.loadResponses && window.loadResponses(), 30000);
-            }
-        });
-        const autoTick = document.getElementById('autoTick');
-        if (autoTick && autoTick.checked) {
-            autoTick.dispatchEvent(new Event('change'));
-        }
+  // —— 轮询控制 —— //
+  let autoTimer = null;
 
-        window.rebuildRespHeader && window.rebuildRespHeader();
-        window.loadResponses && window.loadResponses();
+  function stopAuto() {
+    if (autoTimer) {
+      clearInterval(autoTimer);
+      autoTimer = null;
+    }
+  }
+
+  function tickOnceIfVisible() {
+    const onResponses = document.getElementById('tab-responses')?.classList.contains('active');
+    if (document.visibilityState === 'visible' && onResponses) {
+      window.loadResponses && window.loadResponses();
+    }
+  }
+
+  rewire('autoTick', 'change', (e) => {
+    stopAuto();
+    if (e.currentTarget.checked) {
+      autoTimer = setInterval(tickOnceIfVisible, 30000);
+      // 立即跑一次（仅当前台 & 在数据页）
+      tickOnceIfVisible();
+    }
+  });
+
+  // 切到其他 Tab 就停轮询
+  document.querySelectorAll('.tabs button').forEach(b => {
+    b.addEventListener('click', () => {
+      if (b.dataset.tab !== 'responses') stopAuto();
     });
+  });
+
+  // 页面重新可见时补一次
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') tickOnceIfVisible();
+  });
+
+  // 关闭页面前清理
+  window.addEventListener('beforeunload', stopAuto);
+
+  // 默认关闭自动刷新（如果你还没改 HTML，把这里也关掉）
+  const autoTick = document.getElementById('autoTick');
+  if (autoTick) {
+    // 建议把 HTML 里的 checked 去掉；如果还在，就这里强制关掉：
+    autoTick.checked = false;
+    // 若希望保留默认勾选，改成： if (autoTick.checked) autoTick.dispatchEvent(new Event('change'));
+  }
+
+  // 初始化：重建表头；仅当“数据”页当前是激活时才拉一次数据
+  window.rebuildRespHeader && window.rebuildRespHeader();
+  if (document.getElementById('tab-responses')?.classList.contains('active')) {
+    window.loadResponses && window.loadResponses();
+  }
+});
 </script>
 
 <!-- 让顶栏始终固定在顶部（覆盖原来的 sticky） -->
@@ -1840,640 +1919,750 @@
 </script>
 
 <script>
-/* 全局文件预览（图片/视频/音频/其他用 iframe） */
-window.openPreviewInModal = function(url){
-  const modal = document.getElementById('filePreview');
-  const body  = document.getElementById('filePreviewBody');
-  if(!modal || !body){ window.open(url, '_blank'); return; }
+    /* 全局文件预览（图片/视频/音频/其他用 iframe） */
+    window.openPreviewInModal = function (url) {
+        const modal = document.getElementById('filePreview');
+        const body = document.getElementById('filePreviewBody');
+        if (!modal || !body) {
+            window.open(url, '_blank');
+            return;
+        }
 
-  const clean = (u)=>{
-    if(!u) return '';
-    if (u.startsWith('/')) return location.origin + u;
-    return /^(https?:|blob:|data:)/i.test(u) ? u : '';
-  };
-  const safe = clean(url);
-  const ext = (safe.split('?')[0].split('#')[0].match(/\.([a-z0-9]+)$/i)||[])[1]?.toLowerCase()||'';
+        const clean = (u) => {
+            if (!u) return '';
+            if (u.startsWith('/')) return location.origin + u;
+            return /^(https?:|blob:|data:)/i.test(u) ? u : '';
+        };
+        const safe = clean(url);
+        const ext = (safe.split('?')[0].split('#')[0].match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase() || '';
 
-  body.innerHTML = '';
-  if(['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext)){
-    body.innerHTML = `<img src="${safe}" style="max-width:100%;height:auto;border-radius:12px">`;
-  }else if(['mp4','webm','ogg'].includes(ext)){
-    body.innerHTML = `<video src="${safe}" controls style="width:100%;max-height:70vh;border-radius:12px"></video>`;
-  }else if(['mp3','wav','aac','flac','m4a','oga'].includes(ext)){
-    body.innerHTML = `<audio src="${safe}" controls style="width:100%"></audio>`;
-  }else{
-    body.innerHTML = `<iframe src="${safe}" style="width:100%;height:70vh;border:0;border-radius:12px;background:#fff"></iframe>`;
-  }
-  modal.classList.add('show');
-  modal.style.display = 'flex';
-};
+        body.innerHTML = '';
+        if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) {
+            body.innerHTML = `<img src="${safe}" style="max-width:100%;height:auto;border-radius:12px">`;
+        } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+            body.innerHTML = `<video src="${safe}" controls style="width:100%;max-height:70vh;border-radius:12px"></video>`;
+        } else if (['mp3', 'wav', 'aac', 'flac', 'm4a', 'oga'].includes(ext)) {
+            body.innerHTML = `<audio src="${safe}" controls style="width:100%"></audio>`;
+        } else {
+            body.innerHTML = `<iframe src="${safe}" style="width:100%;height:70vh;border:0;border-radius:12px;background:#fff"></iframe>`;
+        }
+        modal.classList.add('show');
+        modal.style.display = 'flex';
+    };
 
-document.getElementById('closeFilePreview')?.addEventListener('click', ()=>{
-  const m = document.getElementById('filePreview');
-  if(m){ m.classList.remove('show'); m.style.display='none'; }
-});
-document.getElementById('filePreview')?.addEventListener('click', (e)=>{
-  if(e.target.id === 'filePreview'){
-    e.currentTarget.classList.remove('show');
-    e.currentTarget.style.display='none';
-  }
-});
+    document.getElementById('closeFilePreview')?.addEventListener('click', () => {
+        const m = document.getElementById('filePreview');
+        if (m) {
+            m.classList.remove('show');
+            m.style.display = 'none';
+        }
+    });
+    document.getElementById('filePreview')?.addEventListener('click', (e) => {
+        if (e.target.id === 'filePreview') {
+            e.currentTarget.classList.remove('show');
+            e.currentTarget.style.display = 'none';
+        }
+    });
 </script>
 
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-(function () {
-  const SITE = document.body.dataset.site || '';
-  let chartsInited = false;
-  let chartObjs = [];
+    (function () {
+        const SITE = document.body.dataset.site || '';
+        let chartsInited = false;
+        let chartObjs = [];
 
-  // 切到“图表”页时再加载
-  document.querySelectorAll('.tabs button').forEach(b=>{
-    b.addEventListener('click', ()=> { if (b.dataset.tab === 'charts') ensureCharts(); });
-  });
-  // 如果默认就在图表页，也加载一次
-  if (document.querySelector('.tabs button.active')?.dataset.tab === 'charts') ensureCharts();
+        // 切到“图表”页时再加载
+        document.querySelectorAll('.tabs button').forEach(b => {
+            b.addEventListener('click', () => {
+                if (b.dataset.tab === 'charts') ensureCharts();
+            });
+        });
+        // 如果默认就在图表页，也加载一次
+        if (document.querySelector('.tabs button.active')?.dataset.tab === 'charts') ensureCharts();
 
-  async function ensureCharts(){
-    if (chartsInited) return;
-    const root = document.getElementById('chartsRoot');
-    if (!root) return;
+        async function ensureCharts() {
+            if (chartsInited) return;
+            const root = document.getElementById('chartsRoot');
+            if (!root) return;
 
-    // 新建还没保存站点时的提示
-    if (!SITE) {
-      root.innerHTML = `<div style="grid-column:1/-1;color:#6b7f99;background:#fff;border:1px solid #e8eef6;border-radius:14px;padding:16px;text-align:center">
+            // 新建还没保存站点时的提示
+            if (!SITE) {
+                root.innerHTML = `<div style="grid-column:1/-1;color:#6b7f99;background:#fff;border:1px solid #e8eef6;border-radius:14px;padding:16px;text-align:center">
         保存表单并生成站点后，才能查看图表。</div>`;
-      return;
-    }
+                return;
+            }
 
-    chartsInited = true;
-    try {
-      const res = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/charts`, {credentials: 'same-origin'});
-      const j = await res.json();
-      if (!res.ok || !j.ok) throw new Error(j.error || res.status);
+            chartsInited = true;
+            try {
+                const res = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/charts`, {credentials: 'same-origin'});
+                const j = await res.json();
+                if (!res.ok || !j.ok) throw new Error(j.error || res.status);
 
-      // 清空占位“图表区域 1/2”
-      root.innerHTML = '';
+                // 清空占位“图表区域 1/2”
+                root.innerHTML = '';
 
-      const c1 = addCard(root, '提交趋势（近 14 天）', 'lineDaily');
-      const c2 = addCard(root, '状态分布', 'pieStatus');
-      const c3 = addCard(root, '选择题分布', 'barField', true); // 全宽
+                const c1 = addCard(root, '提交趋势（近 14 天）', 'lineDaily');
+                const c2 = addCard(root, '状态分布', 'pieStatus');
+                const c3 = addCard(root, '选择题分布', 'barField', true); // 全宽
 
-      // 1) 折线：近 14 天提交数
-      if (Array.isArray(j.daily) && j.daily.length) {
-        chartObjs.push(new Chart(c1, {
-          type: 'line',
-          data: {
-            labels: j.daily.map(x => x.date),
-            datasets: [{ label:'提交数', data: j.daily.map(x => x.count), tension: .3 }]
-          },
-          options: { responsive:true, plugins:{legend:{display:false}}, scales:{ y:{ beginAtZero:true, ticks:{precision:0} } } }
-        }));
-      } else { showEmpty(c1,'暂无数据'); }
+                // 1) 折线：近 14 天提交数
+                if (Array.isArray(j.daily) && j.daily.length) {
+                    chartObjs.push(new Chart(c1, {
+                        type: 'line',
+                        data: {
+                            labels: j.daily.map(x => x.date),
+                            datasets: [{label: '提交数', data: j.daily.map(x => x.count), tension: .3}]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {legend: {display: false}},
+                            scales: {y: {beginAtZero: true, ticks: {precision: 0}}}
+                        }
+                    }));
+                } else {
+                    showEmpty(c1, '暂无数据');
+                }
 
-      // 2) 甜甜圈：状态分布
-      if (Array.isArray(j.status) && j.status.length) {
-        chartObjs.push(new Chart(c2, {
-          type: 'doughnut',
-          data: { labels: j.status.map(x=>x.name), datasets: [{ data: j.status.map(x=>x.count) }] },
-          options: { responsive:true }
-        }));
-      } else { showEmpty(c2,'暂无数据'); }
+                // 2) 甜甜圈：状态分布
+                if (Array.isArray(j.status) && j.status.length) {
+                    chartObjs.push(new Chart(c2, {
+                        type: 'doughnut',
+                        data: {labels: j.status.map(x => x.name), datasets: [{data: j.status.map(x => x.count)}]},
+                        options: {responsive: true}
+                    }));
+                } else {
+                    showEmpty(c2, '暂无数据');
+                }
 
-      // 3) 条形图：第一个选择题分布（如果有）
-      if (j.field && Array.isArray(j.field.data) && j.field.data.length) {
-        chartObjs.push(new Chart(c3, {
-          type: 'bar',
-          data: {
-            labels: j.field.data.map(x=>x.value),
-            datasets: [{ label: j.field.label || j.field.key, data: j.field.data.map(x=>x.count) }]
-          },
-          options: { indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{ beginAtZero:true, ticks:{precision:0} } } }
-        }));
-      } else {
-        c3.canvas.closest('.chart-card').style.display = 'none';
-      }
-    } catch (e) {
-      root.innerHTML = `<div style="grid-column:1/-1;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:14px;padding:12px">
+                // 3) 条形图：第一个选择题分布（如果有）
+                if (j.field && Array.isArray(j.field.data) && j.field.data.length) {
+                    chartObjs.push(new Chart(c3, {
+                        type: 'bar',
+                        data: {
+                            labels: j.field.data.map(x => x.value),
+                            datasets: [{label: j.field.label || j.field.key, data: j.field.data.map(x => x.count)}]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            plugins: {legend: {display: false}},
+                            scales: {x: {beginAtZero: true, ticks: {precision: 0}}}
+                        }
+                    }));
+                } else {
+                    c3.canvas.closest('.chart-card').style.display = 'none';
+                }
+            } catch (e) {
+                root.innerHTML = `<div style="grid-column:1/-1;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:14px;padding:12px">
         图表数据加载失败：${e.message}</div>`;
-      chartsInited = false; // 允许重试
-    }
-  }
+                chartsInited = false; // 允许重试
+            }
+        }
 
-  // 工具：创建卡片 + canvas
-  function addCard(root, title, canvasId, full=false){
-    const card = document.createElement('div');
-    card.className = 'chart-card';
-    if (full) card.style.gridColumn = '1/-1';
-    card.style.background = '#fff';
-    card.style.border = '1px solid #e8eef6';
-    card.style.borderRadius = '14px';
-    card.innerHTML = `
+        // 工具：创建卡片 + canvas
+        function addCard(root, title, canvasId, full = false) {
+            const card = document.createElement('div');
+            card.className = 'chart-card';
+            if (full) card.style.gridColumn = '1/-1';
+            card.style.background = '#fff';
+            card.style.border = '1px solid #e8eef6';
+            card.style.borderRadius = '14px';
+            card.innerHTML = `
       <div style="padding:12px 14px;font-weight:800;color:#0e1726">${title}</div>
       <div style="padding:0 14px 14px"><canvas id="${canvasId}" height="120"></canvas></div>`;
-    root.appendChild(card);
-    return document.getElementById(canvasId).getContext('2d');
-  }
-  function showEmpty(ctx, msg){
-    const wrap = ctx.canvas.parentElement;
-    wrap.innerHTML = `<div style="min-height:200px;display:flex;align-items:center;justify-content:center;color:#6b7f99">${msg}</div>`;
-  }
+            root.appendChild(card);
+            return document.getElementById(canvasId).getContext('2d');
+        }
 
-  // 可手动刷新：window.refreshCharts(true)
-  window.refreshCharts = function(force=false){
-    if (force) { chartObjs.forEach(c=>{try{c.destroy()}catch{}}); chartObjs=[]; chartsInited=false; }
-    ensureCharts();
-  };
-})();
+        function showEmpty(ctx, msg) {
+            const wrap = ctx.canvas.parentElement;
+            wrap.innerHTML = `<div style="min-height:200px;display:flex;align-items:center;justify-content:center;color:#6b7f99">${msg}</div>`;
+        }
+
+        // 可手动刷新：window.refreshCharts(true)
+        window.refreshCharts = function (force = false) {
+            if (force) {
+                chartObjs.forEach(c => {
+                    try {
+                        c.destroy()
+                    } catch {
+                    }
+                });
+                chartObjs = [];
+                chartsInited = false;
+            }
+            ensureCharts();
+        };
+    })();
 </script>
 
 <!-- 创建成功弹窗（中间丝滑出现） -->
-<div class="modal" id="successModal" aria-hidden="true" style="display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:120">
-  <div class="box" id="successBox" style="
+<div class="modal" id="successModal" aria-hidden="true"
+     style="display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:120">
+    <div class="box" id="successBox" style="
       width:min(920px,92vw); max-height:86vh; border-radius:20px; overflow:hidden;
       background:var(--glass,#ffffffee); border:1px solid var(--glass-border,#e5e7eb);
       backdrop-filter: blur(18px) saturate(160%); box-shadow: 0 18px 36px rgba(0,0,0,.22);
       opacity:0; transform: scale(.92) translateY(8px);">
-    <iframe id="successFrame" title="创建成功" style="width:100%;height:70vh;border:0;background:#fff"></iframe>
-  </div>
+        <iframe id="successFrame" title="创建成功" style="width:100%;height:70vh;border:0;background:#fff"></iframe>
+    </div>
 </div>
 
 <style>
-  /* 丝滑出现动画 */
-  #successModal.show #successBox{
-    animation: popIn .22s cubic-bezier(.2,.9,.2,1) forwards;
-  }
-  @keyframes popIn{
-    from{opacity:0; transform:scale(.92) translateY(8px)}
-    to{opacity:1; transform:scale(1) translateY(0)}
-  }
-  @media (prefers-reduced-motion: reduce){
-    #successModal.show #successBox{ animation:none; opacity:1; transform:none; }
-  }
+    /* 丝滑出现动画 */
+    #successModal.show #successBox {
+        animation: popIn .22s cubic-bezier(.2, .9, .2, 1) forwards;
+    }
+
+    @keyframes popIn {
+        from {
+            opacity: 0;
+            transform: scale(.92) translateY(8px)
+        }
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0)
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #successModal.show #successBox {
+            animation: none;
+            opacity: 1;
+            transform: none;
+        }
+    }
 </style>
 
 <script>
-(function(){
-  const form  = document.getElementById('builder');
-  if(!form) return;
+    (function () {
+        const form = document.getElementById('builder');
+        if (!form) return;
 
-  const modal = document.getElementById('successModal');
-  const frame = document.getElementById('successFrame');
+        const modal = document.getElementById('successModal');
+        const frame = document.getElementById('successFrame');
 
-  function openModal(url){
-    frame.removeAttribute('srcdoc');
-    frame.src = url + (url.includes('?') ? '&' : '?') + 'embed=1';
-    modal.style.display = 'flex';
-    requestAnimationFrame(()=> modal.classList.add('show'));
-    document.body.style.overflow = 'hidden';
-  }
-  function closeModal(){
-    modal.classList.remove('show');
-    modal.style.display = 'none';
-    frame.src = 'about:blank';
-    document.body.style.overflow = '';
-  }
-  modal.addEventListener('click', e => { if(e.target===modal) closeModal(); });
-  document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+        function openModal(url) {
+            frame.removeAttribute('srcdoc');
+            frame.src = url + (url.includes('?') ? '&' : '?') + 'embed=1';
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => modal.classList.add('show'));
+            document.body.style.overflow = 'hidden';
+        }
 
-  // 用 fetch 发送表单（仅展示“卡片成功页”，无任何兜底 srcdoc）
-  form.addEventListener('submit', async (ev)=>{
-    ev.preventDefault();
-    const fd = new FormData(form);
-    const u  = new URL(form.action, location.origin);
-    u.searchParams.set('ajax','1');
+        function closeModal() {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            frame.src = 'about:blank';
+            document.body.style.overflow = '';
+        }
 
-    try{
-      const res = await fetch(u, {
-        method:'POST',
-        body: fd,
-        headers: { 'Accept': 'application/json', 'X-Requested-With':'XMLHttpRequest' }
-      });
-      const j = await res.json();
+        modal.addEventListener('click', e => {
+            if (e.target === modal) closeModal();
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeModal();
+        });
 
-      if(!res.ok || j.ok === false){
-        alert(j.error || ('保存失败：HTTP ' + res.status));
-        return;
-      }
+        // 用 fetch 发送表单（仅展示“卡片成功页”，无任何兜底 srcdoc）
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const fd = new FormData(form);
+            const u = new URL(form.action, location.origin);
+            u.searchParams.set('ajax', '1');
 
-      // 优先用后端给的 success_url；没有就用 site_name 拼 /create_success
-      const successURL =
-        j.success_url ||
-        (j.site_name ? ('/site/' + encodeURIComponent(j.site_name) + '/create_success') : null);
+            try {
+                const res = await fetch(u, {
+                    method: 'POST',
+                    body: fd,
+                    headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
+                });
+                const j = await res.json();
 
-      if (!successURL){
-        alert('保存成功，但缺少成功页链接'); // 不再使用任何 srcdoc 兜底
-        return;
-      }
-      openModal(successURL);
+                if (!res.ok || j.ok === false) {
+                    alert(j.error || ('保存失败：HTTP ' + res.status));
+                    return;
+                }
 
-    }catch(e){
-      console.error(e);
-      alert('保存失败：' + e.message);
-    }
-  }, true);
-})();
+                // 优先用后端给的 success_url；没有就用 site_name 拼 /create_success
+                const successURL =
+                    j.success_url ||
+                    (j.site_name ? ('/site/' + encodeURIComponent(j.site_name) + '/create_success') : null);
+
+                if (!successURL) {
+                    alert('保存成功，但缺少成功页链接'); // 不再使用任何 srcdoc 兜底
+                    return;
+                }
+                openModal(successURL);
+
+            } catch (e) {
+                console.error(e);
+                alert('保存失败：' + e.message);
+            }
+        }, true);
+    })();
 </script>
 
 <script id="live-theme-sync">
-(function(){
-  const root = document.documentElement;
-  const body = document.body;
+    (function () {
+        const root = document.documentElement;
+        const body = document.body;
 
-  // 设置面板里的控件
-  const lightPicker = document.querySelector('[data-skey="theme.brand"][type="color"]');
-  const lightText   = document.querySelector('.tiny[data-skey="theme.brand"]:not([type="color"])');
-  const darkText    = document.querySelector('[data-skey="theme.brand_dark"]'); // 你暂时没这个输入，有就会生效
-  const appearance  = document.querySelector('[data-skey="theme.appearance"]');
+        // 设置面板里的控件
+        const lightPicker = document.querySelector('[data-skey="theme.brand"][type="color"]');
+        const lightText = document.querySelector('.tiny[data-skey="theme.brand"]:not([type="color"])');
+        const darkText = document.querySelector('[data-skey="theme.brand_dark"]'); // 你暂时没这个输入，有就会生效
+        const appearance = document.querySelector('[data-skey="theme.appearance"]');
 
-  // 从 schema_json / 本地已填值中恢复
-  function readSchemaTheme(){
-    // 1) schema_json（隐藏域或 <script id="schemaJSON">）里
-    const raw = document.getElementById('schema_json')?.value
-             || document.getElementById('schemaJSON')?.textContent
-             || '';
-    let j = null; try{ j = JSON.parse(raw || 'null'); }catch{}
-    const t = (j && j.theme) || {};
-    // 2) 表单当前输入值兜底
-    const light = (lightPicker?.value || lightText?.value || t.brand || '#2563eb').trim();
-    const dark  = (darkText?.value || t.brand_dark || '').trim() || light;
-    const mode  = (appearance?.value || t.appearance || 'auto').toLowerCase();
-    return { light, dark, mode };
-  }
+        // 从 schema_json / 本地已填值中恢复
+        function readSchemaTheme() {
+            // 1) schema_json（隐藏域或 <script id="schemaJSON">）里
+            const raw = document.getElementById('schema_json')?.value
+                || document.getElementById('schemaJSON')?.textContent
+                || '';
+            let j = null;
+            try {
+                j = JSON.parse(raw || 'null');
+            } catch {
+            }
+            const t = (j && j.theme) || {};
+            // 2) 表单当前输入值兜底
+            const light = (lightPicker?.value || lightText?.value || t.brand || '#2563eb').trim();
+            const dark = (darkText?.value || t.brand_dark || '').trim() || light;
+            const mode = (appearance?.value || t.appearance || 'auto').toLowerCase();
+            return {light, dark, mode};
+        }
 
-  function setCSS(light, dark){
-    root.style.setProperty('--brand-light', light);
-    root.style.setProperty('--brand-dark',  dark);
-    const cur = body.getAttribute('data-appearance') === 'dark' ? dark : light;
-    root.style.setProperty('--brand', cur);
-  }
+        function setCSS(light, dark) {
+            root.style.setProperty('--brand-light', light);
+            root.style.setProperty('--brand-dark', dark);
+            const cur = body.getAttribute('data-appearance') === 'dark' ? dark : light;
+            root.style.setProperty('--brand', cur);
+        }
 
-  function apply(){
-    const {light, dark, mode} = readSchemaTheme();
-    // 写入 CSS 变量
-    setCSS(light, dark);
-    // 同步两个“主题色”输入
-    if (lightPicker && lightText) {
-      if (lightPicker.value !== light) lightPicker.value = light;
-      if (lightText.value   !== light) lightText.value   = light;
-    }
-    // 如果设置里切了外观，也同步到页面
-    if (appearance && (mode==='light' || mode==='dark' || mode==='auto')) {
-      if (mode==='auto') {
-        // 保持 data-appearance 不变；按钮切换逻辑控制
-      } else {
-        body.setAttribute('data-appearance', mode);
-      }
-    }
-  }
+        function apply() {
+            const {light, dark, mode} = readSchemaTheme();
+            // 写入 CSS 变量
+            setCSS(light, dark);
+            // 同步两个“主题色”输入
+            if (lightPicker && lightText) {
+                if (lightPicker.value !== light) lightPicker.value = light;
+                if (lightText.value !== light) lightText.value = light;
+            }
+            // 如果设置里切了外观，也同步到页面
+            if (appearance && (mode === 'light' || mode === 'dark' || mode === 'auto')) {
+                if (mode === 'auto') {
+                    // 保持 data-appearance 不变；按钮切换逻辑控制
+                } else {
+                    body.setAttribute('data-appearance', mode);
+                }
+            }
+        }
 
-  // 监听设置变化：颜色 & 外观
-  ['input','change'].forEach(ev=>{
-    lightPicker?.addEventListener(ev, apply);
-    lightText?.addEventListener(ev, apply);
-    darkText?.addEventListener(ev, apply);
-    appearance?.addEventListener('change', apply);
-  });
+        // 监听设置变化：颜色 & 外观
+        ['input', 'change'].forEach(ev => {
+            lightPicker?.addEventListener(ev, apply);
+            lightText?.addEventListener(ev, apply);
+            darkText?.addEventListener(ev, apply);
+            appearance?.addEventListener('change', apply);
+        });
 
-  // 监听右上角“🌗”按钮，切换时同时切换 --brand
-  document.getElementById('btnTheme')?.addEventListener('click', ()=>{
-    const next = body.getAttribute('data-appearance') === 'dark' ? 'light' : 'dark';
-    body.setAttribute('data-appearance', next);
-    const l = getComputedStyle(root).getPropertyValue('--brand-light').trim() || '#2563eb';
-    const d = getComputedStyle(root).getPropertyValue('--brand-dark').trim()  || l;
-    root.style.setProperty('--brand', next === 'dark' ? d : l);
-  });
+        // 监听右上角“🌗”按钮，切换时同时切换 --brand
+        document.getElementById('btnTheme')?.addEventListener('click', () => {
+            const next = body.getAttribute('data-appearance') === 'dark' ? 'light' : 'dark';
+            body.setAttribute('data-appearance', next);
+            const l = getComputedStyle(root).getPropertyValue('--brand-light').trim() || '#2563eb';
+            const d = getComputedStyle(root).getPropertyValue('--brand-dark').trim() || l;
+            root.style.setProperty('--brand', next === 'dark' ? d : l);
+        });
 
-  // 首次应用
-  apply();
-})();
+        // 首次应用
+        apply();
+    })();
 </script>
 
 <script>
-(function(){
-  // 1) 判定是否带 new=1
-  var params = new URLSearchParams(location.search);
-  var hasNewFlag = params.get('new') === '1' || /\/create_form\/new$/.test(location.pathname);
+    (function () {
+        // 1) 判定是否带 new=1
+        var params = new URLSearchParams(location.search);
+        var hasNewFlag = params.get('new') === '1' || /\/create_form\/new$/.test(location.pathname);
 
-  // 2) 判定导航类型：只在真正的 navigate 时清；reload / back_forward 不清
-  var nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || null;
-  var navType = nav ? nav.type
-                    : (performance.navigation ? (['navigate','reload','back_forward','prerender'][performance.navigation.type] || 'navigate') : 'navigate');
-  var isReload = navType === 'reload';
-  var isBackFwd = navType === 'back_forward';
+        // 2) 判定导航类型：只在真正的 navigate 时清；reload / back_forward 不清
+        var nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || null;
+        var navType = nav ? nav.type
+            : (performance.navigation ? (['navigate', 'reload', 'back_forward', 'prerender'][performance.navigation.type] || 'navigate') : 'navigate');
+        var isReload = navType === 'reload';
+        var isBackFwd = navType === 'back_forward';
 
-  if (hasNewFlag && !isReload && !isBackFwd) {
-    try { sessionStorage.removeItem('builder:draft_id'); } catch(e){}
-    // 同时把 window.name 清掉，确保“新建”得到一个全新的 tab id
-    try { window.name = ''; } catch(e){}
-    // 把 ?new=1 从地址栏移除（不刷新页面）
-    try {
-      if (params.has('new')) {
-        params.delete('new');
-        var newURL = location.pathname + (params.toString() ? '?' + params.toString() : '');
-        history.replaceState(null, '', newURL);
-      }
-    } catch(e){}
-  }
-
-  // 3) 生成草稿键：有站点名=编辑已有，用 site 锁定；否则用“本标签页 id”
-  var SITE = "{{ site_name or '' }}";
-  var TPL  = "{{ tpl or '' }}";
-  var draftId;
-
-    if (SITE) {
-        draftId = 'site:' + SITE;        // 编辑已有：站点唯一
-    } else if (TPL) {
-        draftId = 'tpl:' + TPL;          // 模板新建：按模板固定（刷新不新开）
-    } else {
-        // 退回你原来的 window.name 逻辑（保持不变）
-        try {
-            draftId = sessionStorage.getItem('builder:draft_id') || '';
-        } catch (e) {
-            draftId = '';
-        }
-        if (!draftId) {
-            if (!window.name || !/^tab:/.test(window.name)) {
-                var gen = (crypto && crypto.randomUUID) ? crypto.randomUUID()
-                    : (Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
-                try {
-                    window.name = 'tab:' + gen;
-                } catch (e) {
-                }
-            }
-            draftId = window.name;
+        if (hasNewFlag && !isReload && !isBackFwd) {
             try {
-                sessionStorage.setItem('builder:draft_id', draftId);
+                sessionStorage.removeItem('builder:draft_id');
+            } catch (e) {
+            }
+            // 同时把 window.name 清掉，确保“新建”得到一个全新的 tab id
+            try {
+                window.name = '';
+            } catch (e) {
+            }
+            // 把 ?new=1 从地址栏移除（不刷新页面）
+            try {
+                if (params.has('new')) {
+                    params.delete('new');
+                    var newURL = location.pathname + (params.toString() ? '?' + params.toString() : '');
+                    history.replaceState(null, '', newURL);
+                }
             } catch (e) {
             }
         }
-    }
 
+        // 3) 生成草稿键：有站点名=编辑已有，用 site 锁定；否则用“本标签页 id”
+        var SITE = "{{ site_name or '' }}";
+        var TPL = "{{ tpl or '' }}";
+        var draftId;
 
-  var KEY = 'draft:builder:' + draftId;
-  try { localStorage.setItem('builder:currentKey', KEY); } catch(e){}
-
-  // 4) 绑定保存/恢复
-  var form = document.getElementById('builder') || document.querySelector('form');
-  if (!form) return;
-
-  function serialize(){
-    var data = {};
-    try{
-      var fd = new FormData(form);
-      fd.forEach(function(v,k){
-        if (data[k] === undefined) data[k] = v;
-        else if (Array.isArray(data[k])) data[k].push(v);
-        else data[k] = [data[k], v];
-      });
-    }catch(e){}
-    // contenteditable
-    var ces = Array.from(document.querySelectorAll('[contenteditable="true"]'));
-    data.__ce = ces.map(function(el){ return {path: pathOf(el), html: el.innerHTML}; });
-    // 外观快照
-    data.__appearance = document.body.getAttribute('data-appearance') || '';
-    var brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim();
-    if (brand) data.__brand = brand;
-    return data;
-  }
-
-  function restore(data){
-    if (!data) return;
-    Object.keys(data).forEach(function(k){
-      if (k.startsWith('__')) return;
-      var els = form.querySelectorAll('[name="'+CSS.escape(k)+'"]');
-      if (!els.length) return;
-      var val = data[k], values = Array.isArray(val) ? val : [val];
-      els.forEach(function(el){
-        if (el.type==='checkbox' || el.type==='radio'){
-          el.checked = values.indexOf(el.value) >= 0;
-        }else{
-          el.value = values[0];
+        if (SITE) {
+            draftId = 'site:' + SITE;        // 编辑已有：站点唯一
+        } else if (TPL) {
+            draftId = 'tpl:' + TPL;          // 模板新建：按模板固定（刷新不新开）
+        } else {
+            // 退回你原来的 window.name 逻辑（保持不变）
+            try {
+                draftId = sessionStorage.getItem('builder:draft_id') || '';
+            } catch (e) {
+                draftId = '';
+            }
+            if (!draftId) {
+                if (!window.name || !/^tab:/.test(window.name)) {
+                    var gen = (crypto && crypto.randomUUID) ? crypto.randomUUID()
+                        : (Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+                    try {
+                        window.name = 'tab:' + gen;
+                    } catch (e) {
+                    }
+                }
+                draftId = window.name;
+                try {
+                    sessionStorage.setItem('builder:draft_id', draftId);
+                } catch (e) {
+                }
+            }
         }
-      });
-    });
-    if (Array.isArray(data.__ce)){
-      data.__ce.forEach(function(item){
-        var el = queryPath(item.path);
-        if (el) el.innerHTML = item.html;
-      });
-    }
-    if (data.__appearance) document.body.setAttribute('data-appearance', data.__appearance);
-    if (data.__brand) document.documentElement.style.setProperty('--brand', data.__brand);
-    tip('已从草稿恢复');
-  }
 
-  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(serialize())); }catch(e){} }
-  function load(){
-    try{
-      var raw = localStorage.getItem(KEY);
-      if (raw) restore(JSON.parse(raw));
-    }catch(e){}
-  }
 
-  document.addEventListener('input',  save, true);
-  document.addEventListener('change', save, true);
-  document.addEventListener('blur',   save, true);
-  load();
+        var KEY = 'draft:builder:' + draftId;
+        try {
+            localStorage.setItem('builder:currentKey', KEY);
+        } catch (e) {
+        }
 
-  // ========== 工具 ==========
-  function pathOf(el){
-    var path=[], cur=el;
-    while (cur && cur.nodeType===1 && cur!==document.body){
-      var i=0, s=cur;
-      while (s = s.previousElementSibling) i++;
-      path.unshift(cur.tagName.toLowerCase()+':'+i);
-      cur = cur.parentElement;
-    }
-    return path.join('/');
-  }
-  function queryPath(path){
-    var parts=(path||'').split('/'), ctx=document.body;
-    for (var i=0;i<parts.length;i++){
-      var p=parts[i]; if(!p) continue;
-      var a=p.split(':'), tag=a[0], idx=+a[1];
-      var kids=[].filter.call(ctx.children, function(x){ return x.tagName.toLowerCase()===tag; });
-      ctx = kids[idx] || null; if(!ctx) break;
-    }
-    return ctx;
-  }
-  function tip(msg){
-    var t=document.getElementById('draft-toast');
-    if(!t){
-      t=document.createElement('div'); t.id='draft-toast';
-      t.style.cssText='position:fixed;z-index:2147483647;top:12px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:999px;font-weight:800;box-shadow:0 10px 20px rgba(0,0,0,.2)';
-      document.body.appendChild(t);
-    }
-    t.textContent=msg; t.style.opacity='1';
-    setTimeout(function(){ t.style.transition='opacity .6s'; t.style.opacity='0'; }, 1600);
-  }
-})();
+        // 4) 绑定保存/恢复
+        var form = document.getElementById('builder') || document.querySelector('form');
+        if (!form) return;
+
+        function serialize() {
+            var data = {};
+            try {
+                var fd = new FormData(form);
+                fd.forEach(function (v, k) {
+                    if (data[k] === undefined) data[k] = v;
+                    else if (Array.isArray(data[k])) data[k].push(v);
+                    else data[k] = [data[k], v];
+                });
+            } catch (e) {
+            }
+            // contenteditable
+            var ces = Array.from(document.querySelectorAll('[contenteditable="true"]'));
+            data.__ce = ces.map(function (el) {
+                return {path: pathOf(el), html: el.innerHTML};
+            });
+            // 外观快照
+            data.__appearance = document.body.getAttribute('data-appearance') || '';
+            var brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim();
+            if (brand) data.__brand = brand;
+            return data;
+        }
+
+        function restore(data) {
+            if (!data) return;
+            Object.keys(data).forEach(function (k) {
+                if (k.startsWith('__')) return;
+                var els = form.querySelectorAll('[name="' + CSS.escape(k) + '"]');
+                if (!els.length) return;
+                var val = data[k], values = Array.isArray(val) ? val : [val];
+                els.forEach(function (el) {
+                    if (el.type === 'checkbox' || el.type === 'radio') {
+                        el.checked = values.indexOf(el.value) >= 0;
+                    } else {
+                        el.value = values[0];
+                    }
+                });
+            });
+            if (Array.isArray(data.__ce)) {
+                data.__ce.forEach(function (item) {
+                    var el = queryPath(item.path);
+                    if (el) el.innerHTML = item.html;
+                });
+            }
+            if (data.__appearance) document.body.setAttribute('data-appearance', data.__appearance);
+            if (data.__brand) document.documentElement.style.setProperty('--brand', data.__brand);
+            tip('已从草稿恢复');
+        }
+
+        function save() {
+            try {
+                localStorage.setItem(KEY, JSON.stringify(serialize()));
+            } catch (e) {
+            }
+        }
+
+        function load() {
+            try {
+                var raw = localStorage.getItem(KEY);
+                if (raw) restore(JSON.parse(raw));
+            } catch (e) {
+            }
+        }
+
+        document.addEventListener('input', save, true);
+        document.addEventListener('change', save, true);
+        document.addEventListener('blur', save, true);
+        load();
+
+        // ========== 工具 ==========
+        function pathOf(el) {
+            var path = [], cur = el;
+            while (cur && cur.nodeType === 1 && cur !== document.body) {
+                var i = 0, s = cur;
+                while (s = s.previousElementSibling) i++;
+                path.unshift(cur.tagName.toLowerCase() + ':' + i);
+                cur = cur.parentElement;
+            }
+            return path.join('/');
+        }
+
+        function queryPath(path) {
+            var parts = (path || '').split('/'), ctx = document.body;
+            for (var i = 0; i < parts.length; i++) {
+                var p = parts[i];
+                if (!p) continue;
+                var a = p.split(':'), tag = a[0], idx = +a[1];
+                var kids = [].filter.call(ctx.children, function (x) {
+                    return x.tagName.toLowerCase() === tag;
+                });
+                ctx = kids[idx] || null;
+                if (!ctx) break;
+            }
+            return ctx;
+        }
+
+        function tip(msg) {
+            var t = document.getElementById('draft-toast');
+            if (!t) {
+                t = document.createElement('div');
+                t.id = 'draft-toast';
+                t.style.cssText = 'position:fixed;z-index:2147483647;top:12px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:999px;font-weight:800;box-shadow:0 10px 20px rgba(0,0,0,.2)';
+                document.body.appendChild(t);
+            }
+            t.textContent = msg;
+            t.style.opacity = '1';
+            setTimeout(function () {
+                t.style.transition = 'opacity .6s';
+                t.style.opacity = '0';
+            }, 1600);
+        }
+    })();
 </script>
 
 <script>
-(function(){
-  const btn    = document.getElementById('btnPreview');
-  const modal  = document.getElementById('previewModal');
-  const close  = document.getElementById('closePreview');
-  const root   = document.getElementById('previewRoot');
+    (function () {
+        const btn = document.getElementById('btnPreview');
+        const modal = document.getElementById('previewModal');
+        const close = document.getElementById('closePreview');
+        const root = document.getElementById('previewRoot');
 
-  function show(html){
-    if (!modal || !root) return;
-    root.innerHTML =
-      '<iframe title="表单预览" style="width:100%;height:70vh;border:0;background:#fff;border-radius:12px"></iframe>';
-    const ifr = root.querySelector('iframe');
-    ifr.srcdoc = html;
-    modal.style.display = 'flex';
-    modal.classList.add('show');
-  }
-  function hide(){
-    if (!modal || !root) return;
-    modal.classList.remove('show');
-    modal.style.display = 'none';
-    root.innerHTML = '';
-  }
+        function show(html) {
+            if (!modal || !root) return;
+            root.innerHTML =
+                '<iframe title="表单预览" style="width:100%;height:70vh;border:0;background:#fff;border-radius:12px"></iframe>';
+            const ifr = root.querySelector('iframe');
+            ifr.srcdoc = html;
+            modal.style.display = 'flex';
+            modal.classList.add('show');
+        }
 
-  close?.addEventListener('click', hide);
-  modal?.addEventListener('click', (e)=>{ if(e.target===modal) hide(); });
+        function hide() {
+            if (!modal || !root) return;
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            root.innerHTML = '';
+        }
 
-  async function getSchema(){
-    // 优先取构建器实时 schema（如果 builder.js 暴露了）
-    if (window.builder && typeof window.builder.getSchema === 'function') {
-      try { return window.builder.getSchema() || {fields: []}; } catch(_){}
-    }
-    // 次选：隐藏域
-    try {
-      const raw = document.getElementById('schema_json')?.value || '{}';
-      return JSON.parse(raw);
-    } catch(_){ return {fields: []}; }
-  }
+        close?.addEventListener('click', hide);
+        modal?.addEventListener('click', (e) => {
+            if (e.target === modal) hide();
+        });
 
-  btn?.addEventListener('click', async ()=>{
-    const formName = document.querySelector('[name="form_name"]')?.value?.trim() || '';
-    const formDesc = document.querySelector('[name="form_desc"]')?.value || '';
-    const schema   = await getSchema();
+        async function getSchema() {
+            // 优先取构建器实时 schema（如果 builder.js 暴露了）
+            if (window.builder && typeof window.builder.getSchema === 'function') {
+                try {
+                    return window.builder.getSchema() || {fields: []};
+                } catch (_) {
+                }
+            }
+            // 次选：隐藏域
+            try {
+                const raw = document.getElementById('schema_json')?.value || '{}';
+                return JSON.parse(raw);
+            } catch (_) {
+                return {fields: []};
+            }
+        }
 
-    const fd = new FormData();
-    fd.append('form_name', formName);
-    fd.append('form_desc', formDesc);
-    fd.append('schema_json', JSON.stringify(schema));
+        btn?.addEventListener('click', async () => {
+            const formName = document.querySelector('[name="form_name"]')?.value?.trim() || '';
+            const formDesc = document.querySelector('[name="form_desc"]')?.value || '';
+            const schema = await getSchema();
 
-    try{
-      const res = await fetch('/preview', { method:'POST', body: fd, headers:{ 'Accept':'text/html' }});
-      const html = await res.text();
-      show(html);
-    }catch(e){
-      alert('预览加载失败：' + (e?.message || e));
-    }
-  });
-})();
+            const fd = new FormData();
+            fd.append('form_name', formName);
+            fd.append('form_desc', formDesc);
+            fd.append('schema_json', JSON.stringify(schema));
+
+            try {
+                const res = await fetch('/preview', {method: 'POST', body: fd, headers: {'Accept': 'text/html'}});
+                const html = await res.text();
+                show(html);
+            } catch (e) {
+                alert('预览加载失败：' + (e?.message || e));
+            }
+        });
+    })();
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-(function () {
-  const SITE = document.body.dataset.site || '';
-  let inited = false;
-  let instances = [];
+    (function () {
+        const SITE = document.body.dataset.site || '';
+        let inited = false;
+        let instances = [];
 
-  async function ensure() {
-    if (inited) return;
-    const root = document.getElementById('chartsRoot');
-    if (!root) return;
+        async function ensure() {
+            if (inited) return;
+            const root = document.getElementById('chartsRoot');
+            if (!root) return;
 
-    // 新建未保存时提示
-    if (!SITE) {
-      root.innerHTML = `<div style="grid-column:1/-1;color:#6b7f99;background:#fff;border:1px solid #e8eef6;border-radius:14px;padding:16px;text-align:center">
+            // 新建未保存时提示
+            if (!SITE) {
+                root.innerHTML = `<div style="grid-column:1/-1;color:#6b7f99;background:#fff;border:1px solid #e8eef6;border-radius:14px;padding:16px;text-align:center">
         保存表单并生成站点后，才能查看图表。</div>`;
-      return;
-    }
+                return;
+            }
 
-    inited = true;
-    try {
-      const res = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/charts`, { credentials: 'same-origin' });
-      const j = await res.json();
-      if (!res.ok || j.ok === false) throw new Error(j.error || res.status);
+            inited = true;
+            try {
+                const res = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/charts`, {credentials: 'same-origin'});
+                const j = await res.json();
+                if (!res.ok || j.ok === false) throw new Error(j.error || res.status);
 
-      // 清空占位
-      root.innerHTML = '';
+                // 清空占位
+                root.innerHTML = '';
 
-      const c1 = addCard(root, '提交趋势（近 14 天）', 'lineDaily');
-      const c2 = addCard(root, '状态分布', 'pieStatus');
-      const c3 = addCard(root, '选择题分布', 'barField', true);
+                const c1 = addCard(root, '提交趋势（近 14 天）', 'lineDaily');
+                const c2 = addCard(root, '状态分布', 'pieStatus');
+                const c3 = addCard(root, '选择题分布', 'barField', true);
 
-      // 1) 折线：近 14 天提交数
-      if (Array.isArray(j.daily) && j.daily.length) {
-        instances.push(new Chart(c1, {
-          type: 'line',
-          data: {
-            labels: j.daily.map(x => x.date),
-            datasets: [{ label: '提交数', data: j.daily.map(x => x.count), tension: .3 }]
-          },
-          options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
-        }));
-      } else { empty(c1, '暂无数据'); }
+                // 1) 折线：近 14 天提交数
+                if (Array.isArray(j.daily) && j.daily.length) {
+                    instances.push(new Chart(c1, {
+                        type: 'line',
+                        data: {
+                            labels: j.daily.map(x => x.date),
+                            datasets: [{label: '提交数', data: j.daily.map(x => x.count), tension: .3}]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {legend: {display: false}},
+                            scales: {y: {beginAtZero: true, ticks: {precision: 0}}}
+                        }
+                    }));
+                } else {
+                    empty(c1, '暂无数据');
+                }
 
-      // 2) 甜甜圈：状态分布
-      if (Array.isArray(j.status) && j.status.length) {
-        instances.push(new Chart(c2, {
-          type: 'doughnut',
-          data: { labels: j.status.map(x => x.name), datasets: [{ data: j.status.map(x => x.count) }] },
-          options: { responsive: true }
-        }));
-      } else { empty(c2, '暂无数据'); }
+                // 2) 甜甜圈：状态分布
+                if (Array.isArray(j.status) && j.status.length) {
+                    instances.push(new Chart(c2, {
+                        type: 'doughnut',
+                        data: {labels: j.status.map(x => x.name), datasets: [{data: j.status.map(x => x.count)}]},
+                        options: {responsive: true}
+                    }));
+                } else {
+                    empty(c2, '暂无数据');
+                }
 
-      // 3) 条形：第一个选择题
-      if (j.field && Array.isArray(j.field.data) && j.field.data.length) {
-        instances.push(new Chart(c3, {
-          type: 'bar',
-          data: {
-            labels: j.field.data.map(x => x.value),
-            datasets: [{ label: j.field.label || j.field.key, data: j.field.data.map(x => x.count) }]
-          },
-          options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
-        }));
-      } else {
-        c3.canvas.closest('.chart-card').style.display = 'none';
-      }
-    } catch (e) {
-      document.getElementById('chartsRoot').innerHTML =
-        `<div style="grid-column:1/-1;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:14px;padding:12px">图表数据加载失败：${e.message}</div>`;
-      inited = false; // 允许重试
-    }
-  }
+                // 3) 条形：第一个选择题
+                if (j.field && Array.isArray(j.field.data) && j.field.data.length) {
+                    instances.push(new Chart(c3, {
+                        type: 'bar',
+                        data: {
+                            labels: j.field.data.map(x => x.value),
+                            datasets: [{label: j.field.label || j.field.key, data: j.field.data.map(x => x.count)}]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            plugins: {legend: {display: false}},
+                            scales: {x: {beginAtZero: true, ticks: {precision: 0}}}
+                        }
+                    }));
+                } else {
+                    c3.canvas.closest('.chart-card').style.display = 'none';
+                }
+            } catch (e) {
+                document.getElementById('chartsRoot').innerHTML =
+                    `<div style="grid-column:1/-1;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:14px;padding:12px">图表数据加载失败：${e.message}</div>`;
+                inited = false; // 允许重试
+            }
+        }
 
-  // 暴露给外面（供 show(tab) 调用）
-  window.refreshCharts = function(force = false) {
-    if (force) {
-      instances.forEach(c => { try { c.destroy(); } catch {} });
-      instances = [];
-      inited = false;
-    }
-    ensure();
-  };
+        // 暴露给外面（供 show(tab) 调用）
+        window.refreshCharts = function (force = false) {
+            if (force) {
+                instances.forEach(c => {
+                    try {
+                        c.destroy();
+                    } catch {
+                    }
+                });
+                instances = [];
+                inited = false;
+            }
+            ensure();
+        };
 
-  // 如果初始就停在“图表”页，立即加载一次
-  if (document.querySelector('.tabs button.active')?.dataset.tab === 'charts') ensure();
+        // 如果初始就停在“图表”页，立即加载一次
+        if (document.querySelector('.tabs button.active')?.dataset.tab === 'charts') ensure();
 
-  // 工具函数
-  function addCard(root, title, id, full = false) {
-    const card = document.createElement('div');
-    card.className = 'chart-card';
-    if (full) card.style.gridColumn = '1/-1';
-    card.style.background = '#fff';
-    card.style.border = '1px solid #e8eef6';
-    card.style.borderRadius = '14px';
-    card.innerHTML = `<div style="padding:12px 14px;font-weight:800;color:#0e1726">${title}</div>
+        // 工具函数
+        function addCard(root, title, id, full = false) {
+            const card = document.createElement('div');
+            card.className = 'chart-card';
+            if (full) card.style.gridColumn = '1/-1';
+            card.style.background = '#fff';
+            card.style.border = '1px solid #e8eef6';
+            card.style.borderRadius = '14px';
+            card.innerHTML = `<div style="padding:12px 14px;font-weight:800;color:#0e1726">${title}</div>
       <div style="padding:0 14px 14px"><canvas id="${id}" height="120"></canvas></div>`;
-    root.appendChild(card);
-    return document.getElementById(id).getContext('2d');
-  }
-  function empty(ctx, msg) {
-    const wrap = ctx.canvas.parentElement;
-    wrap.innerHTML = `<div style="min-height:200px;display:flex;align-items:center;justify-content:center;color:#6b7f99">${msg}</div>`;
-  }
-})();
+            root.appendChild(card);
+            return document.getElementById(id).getContext('2d');
+        }
+
+        function empty(ctx, msg) {
+            const wrap = ctx.canvas.parentElement;
+            wrap.innerHTML = `<div style="min-height:200px;display:flex;align-items:center;justify-content:center;color:#6b7f99">${msg}</div>`;
+        }
+    })();
 </script>
 
 </body>
