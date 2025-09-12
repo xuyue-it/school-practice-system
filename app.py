@@ -2040,24 +2040,22 @@ def api_charts(site_name):
         field_dist = None
         if first_cat_key:
             if first_cat_type == "checkbox":
-                c.execute("""
-                  WITH x AS (SELECT elem
-                             FROM forms f
-                                      LEFT JOIN LATERAL (
-                                 SELECT jsonb_array_elements(f.data - > 'qa5f67za') AS elem
-                                     ) t ON jsonb_typeof(f.data - > 'qa5f67za') = 'array';
-                  )
-                  SELECT v, COUNT(*) FROM x WHERE v IS NOT NULL AND v<>''
-                  GROUP BY 1 ORDER BY 2 DESC LIMIT 20
-                """, (first_cat_key, first_cat_key, first_cat_key))
+                # ✅ 展开 JSON 数组
+                c.execute(f"""
+                    SELECT trim(both '"' from value::text) AS v, COUNT(*)
+                    FROM submissions, jsonb_array_elements_text(data->%s) AS value
+                    WHERE value IS NOT NULL AND value<>''
+                    GROUP BY v ORDER BY COUNT(*) DESC LIMIT 20
+                """, (first_cat_key,))
             else:
                 c.execute("""
-                  SELECT NULLIF(data->>%s,'') AS v, COUNT(*)
-                  FROM submissions
-                  GROUP BY 1
-                  HAVING NULLIF(data->>%s,'') IS NOT NULL
-                  ORDER BY 2 DESC LIMIT 20
-                """, (first_cat_key, first_cat_key))
+                          SELECT NULLIF(data ->>%s,'') AS v, COUNT(*)
+                          FROM submissions
+                          GROUP BY 1
+                          HAVING NULLIF(data ->>%s,'') IS NOT NULL
+                          ORDER BY 2 DESC LIMIT 20
+                          """, (first_cat_key, first_cat_key))
+
 
             field_dist = {
                 "key": first_cat_key,
