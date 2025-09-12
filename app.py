@@ -1996,81 +1996,55 @@ def drop_bg_notify_from_all():
     """)
     conn.commit(); conn.close()
 
-@app.route("/site/<site_name>/admin/api/charts", methods=["GET"])
-@admin_required
+@app.route("/site/<site_name>/admin/api/charts")
 def api_charts(site_name):
-    import json
-    schema = _safe_schema(site_name)
+    if not is_admin(site_name):
+        abort(403)
 
-    conn = get_conn()
+    conn = get_site_db(site_name)
     c = conn.cursor()
-    try:
-        c.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
-        row = c.fetchone()
-        raw = row[0] if row else None
-        schema_json = raw if isinstance(raw, dict) else (json.loads(raw) if raw else {})
-        first_cat_key = first_cat_label = first_cat_type = None
-        for f in (schema_json or {}).get("fields") or []:
-            if not isinstance(f, dict):
-                continue
-            t = (f.get("type") or "").lower()
-            if t in ("select", "radio", "checkbox"):
-                first_cat_key   = f.get("key") or f.get("id") or f.get("name")
-                first_cat_label = f.get("labelHTML") or f.get("label") or f.get("title") or first_cat_key
-                first_cat_type  = t
-                break
 
-        c.execute(f"SET search_path TO {schema}")
+    # 找出第一个字段，决定用哪个做统计
+    c.execute("SELECT definition FROM form_defs ORDER BY id ASC LIMIT 1")
+    row = c.fetchone()
+    if not row:
+        return jsonify({"error": "no form definition"})
 
+    form_def = row[0]
+    first_field = form_def["fields"][0] if form_def["fields"] else None
+    if not first_field:
+        return jsonify({"error": "no fields"})
+
+    first_cat_key = first_field.get("name")
+    first_cat_type = first_field.get("type")
+
+    # ========== 主查询逻辑 ==========
+    if first_cat_type == "checkbox":
+        # ✅ 正确展开 JSON 数组统计
+        c.execute(f"""
+            SELECT trim(both '"' from value::text) AS v, COUNT(*)
+            FROM submissions, jsonb_array_elements_text(data->%s) AS value
+            WHERE value IS NOT NULL AND value <> ''
+            GROUP BY v ORDER BY COUNT(*) DESC LIMIT 20
+        """, (first_cat_key,))
+    else:
+        # ✅ 单值字段（radio、select、text 等）
         c.execute("""
-            SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS d, COUNT(*)
+            SELECT NULLIF(data->>%s, '') AS v, COUNT(*)
             FROM submissions
-            WHERE created_at >= now() - interval '14 day'
-            GROUP BY 1 ORDER BY 1
-        """)
-        daily = [{"date": d, "count": n} for (d, n) in c.fetchall()]
+            GROUP BY 1
+            HAVING NULLIF(data->>%s, '') IS NOT NULL
+            ORDER BY 2 DESC LIMIT 20
+        """, (first_cat_key, first_cat_key))
 
-        c.execute("""
-            SELECT COALESCE(status,'待审核') AS s, COUNT(*)
-            FROM submissions
-            GROUP BY 1 ORDER BY 2 DESC
-        """)
-        status = [{"name": s, "count": n} for (s, n) in c.fetchall()]
+    rows = c.fetchall()
+    conn.close()
 
-        field_dist = None
-        if first_cat_key:
-            if first_cat_type == "checkbox":
-                # ✅ 展开 JSON 数组
-                c.execute(f"""
-                    SELECT trim(both '"' from value::text) AS v, COUNT(*)
-                    FROM submissions, jsonb_array_elements_text(data->%s) AS value
-                    WHERE value IS NOT NULL AND value<>''
-                    GROUP BY v ORDER BY COUNT(*) DESC LIMIT 20
-                """, (first_cat_key,))
-            else:
-                c.execute("""
-                          SELECT NULLIF(data ->>%s,'') AS v, COUNT(*)
-                          FROM submissions
-                          GROUP BY 1
-                          HAVING NULLIF(data ->>%s,'') IS NOT NULL
-                          ORDER BY 2 DESC LIMIT 20
-                          """, (first_cat_key, first_cat_key))
+    # 转换为 JSON 返回
+    labels = [r[0] for r in rows if r[0] is not None]
+    values = [r[1] for r in rows if r[0] is not None]
+    return jsonify({"labels": labels, "values": values})
 
-
-            field_dist = {
-                "key": first_cat_key,
-                "label": str(first_cat_label),
-                "type": first_cat_type,
-                "data": [{"value": (v or "(空)"), "count": n} for (v, n) in c.fetchall()]
-            }
-
-        return jsonify({"ok": True, "daily": daily, "status": status, "field": field_dist})
-    except Exception as e:
-        try: conn.rollback()
-        except: pass
-        return jsonify({"ok": False, "error": str(e)}), 500
-    finally:
-        conn.close()
 
 @app.route("/site/<site_name>/create_success")
 @admin_required
