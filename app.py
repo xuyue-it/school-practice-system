@@ -1996,54 +1996,144 @@ def drop_bg_notify_from_all():
     """)
     conn.commit(); conn.close()
 
-@app.route("/site/<site_name>/admin/api/charts")
+@app.route("/site/<site_name>/admin/api/charts", methods=["GET"])
 def api_charts(site_name):
-    if not is_admin(site_name):
-        abort(403)
+    import json
+    from collections import Counter, defaultdict
+    from datetime import datetime, timedelta
 
-    conn = get_site_db(site_name)
+    # === 这两行请“原样照抄”你 api_responses 里用的权限检查与数据库连接 ===
+    # 例如：if not is_admin(site_name): return abort(403)
+    #       conn = get_site_db(site_name); c = conn.cursor()
+    # -------------------------------------------------------------------------
+    conn = get_site_db(site_name)       # ← 用你项目里的同名函数/写法
     c = conn.cursor()
+    # -------------------------------------------------------------------------
 
-    # 找出第一个字段，决定用哪个做统计
-    c.execute("SELECT definition FROM form_defs ORDER BY id ASC LIMIT 1")
-    row = c.fetchone()
-    if not row:
-        return jsonify({"error": "no form definition"})
+    try:
+        # 读表单 schema，找第一个可分类字段（select/radio/checkbox），没有就 later 再从 data 里猜
+        first_key = first_label = first_type = None
+        try:
+            c.execute("SELECT schema_json FROM form_defs WHERE site_name = ?", (site_name,))
+        except Exception:
+            # 兼容没有 site_name 列的旧结构
+            try:
+                c.execute("SELECT schema_json FROM form_defs ORDER BY id ASC LIMIT 1")
+            except Exception:
+                pass
+        row = c.fetchone()
+        if row and row[0]:
+            try:
+                schema = row[0] if isinstance(row[0], dict) else json.loads(row[0])
+                for f in (schema or {}).get("fields") or []:
+                    t = (f.get("type") or "").lower()
+                    if t in ("select", "radio", "checkbox"):
+                        first_key   = f.get("key") or f.get("id") or f.get("name")
+                        first_label = f.get("labelHTML") or f.get("label") or f.get("title") or first_key
+                        first_type  = t
+                        break
+            except Exception:
+                pass
 
-    form_def = row[0]
-    first_field = form_def["fields"][0] if form_def["fields"] else None
-    if not first_field:
-        return jsonify({"error": "no fields"})
+        # 取全部提交（或最近一段时间），用 Python 聚合，避免依赖 JSONB/JSON1
+        c.execute("SELECT * FROM submissions")
+        rows = c.fetchall()
+        cols = [d[0] for d in c.description]
+        idx = {name: i for i, name in enumerate(cols)}
 
-    first_cat_key = first_field.get("name")
-    first_cat_type = first_field.get("type")
+        def pick(row, names):
+            for n in names:
+                if n in idx:
+                    return row[idx[n]]
+            return None
 
-    # ========== 主查询逻辑 ==========
-    if first_cat_type == "checkbox":
-        # ✅ 正确展开 JSON 数组统计
-        c.execute(f"""
-            SELECT trim(both '"' from value::text) AS v, COUNT(*)
-            FROM submissions, jsonb_array_elements_text(data->%s) AS value
-            WHERE value IS NOT NULL AND value <> ''
-            GROUP BY v ORDER BY COUNT(*) DESC LIMIT 20
-        """, (first_cat_key,))
-    else:
-        # ✅ 单值字段（radio、select、text 等）
-        c.execute("""
-            SELECT NULLIF(data->>%s, '') AS v, COUNT(*)
-            FROM submissions
-            GROUP BY 1
-            HAVING NULLIF(data->>%s, '') IS NOT NULL
-            ORDER BY 2 DESC LIMIT 20
-        """, (first_cat_key, first_cat_key))
+        # 解析行
+        daily_counter = Counter()
+        status_counter = Counter()
+        field_counter = Counter()
 
-    rows = c.fetchall()
-    conn.close()
+        # 如果 schema 没给出 first_key，就从第一条 data 的 key 猜一个
+        maybe_first_key = None
 
-    # 转换为 JSON 返回
-    labels = [r[0] for r in rows if r[0] is not None]
-    values = [r[1] for r in rows if r[0] is not None]
-    return jsonify({"labels": labels, "values": values})
+        for r in rows:
+            # 时间
+            ts = pick(r, ["created_at", "created", "submitted_at", "ts", "timestamp"])
+            # 转日期字符串（YYYY-MM-DD）
+            if isinstance(ts, (int, float)):
+                dt = datetime.utcfromtimestamp(ts)
+            elif isinstance(ts, str):
+                # 常见几种格式兜底
+                for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
+                    try:
+                        dt = datetime.strptime(ts.split(".")[0], fmt)
+                        break
+                    except Exception:
+                        dt = None
+                if dt is None:
+                    dt = datetime.utcnow()
+            elif isinstance(ts, datetime):
+                dt = ts
+            else:
+                dt = datetime.utcnow()
+            daily_counter[dt.strftime("%Y-%m-%d")] += 1
+
+            # 状态
+            s = pick(r, ["status", "state"]) or "待审核"
+            status_counter[str(s)] += 1
+
+            # 数据字段
+            raw = pick(r, ["data", "payload", "json"])
+            try:
+                data = raw if isinstance(raw, dict) else (json.loads(raw) if raw else {})
+            except Exception:
+                data = {}
+
+            if maybe_first_key is None and not first_key and isinstance(data, dict):
+                # 猜一个第一字段
+                for k, v in data.items():
+                    if isinstance(v, (list, str, int, float)) and str(k).strip():
+                        maybe_first_key = k
+                        break
+
+            key = first_key or maybe_first_key
+            if key and isinstance(data, dict) and key in data:
+                val = data.get(key)
+                if isinstance(val, list):
+                    for x in val:
+                        if x not in (None, "", []):
+                            field_counter[str(x)] += 1
+                else:
+                    if val not in (None, ""):
+                        field_counter[str(val)] += 1
+
+        # 只保留最近14天（有些老数据可能很多）
+        today = datetime.utcnow().date()
+        last14 = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(13, -1, -1)]
+        daily = [{"date": d, "count": int(daily_counter.get(d, 0))} for d in last14]
+
+        status = [{"name": k, "count": int(v)} for k, v in status_counter.most_common()]
+
+        field = None
+        key_used = first_key or maybe_first_key
+        if key_used:
+            data_sorted = [{"value": k, "count": int(v)} for k, v in field_counter.most_common(20)]
+            field = {
+                "key": key_used,
+                "label": first_label or key_used,
+                "type": first_type or ("checkbox" if any(isinstance(pick(r, ["data"]), (list,)) for r in rows) else "text"),
+                "data": data_sorted,
+            }
+
+        return jsonify({"ok": True, "daily": daily, "status": status, "field": field})
+
+    except Exception as e:
+        try: conn.rollback()
+        except Exception: pass
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        try: conn.close()
+        except Exception: pass
+
 
 
 @app.route("/site/<site_name>/create_success")
