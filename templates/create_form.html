@@ -1794,18 +1794,13 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  // 把旧预览遮罩移除
-  document.querySelectorAll('#respPreviewMask,.resp-preview-mask').forEach(n => n.remove());
-
-  // 事件重绑工具
   function rewire(id, type, handler) {
     const old = document.getElementById(id);
     if (!old || !old.parentNode) return null;
     const clone = old.cloneNode(true);
     old.parentNode.replaceChild(clone, old);
     clone.addEventListener(type, function (e) {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       if (e.stopImmediatePropagation) e.stopImmediatePropagation();
       handler(e);
     }, { capture: true });
@@ -1824,24 +1819,15 @@ document.addEventListener('DOMContentLoaded', function () {
       const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/gallery`);
       const data = await r.json().catch(() => ({ items: [] }));
       alert(`找到图片 ${(data.items || []).length} 张`);
-    } catch (e) {
-      alert('加载失败');
-    }
+    } catch { alert('加载失败'); }
   });
 
-  // —— 轮询控制 —— //
+  // —— 自动刷新：仅“数据”Tab 且页面可见时才跑 —— //
   let autoTimer = null;
-
-  function stopAuto() {
-    if (autoTimer) {
-      clearInterval(autoTimer);
-      autoTimer = null;
-    }
-  }
-
+  function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; } }
+  function onResponsesTab() { return document.getElementById('tab-responses')?.classList.contains('active'); }
   function tickOnceIfVisible() {
-    const onResponses = document.getElementById('tab-responses')?.classList.contains('active');
-    if (document.visibilityState === 'visible' && onResponses) {
+    if (document.visibilityState === 'visible' && onResponsesTab()) {
       window.loadResponses && window.loadResponses();
     }
   }
@@ -1850,16 +1836,13 @@ document.addEventListener('DOMContentLoaded', function () {
     stopAuto();
     if (e.currentTarget.checked) {
       autoTimer = setInterval(tickOnceIfVisible, 30000);
-      // 立即跑一次（仅当前台 & 在数据页）
-      tickOnceIfVisible();
+      tickOnceIfVisible(); // 立即跑一次（仅前台&在数据页时）
     }
   });
 
-  // 切到其他 Tab 就停轮询
+  // 切到其他 Tab 就停
   document.querySelectorAll('.tabs button').forEach(b => {
-    b.addEventListener('click', () => {
-      if (b.dataset.tab !== 'responses') stopAuto();
-    });
+    b.addEventListener('click', () => { if (b.dataset.tab !== 'responses') stopAuto(); });
   });
 
   // 页面重新可见时补一次
@@ -1870,21 +1853,16 @@ document.addEventListener('DOMContentLoaded', function () {
   // 关闭页面前清理
   window.addEventListener('beforeunload', stopAuto);
 
-  // 默认关闭自动刷新（如果你还没改 HTML，把这里也关掉）
+  // 默认不启用自动刷新（有老HTML把 checked 带上时，强制关掉）
   const autoTick = document.getElementById('autoTick');
-  if (autoTick) {
-    // 建议把 HTML 里的 checked 去掉；如果还在，就这里强制关掉：
-    autoTick.checked = false;
-    // 若希望保留默认勾选，改成： if (autoTick.checked) autoTick.dispatchEvent(new Event('change'));
-  }
+  if (autoTick) autoTick.checked = false;
 
-  // 初始化：重建表头；仅当“数据”页当前是激活时才拉一次数据
+  // 首次：重建表头；如果当前就在“数据”页，手动拉一次
   window.rebuildRespHeader && window.rebuildRespHeader();
-  if (document.getElementById('tab-responses')?.classList.contains('active')) {
-    window.loadResponses && window.loadResponses();
-  }
+  if (onResponsesTab()) window.loadResponses && window.loadResponses();
 });
 </script>
+
 
 <!-- 让顶栏始终固定在顶部（覆盖原来的 sticky） -->
 <style id="header-follow">
