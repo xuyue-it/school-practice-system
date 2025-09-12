@@ -2041,12 +2041,11 @@ def api_charts(site_name):
         if first_cat_key:
             if first_cat_type == "checkbox":
                 c.execute("""
-                  WITH x AS (
-                    SELECT CASE 
-                      WHEN jsonb_typeof(data->%s) = 'array' THEN jsonb_array_elements_text(data->%s)
-                      ELSE NULLIF(data->>%s, '')
-                    END AS v
-                    FROM submissions
+                  WITH x AS (SELECT elem
+                             FROM forms f
+                                      LEFT JOIN LATERAL (
+                                 SELECT jsonb_array_elements(f.data - > 'qa5f67za') AS elem
+                                     ) t ON jsonb_typeof(f.data - > 'qa5f67za') = 'array';
                   )
                   SELECT v, COUNT(*) FROM x WHERE v IS NOT NULL AND v<>''
                   GROUP BY 1 ORDER BY 2 DESC LIMIT 20
