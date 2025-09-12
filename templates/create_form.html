@@ -4,6 +4,135 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
     <title>创建新表单</title>
+    <script>
+/* ==== responses nuclear guard: block ALL network paths when not in "数据" tab ==== */
+(function () {
+  const PATH = /\/admin\/api\/responses(?:\?|$)/i;
+  const inResponsesTab = () =>
+    !!document.getElementById('tab-responses')?.classList.contains('active');
+
+  const urlOf = (input) => {
+    try { return typeof input === 'string' ? input : (input && input.url) || ''; } catch { return ''; }
+  };
+
+  // fetch
+  const _fetch = window.fetch;
+  window.fetch = function (input, init) {
+    const u = urlOf(input);
+    if (PATH.test(u) && !inResponsesTab()) {
+      try { console.debug('[responses-guard] fetch blocked', u); } catch {}
+      return Promise.resolve(new Response(
+        JSON.stringify({ ok: true, items: [] }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      ));
+    }
+    return _fetch.apply(this, arguments);
+  };
+
+  // XHR
+  const _open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (method, url) {
+    this.__rg_block = PATH.test(String(url)) && !inResponsesTab();
+    return _open.apply(this, arguments);
+  };
+  const _send = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function (body) {
+    if (this.__rg_block) { try { this.abort(); } catch {} return; }
+    return _send.apply(this, arguments);
+  };
+
+  // sendBeacon
+  if (navigator.sendBeacon) {
+    const _beacon = navigator.sendBeacon.bind(navigator);
+    navigator.sendBeacon = function (url, data) {
+      if (PATH.test(String(url)) && !inResponsesTab()) {
+        try { console.debug('[responses-guard] beacon blocked', url); } catch {}
+        return true;
+      }
+      return _beacon(url, data);
+    };
+  }
+
+  // EventSource (SSE)
+  if (window.EventSource) {
+    const _ES = window.EventSource;
+    window.EventSource = function (url, conf) {
+      if (PATH.test(String(url)) && !inResponsesTab()) {
+        try { console.debug('[responses-guard] EventSource blocked', url); } catch {}
+        const dummy = new EventTarget(); dummy.readyState = 2; dummy.close = function () { };
+        return dummy;
+      }
+      return new _ES(url, conf);
+    };
+    window.EventSource.prototype = _ES.prototype;
+  }
+
+  // WebSocket
+  if (window.WebSocket) {
+    const _WS = window.WebSocket;
+    window.WebSocket = new Proxy(_WS, {
+      construct(target, args) {
+        const u = String(args?.[0] || '');
+        if (PATH.test(u) && !inResponsesTab()) {
+          try { console.debug('[responses-guard] WebSocket blocked', u); } catch {}
+          return { readyState: 3, close() {}, send() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } };
+        }
+        return new target(...args);
+      }
+    });
+  }
+
+  // 元素 src/href（img/script/link/iframe/audio/video/source/embed/object）
+  function guardURLSetter(Ctor, prop) {
+    const desc = Object.getOwnPropertyDescriptor(Ctor.prototype, prop);
+    if (!desc || !desc.set) return;
+    Object.defineProperty(Ctor.prototype, prop, {
+      set(v) {
+        if (PATH.test(String(v)) && !inResponsesTab()) { try { this.setAttribute('data-blocked-'+prop, v); } catch {} return; }
+        return desc.set.call(this, v);
+      },
+      get: desc.get
+    });
+    const _setAttr = Ctor.prototype.setAttribute;
+    Ctor.prototype.setAttribute = function (name, value) {
+      if (String(name).toLowerCase() === prop && PATH.test(String(value)) && !inResponsesTab()) {
+        try { this.setAttribute('data-blocked-'+prop, value); } catch {}
+        return;
+      }
+      return _setAttr.call(this, name, value);
+    };
+  }
+  [HTMLImageElement, HTMLScriptElement, HTMLIFrameElement, HTMLAudioElement, HTMLVideoElement,
+   HTMLEmbedElement, HTMLObjectElement, HTMLSourceElement].forEach(C => guardURLSetter(C, 'src'));
+
+  // link.href 也挡一下
+  if (window.HTMLLinkElement) {
+    const d = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href');
+    if (d && d.set) {
+      Object.defineProperty(HTMLLinkElement.prototype, 'href', {
+        set(v) { if (PATH.test(String(v)) && !inResponsesTab()) { try { this.setAttribute('data-blocked-href', v); } catch {} return; } return d.set.call(this, v); },
+        get: d.get
+      });
+    }
+  }
+
+  // Workers（防在 worker 里绕过拦截）
+  ['Worker', 'SharedWorker'].forEach(k => {
+    const C = window[k];
+    if (!C) return;
+    window[k] = new Proxy(C, {
+      construct(target, args) {
+        const url = String(args?.[0] || '');
+        if (PATH.test(url) && !inResponsesTab()) {
+          try { console.debug('[responses-guard] worker blocked', url); } catch {}
+          return { postMessage() {}, terminate() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } };
+        }
+        return new target(...args);
+      }
+    });
+  });
+})();
+</script>
 
     <!-- 早期开关：首帧决定是否启用 perf-mode -->
     <script>
