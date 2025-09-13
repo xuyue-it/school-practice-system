@@ -27,7 +27,7 @@ from time import time
 from psycopg2.pool import SimpleConnectionPool
 import os, psycopg2
 from flask import render_template, request, abort
-
+from time import time
 # ========== Flask 应用 ==========
 app = Flask(__name__)
 try:
@@ -41,6 +41,16 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=True,   # 仅 HTTPS 时安全发送
 )
+# 放在 app 初始化后
+
+@app.context_processor
+def inject_asset():
+    import os
+    def asset(path):
+        full = os.path.join(app.static_folder, path)
+        v = str(int(os.path.getmtime(full))) if os.path.exists(full) else str(int(time()))
+        return url_for("static", filename=path, v=v)
+    return {"asset": asset}
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -1245,11 +1255,6 @@ def _api_list_responses(site_name: str):
     return jsonify({"ok": True, "items": items, "columns": columns, "titleMap": title_map})
 
 
-@app.route("/site/<site_name>/admin/api/submissions")
-@admin_required
-def api_responses_alias2(site_name):
-    return _api_list_responses(site_name)
-
 # ========= 公共页回退模板 =========
 PUBLIC_FORM_HTML = """
 <!doctype html>
@@ -2117,28 +2122,19 @@ def drop_bg_notify_from_all():
            )
     """)
     conn.commit(); conn.close()
-
 @app.route("/site/<site_name>/admin/api/charts", methods=["GET"])
 @admin_required
 def api_charts(site_name):
-    """返回图表页需要的小数据集：
-    {
-      ok: true,
-      daily:  [{date:"YYYY-MM-DD", count:N}, ... 14天],
-      status: [{name:"待审核", count:N}, ...],
-      field:  {label:"字段名", items:[{name:"选项", count:N}, ...]}
-    }
-    """
     from collections import Counter
     from datetime import datetime, timedelta
     import json
 
     schema_name = _safe_schema(site_name)
 
-    # 读取最近提交
+    # 最近提交
     conn = get_conn(); c = conn.cursor()
     try:
-        c.execute(f"SET search_path TO {schema_name}")
+        c.execute(f'SET search_path TO "{schema_name}", public')  # ✅ 引号更稳
         c.execute("""
             SELECT data, status, created_at
             FROM submissions
@@ -2152,7 +2148,7 @@ def api_charts(site_name):
     finally:
         conn.close()
 
-    # 读取表单 schema，挑一个适合做分布图的字段
+    # 从 schema 里挑一个适合做分布图的字段
     field_key, field_label = None, None
     conn2 = get_conn(); c2 = conn2.cursor()
     try:
@@ -2160,6 +2156,7 @@ def api_charts(site_name):
         r = c2.fetchone()
     finally:
         conn2.close()
+
     schema_json = r[0] if (r and isinstance(r[0], dict)) else (json.loads(r[0]) if r and r[0] else {})
     for f in (schema_json or {}).get("fields", []):
         t = (f.get("type") or "").lower()
@@ -2176,13 +2173,11 @@ def api_charts(site_name):
     start_day = (now - timedelta(days=13)).date()
 
     for data, status, created_at in rows:
-        # data 可能是 JSONB dict 或 JSON 字符串
         try:
             d = data if isinstance(data, dict) else (json.loads(data) if data else {})
         except Exception:
             d = {}
 
-        # 日期
         try:
             dt = created_at if isinstance(created_at, datetime) else datetime.fromisoformat(str(created_at))
         except Exception:
@@ -2191,34 +2186,30 @@ def api_charts(site_name):
         if day >= start_day:
             daily[day.isoformat()] += 1
 
-        # 状态
         s = (status or "").strip() or "待审核"
         status_counter[s] += 1
 
-        # 字段分布（若 schema 没挑到，就退化用第一个字段）
         if not field_key and isinstance(d, dict) and d:
             field_key = next(iter(d.keys()), None)
             field_label = field_key or "字段"
+
         if field_key and isinstance(d, dict) and field_key in d:
             v = d[field_key]
             if isinstance(v, list):
-                for each in v:
-                    field_counter[str(each)] += 1
+                for each in v: field_counter[str(each)] += 1
             else:
                 field_counter[str(v)] += 1
 
-    # 组装 14 天序列
     dates = [(now - timedelta(days=i)).date() for i in range(13, -1, -1)]
     daily_arr = [{"date": d.isoformat(), "count": int(daily.get(d.isoformat(), 0))} for d in dates]
-
     status_arr = [{"name": k, "count": int(v)} for k, v in status_counter.items()]
-    field_items = [{"name": k, "count": int(v)} for k, v in field_counter.items()]
+    field_data = [{"value": k, "count": int(v)} for k, v in field_counter.items()]  # ✅ 关键改名
 
     return jsonify({
         "ok": True,
         "daily": daily_arr,
         "status": status_arr,
-        "field": {"label": field_label or "字段", "items": field_items}
+        "field": {"label": (field_label or "字段"), "data": field_data}  # ✅ data/value
     })
 
 
