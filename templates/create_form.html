@@ -1113,14 +1113,14 @@
         }
     </style>
 
-    <!-- ★★★ 只在“数据”Tab激活时才允许请求 /admin/api/responses ★★★ -->
 <script id="responses-guard">
 (function () {
-  // 当前是否正处在“数据”页
+  // ✅ 新增：读当前站点名（新建页为空）
+  const siteName = (document.body && document.body.dataset && document.body.dataset.site) || "";
+
   const inResponsesTab = () =>
     !!document.getElementById('tab-responses')?.classList.contains('active');
 
-  // 识别 /admin/api/responses 接口
   const isResponsesApi = (input) => {
     try {
       const url = typeof input === 'string' ? input : (input && input.url) || '';
@@ -1128,23 +1128,23 @@
     } catch { return false; }
   };
 
-  // 拦截 fetch
   const _fetch = window.fetch;
   window.fetch = function(input, init) {
-    if (isResponsesApi(input) && !inResponsesTab()) {
+    // ✅ 改动点：只要没在“数据”页，或者 siteName 为空，就拦截
+    if (isResponsesApi(input) && (!inResponsesTab() || !siteName)) {
       try { console.debug('[responses-guard] blocked', typeof input==='string'?input:input.url); } catch {}
       return Promise.resolve(new Response(
-        JSON.stringify({ ok: true, items: [] }),
+        JSON.stringify({ ok: true, items: [], total: 0 }),
         { status: 200, headers: { 'Content-Type': 'application/json' } }
       ));
     }
     return _fetch.apply(this, arguments);
   };
 
-  // 拦截 XHR（兜底）
+  // XHR / beacon / SSE 的那几处判断，同样把条件替换成 (!inResponsesTab() || !siteName)
   const _open = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-    this.__rg_block = /\/admin\/api\/responses(?:\?|$)/.test(String(url)) && !inResponsesTab();
+    this.__rg_block = /\/admin\/api\/responses(?:\?|$)/.test(String(url)) && (!inResponsesTab() || !siteName);
     return _open.call(this, method, url, ...rest);
   };
   const _send = XMLHttpRequest.prototype.send;
@@ -1153,11 +1153,10 @@
     return _send.call(this, body);
   };
 
-  // 防 sendBeacon（几乎用不到，但顺手挡上）
   if (navigator.sendBeacon) {
     const _beacon = navigator.sendBeacon.bind(navigator);
     navigator.sendBeacon = function(url, data) {
-      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && !inResponsesTab()) {
+      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && (!inResponsesTab() || !siteName)) {
         try { console.debug('[responses-guard] beacon blocked', url); } catch {}
         return true;
       }
@@ -1165,15 +1164,13 @@
     };
   }
 
-  // 防 EventSource（万一有人用 SSE）
   if (window.EventSource) {
     const _ES = window.EventSource;
     window.EventSource = function(url, conf) {
-      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && !inResponsesTab()) {
+      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && (!inResponsesTab() || !siteName)) {
         try { console.debug('[responses-guard] EventSource blocked', url); } catch {}
         const dummy = new EventTarget();
-        dummy.readyState = 2; // CLOSED
-        dummy.close = function(){};
+        dummy.readyState = 2; dummy.close = function(){};
         return dummy;
       }
       return new _ES(url, conf);
@@ -1182,6 +1179,7 @@
   }
 })();
 </script>
+
 </head>
 
 <body data-appearance="light" data-site="{{ site_name or '' }}" data-tpl="{{ tpl or '' }}">

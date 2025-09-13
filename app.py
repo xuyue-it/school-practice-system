@@ -27,7 +27,7 @@ from time import time
 from psycopg2.pool import SimpleConnectionPool
 import os, psycopg2
 from flask import render_template, request, abort
-
+from flask import jsonify, request
 # ========== Flask 应用 ==========
 app = Flask(__name__)
 app.secret_key = "dev-secret"  # 或者从环境变量读
@@ -188,7 +188,26 @@ def init_form_defs():
     c.execute("ALTER TABLE form_defs ADD COLUMN IF NOT EXISTS created_by  INT")
     c.execute("ALTER TABLE form_defs ADD COLUMN IF NOT EXISTS db_url      TEXT")
     conn.commit(); conn.close()
+
+def ensure_indexes():
+        try:
+            conn = get_conn()
+            cur = conn.cursor()
+            # form_defs.site_name 已有 UNIQUE 自带索引，这里不重复创建
+            cur.execute("CREATE INDEX IF NOT EXISTS idx_form_defs_created_at ON form_defs(created_at);")
+            conn.commit()
+        except Exception as e:
+            print("[warn] ensure_indexes:", e)
+        finally:
+            try:
+                conn.close()
+            except:
+                pass
+
+
 init_form_defs()
+ensure_indexes()
+
 
 # ========== 权限 ==========
 def admin_required(view_func):
@@ -1115,23 +1134,42 @@ def _api_list_responses(site_name: str):
 
 
 
-@app.route("/site/<site_name>/admin/api/responses")
+@app.get("/site/<site_name>/admin/api/responses")
 def api_responses(site_name):
-    conn = get_site_db(site_name)
-    c = conn.cursor()
+    conn = get_conn()  # 你原来的获取连接方式
+    cur = conn.cursor()
 
-    limit = int(request.args.get("limit", 20))   # 默认一次取 50 条
-    offset = int(request.args.get("offset", 0))
+    # 基本分页参数
+    try:
+        limit = max(1, min(int(request.args.get("limit", 50)), 200))
+    except: limit = 50
+    try:
+        offset = max(0, int(request.args.get("offset", 0)))
+    except: offset = 0
 
-    c.execute("""
-        SELECT * FROM submissions
-        WHERE site_name = ?
-        ORDER BY id DESC
-        LIMIT ? OFFSET ?
-    """, (site_name, limit, offset))
+    # 可选搜索
+    q = request.args.get("q") or ""
+    if q:
+        cur.execute("""
+            SELECT id, data_json, created_at
+            FROM submissions
+            WHERE site_name = %s AND CAST(data_json AS TEXT) ILIKE %s
+            ORDER BY id DESC
+            LIMIT %s OFFSET %s
+        """, (site_name, f"%{q}%", limit, offset))
+    else:
+        cur.execute("""
+            SELECT id, data_json, created_at
+            FROM submissions
+            WHERE site_name = %s
+            ORDER BY id DESC
+            LIMIT %s OFFSET %s
+        """, (site_name, limit, offset))
 
-    rows = [dict(r) for r in c.fetchall()]
-    return jsonify(rows)
+    rows = cur.fetchall()
+    items = [{"id": r[0], "data": r[1], "created_at": r[2].isoformat() if hasattr(r[2],'isoformat') else r[2]} for r in rows]
+    return jsonify({"ok": True, "items": items, "next_offset": offset + len(items)})
+
 
 @app.route("/site/<site_name>/admin/api/list")
 @admin_required
@@ -1519,6 +1557,12 @@ def public_submit(site_name):
         home_url=url_for("index"),
         public_url=url_for("public_form", site_name=site_name)
     )
+
+@app.before_request
+def _guard_empty_site_admin_api():
+    p = request.path or ""
+    if "/site//admin/api/responses" in p:
+        return jsonify({"ok": True, "items": [], "total": 0}), 200
 
 # ========= 站点内上传文件访问（确保只定义一次，避免重复端点冲突）=========
 @app.route("/site/<site_name>/uploads/<path:filename>")
