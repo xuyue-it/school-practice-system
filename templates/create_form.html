@@ -8,7 +8,7 @@
 /* ==== responses nuclear guard: block ALL network paths when not in "数据" tab ==== */
 (function () {
   const PATH = /\/admin\/api\/responses(?:\?|$)/i;
-  const inResponsesTab = () => true;
+  const inResponsesTab = () =>
     !!document.getElementById('tab-responses')?.classList.contains('active');
 
   const urlOf = (input) => {
@@ -1109,7 +1109,7 @@
 <script id="responses-guard">
 (function () {
   // 当前是否正处在“数据”页
-  const inResponsesTab = () => true;
+  const inResponsesTab = () =>
     !!document.getElementById('tab-responses')?.classList.contains('active');
 
   // 识别 /admin/api/responses 接口
@@ -1900,7 +1900,7 @@
             return fields.length && fields.every(f => f.label === f.key || /^q[a-z0-9]{5,}$/i.test(f.label || ''));
         }
 
-        async function loadResponses() {
+        async function load() {
             const url = `/site/${encodeURIComponent(SITE)}/admin/api/responses?q=${encodeURIComponent(qInput?.value || "")}`;
             const data = await jget(url);
 
@@ -2718,14 +2718,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     })();
-</script>
-<script>window.loadResponses = window.loadResponses || (typeof loadResponses==="function" ? loadResponses : null);</script>
-<script>
-window.addEventListener('load', ()=>{ try{
-    if (typeof loadResponses==='function') loadResponses();
-    function hasCJK(s){ return /[\u4E00-\u9FFF]/.test(String(s||'')); }
-    FIELDS = FIELDS.filter(f => hasCJK(f.label));
-}catch(e){} });
 </script>
 
 </body>
