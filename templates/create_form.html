@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh">
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
-    <title>创建新表单</title>
+    <title>åˆ›å»ºæ–°è¡¨å•</title>
     <script>
-/* ==== responses nuclear guard: block ALL network paths when not in "数据" tab ==== */
+/* ==== responses nuclear guard: block ALL network paths when not in "æ•°æ®" tab ==== */
 (function () {
   const PATH = /\/admin\/api\/responses(?:\?|$)/i;
   const inResponsesTab = () =>
@@ -82,7 +82,7 @@
     });
   }
 
-  // 元素 src/href（img/script/link/iframe/audio/video/source/embed/object）
+  // å…ƒç´  src/hrefï¼ˆimg/script/link/iframe/audio/video/source/embed/objectï¼‰
   function guardURLSetter(Ctor, prop) {
     const desc = Object.getOwnPropertyDescriptor(Ctor.prototype, prop);
     if (!desc || !desc.set) return;
@@ -105,7 +105,7 @@
   [HTMLImageElement, HTMLScriptElement, HTMLIFrameElement, HTMLAudioElement, HTMLVideoElement,
    HTMLEmbedElement, HTMLObjectElement, HTMLSourceElement].forEach(C => guardURLSetter(C, 'src'));
 
-  // link.href 也挡一下
+  // link.href ä¹ŸæŒ¡ä¸€ä¸‹
   if (window.HTMLLinkElement) {
     const d = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href');
     if (d && d.set) {
@@ -116,7 +116,7 @@
     }
   }
 
-  // Workers（防在 worker 里绕过拦截）
+  // Workersï¼ˆé˜²åœ¨ worker é‡Œç»•è¿‡æ‹¦æˆªï¼‰
   ['Worker', 'SharedWorker'].forEach(k => {
     const C = window[k];
     if (!C) return;
@@ -134,7 +134,7 @@
 })();
 </script>
 
-    <!-- 早期开关：首帧决定是否启用 perf-mode -->
+    <!-- æ—©æœŸå¼€å…³ï¼šé¦–å¸§å†³å®šæ˜¯å¦å¯ç”¨ perf-mode -->
     <script>
         (function () {
             try {
@@ -156,7 +156,7 @@
             -webkit-backdrop-filter: none !important;
         }
 
-        /* 同时关掉元素本身以及它的 ::before 的 filter（如 .bg-glow::before） */
+        /* åŒæ—¶å…³æŽ‰å…ƒç´ æœ¬èº«ä»¥åŠå®ƒçš„ ::before çš„ filterï¼ˆå¦‚ .bg-glow::beforeï¼‰ */
         :root.perf-mode [data-blur],
         :root.perf-mode [data-blur]::before {
             filter: none !important;
@@ -184,13 +184,13 @@
     </style>
     <style>
         /* =====================
-           主题与玻璃风格 Token
+           ä¸»é¢˜ä¸ŽçŽ»ç’ƒé£Žæ ¼ Token
            ===================== */
         :root {
-            /* 管理员在设置里选的颜色会被脚本写进这两个变量 */
+            /* ç®¡ç†å‘˜åœ¨è®¾ç½®é‡Œé€‰çš„é¢œè‰²ä¼šè¢«è„šæœ¬å†™è¿›è¿™ä¸¤ä¸ªå˜é‡ */
             --brand-light: #2563eb;
             --brand-dark: #0ea5e9;
-            /* 页面实际使用的主色（由外观模式决定） */
+            /* é¡µé¢å®žé™…ä½¿ç”¨çš„ä¸»è‰²ï¼ˆç”±å¤–è§‚æ¨¡å¼å†³å®šï¼‰ */
             --brand: var(--brand-light);
 
             --text: #e6eef8;
@@ -232,13 +232,13 @@
             margin: 0;
             font-family: "Inter", "SF Pro Display", "Microsoft YaHei", ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica, Arial;
             color: var(--text);
-            /* 原暗色背景（会被下面的覆盖段在暗色模式下覆盖） */
+            /* åŽŸæš—è‰²èƒŒæ™¯ï¼ˆä¼šè¢«ä¸‹é¢çš„è¦†ç›–æ®µåœ¨æš—è‰²æ¨¡å¼ä¸‹è¦†ç›–ï¼‰ */
             background: radial-gradient(1200px 800px at 18% -12%, color-mix(in hsl, var(--brand) 28%, #fff) 0%, transparent 60%),
             radial-gradient(900px 600px at 105% -8%, color-mix(in hsl, var(--brand) 18%, #000) 0%, transparent 58%),
             linear-gradient(180deg, var(--bg-1), var(--bg-2));
         }
 
-        /* 顶栏（功能不变） */
+        /* é¡¶æ ï¼ˆåŠŸèƒ½ä¸å˜ï¼‰ */
         header {
             position: sticky;
             top: 0;
@@ -300,7 +300,7 @@
             justify-content: center
         }
 
-        /* 亮色主按钮（替换整段） */
+        /* äº®è‰²ä¸»æŒ‰é’®ï¼ˆæ›¿æ¢æ•´æ®µï¼‰ */
         body[data-appearance="light"] .btn.primary {
             background: linear-gradient(180deg,
             color-mix(in hsl, var(--brand) 85%, #000),
@@ -310,7 +310,7 @@
             box-shadow: 0 14px 26px color-mix(in hsl, var(--brand) 22%, transparent);
         }
 
-        /* 暗色主按钮（替换整段） */
+        /* æš—è‰²ä¸»æŒ‰é’®ï¼ˆæ›¿æ¢æ•´æ®µï¼‰ */
         body[data-appearance="dark"] .btn.primary {
             background: linear-gradient(180deg,
             color-mix(in hsl, var(--brand) 75%, #000),
@@ -344,7 +344,7 @@
             display: none
         }
 
-        /* 三列布局（左轨 / 中心 / 右侧快捷栏） */
+        /* ä¸‰åˆ—å¸ƒå±€ï¼ˆå·¦è½¨ / ä¸­å¿ƒ / å³ä¾§å¿«æ·æ ï¼‰ */
         main {
             max-width: 1280px;
             margin: 24px auto 40px;
@@ -359,7 +359,7 @@
             min-width: 0
         }
 
-        /* 左侧弧形图标轨 */
+        /* å·¦ä¾§å¼§å½¢å›¾æ ‡è½¨ */
         .nav-rail {
             position: sticky;
             top: 92px;
@@ -410,7 +410,7 @@
             justify-content: center;
             position: relative;
             transition: .18s;
-            /* ★ 新增：让文字在图标下方 */
+            /* â˜… æ–°å¢žï¼šè®©æ–‡å­—åœ¨å›¾æ ‡ä¸‹æ–¹ */
             flex-direction: column;
             gap: 6px;
         }
@@ -431,7 +431,7 @@
             transform: translateY(-1px);
         }
 
-        /* ★ 改为显示标签文字（原来是 display:none） */
+        /* â˜… æ”¹ä¸ºæ˜¾ç¤ºæ ‡ç­¾æ–‡å­—ï¼ˆåŽŸæ¥æ˜¯ display:noneï¼‰ */
         .tabs.vertical button .lbl {
             display: block;
             font-size: 12px;
@@ -442,7 +442,7 @@
             user-select: none;
         }
 
-        /* 问候区 + 芯片行（保留） */
+        /* é—®å€™åŒº + èŠ¯ç‰‡è¡Œï¼ˆä¿ç•™ï¼‰ */
         .greet-card {
             background: var(--glass);
             backdrop-filter: blur(18px) saturate(160%);
@@ -500,14 +500,14 @@
             background: var(--glass-solid)
         }
 
-        /* 网格（默认双列，用于其它页） */
+        /* ç½‘æ ¼ï¼ˆé»˜è®¤åŒåˆ—ï¼Œç”¨äºŽå…¶å®ƒé¡µï¼‰ */
         .dash-grid {
             display: grid;
             grid-template-columns:repeat(2, minmax(0, 1fr));
             gap: 14px
         }
 
-        /* 卡片（玻璃） */
+        /* å¡ç‰‡ï¼ˆçŽ»ç’ƒï¼‰ */
         .card {
             background: var(--glass);
             backdrop-filter: blur(18px) saturate(180%);
@@ -535,7 +535,7 @@
             padding: 16px 18px
         }
 
-        /* 输入（柔和白玻璃） */
+        /* è¾“å…¥ï¼ˆæŸ”å’Œç™½çŽ»ç’ƒï¼‰ */
         .tiny, .select, textarea {
             width: 100%;
             background: #ffffffe0;
@@ -553,7 +553,7 @@
             box-shadow: 0 0 0 8px color-mix(in hsl, var(--brand) 18%, transparent)
         }
 
-        /* 问题卡片（外观） */
+        /* é—®é¢˜å¡ç‰‡ï¼ˆå¤–è§‚ï¼‰ */
         .qcard {
             border-left: 6px solid var(--brand);
             background: #ffffffee;
@@ -582,7 +582,7 @@
         }
 
         .q-title[contenteditable="true"]:empty:before {
-            content: "问题标题";
+            content: "é—®é¢˜æ ‡é¢˜";
             color: #8ea3c2
         }
 
@@ -667,7 +667,7 @@
             cursor: pointer
         }
 
-        /* 表格 */
+        /* è¡¨æ ¼ */
         .table-wrap {
             width: 100%;
             overflow: auto;
@@ -719,7 +719,7 @@
             color: #111827
         }
 
-        /* 右侧快捷栏 */
+        /* å³ä¾§å¿«æ·æ  */
         .rail {
             position: sticky;
             top: 92px;
@@ -735,7 +735,7 @@
             box-shadow: var(--shadow-soft)
         }
 
-        /* 模态与 Toast（保持逻辑） */
+        /* æ¨¡æ€ä¸Ž Toastï¼ˆä¿æŒé€»è¾‘ï¼‰ */
         .modal {
             position: fixed;
             inset: 0;
@@ -770,14 +770,14 @@
             align-items: center
         }
 
-        /* 放到你的全局样式里，或用 <style id="toast-style"> 注入 */
+        /* æ”¾åˆ°ä½ çš„å…¨å±€æ ·å¼é‡Œï¼Œæˆ–ç”¨ <style id="toast-style"> æ³¨å…¥ */
         #toast {
             position: fixed;
             top: 14px;
             left: 50%;
             transform: translateX(-50%) translateY(-6px);
-            z-index: 100000; /* ⬅ 比 #linkModal(9999) 高 */
-            pointer-events: none; /* 不影响页面点击 */
+            z-index: 100000; /* â¬… æ¯” #linkModal(9999) é«˜ */
+            pointer-events: none; /* ä¸å½±å“é¡µé¢ç‚¹å‡» */
             background: rgba(17, 24, 39, .92);
             color: #fff;
             padding: 10px 14px;
@@ -793,7 +793,7 @@
             transform: translateX(-50%) translateY(0);
         }
 
-        /* 设置面板（容器） */
+        /* è®¾ç½®é¢æ¿ï¼ˆå®¹å™¨ï¼‰ */
         .grid {
             display: grid;
             gap: 12px
@@ -868,7 +868,7 @@
             color: #6b7f99
         }
 
-        /* Tab 显隐（只显示当前） */
+        /* Tab æ˜¾éšï¼ˆåªæ˜¾ç¤ºå½“å‰ï¼‰ */
         .tab {
             display: none
         }
@@ -877,7 +877,7 @@
             display: block
         }
 
-        /* 响应式：小屏回落单列 */
+        /* å“åº”å¼ï¼šå°å±å›žè½å•åˆ— */
         @media (max-width: 1024px) {
             main {
                 grid-template-columns:1fr
@@ -894,21 +894,21 @@
         }
     </style>
 
-    <!-- 只覆盖“问题”页为单列通栏的最小改动 -->
+    <!-- åªè¦†ç›–â€œé—®é¢˜â€é¡µä¸ºå•åˆ—é€šæ çš„æœ€å°æ”¹åŠ¨ -->
     <style id="layout-override">
         #tab-questions .dash-grid {
-            grid-template-columns: 1fr !important; /* 单列 */
+            grid-template-columns: 1fr !important; /* å•åˆ— */
             gap: 14px;
         }
 
         #tab-questions .dash-grid > .card {
-            grid-column: 1 / -1 !important; /* 通栏 */
+            grid-column: 1 / -1 !important; /* é€šæ  */
             width: 100% !important;
             max-width: none !important;
         }
     </style>
 
-    <!-- ★ 亮色外观的浅暖背景 -->
+    <!-- â˜… äº®è‰²å¤–è§‚çš„æµ…æš–èƒŒæ™¯ -->
     <style id="page-bg-override">
         html, body {
             height: 100%;
@@ -954,7 +954,7 @@
         }
     </style>
 
-    <!-- ★★★ 暗色背景：黑色 → 暗橙 渐变 ★★★ -->
+    <!-- â˜…â˜…â˜… æš—è‰²èƒŒæ™¯ï¼šé»‘è‰² â†’ æš—æ©™ æ¸å˜ â˜…â˜…â˜… -->
     <style id="dark-bg-override">
         body[data-appearance="dark"] {
             --bg-1: #0b0b0c;
@@ -964,7 +964,7 @@
             background-repeat: no-repeat !important;
         }
     </style>
-    <!-- ★★★ 结束 ★★★ -->
+    <!-- â˜…â˜…â˜… ç»“æŸ â˜…â˜…â˜… -->
 
     <style id="theme-button-text-fix">
         body[data-appearance="light"] .btn,
@@ -1105,14 +1105,14 @@
         }
     </style>
 
-    <!-- ★★★ 只在“数据”Tab激活时才允许请求 /admin/api/responses ★★★ -->
+    <!-- â˜…â˜…â˜… åªåœ¨â€œæ•°æ®â€Tabæ¿€æ´»æ—¶æ‰å…è®¸è¯·æ±‚ /admin/api/responses â˜…â˜…â˜… -->
 <script id="responses-guard">
 (function () {
-  // 当前是否正处在“数据”页
+  // å½“å‰æ˜¯å¦æ­£å¤„åœ¨â€œæ•°æ®â€é¡µ
   const inResponsesTab = () =>
     !!document.getElementById('tab-responses')?.classList.contains('active');
 
-  // 识别 /admin/api/responses 接口
+  // è¯†åˆ« /admin/api/responses æŽ¥å£
   const isResponsesApi = (input) => {
     try {
       const url = typeof input === 'string' ? input : (input && input.url) || '';
@@ -1120,7 +1120,7 @@
     } catch { return false; }
   };
 
-  // 拦截 fetch
+  // æ‹¦æˆª fetch
   const _fetch = window.fetch;
   window.fetch = function(input, init) {
     if (isResponsesApi(input) && !inResponsesTab()) {
@@ -1133,7 +1133,7 @@
     return _fetch.apply(this, arguments);
   };
 
-  // 拦截 XHR（兜底）
+  // æ‹¦æˆª XHRï¼ˆå…œåº•ï¼‰
   const _open = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
     this.__rg_block = /\/admin\/api\/responses(?:\?|$)/.test(String(url)) && !inResponsesTab();
@@ -1145,7 +1145,7 @@
     return _send.call(this, body);
   };
 
-  // 防 sendBeacon（几乎用不到，但顺手挡上）
+  // é˜² sendBeaconï¼ˆå‡ ä¹Žç”¨ä¸åˆ°ï¼Œä½†é¡ºæ‰‹æŒ¡ä¸Šï¼‰
   if (navigator.sendBeacon) {
     const _beacon = navigator.sendBeacon.bind(navigator);
     navigator.sendBeacon = function(url, data) {
@@ -1157,7 +1157,7 @@
     };
   }
 
-  // 防 EventSource（万一有人用 SSE）
+  // é˜² EventSourceï¼ˆä¸‡ä¸€æœ‰äººç”¨ SSEï¼‰
   if (window.EventSource) {
     const _ES = window.EventSource;
     window.EventSource = function(url, conf) {
@@ -1181,98 +1181,98 @@
 <header>
     <div class="bar">
         <div class="brandDot" aria-hidden="true"></div>
-        <div class="title">📝 创建新表单</div>
+        <div class="title">ðŸ“ åˆ›å»ºæ–°è¡¨å•</div>
         <div class="grow"></div>
-        <button class="btn icon" id="btnPreview" type="button" title="预览">👁️</button>
-        <button type="button" class="btn gray" id="clearDraftBtn">🧹 清空草稿</button>
+        <button class="btn icon" id="btnPreview" type="button" title="é¢„è§ˆ">ðŸ‘ï¸</button>
+        <button type="button" class="btn gray" id="clearDraftBtn">ðŸ§¹ æ¸…ç©ºè‰ç¨¿</button>
         <script>
             document.getElementById('clearDraftBtn')?.addEventListener('click', () => {
                 const k = localStorage.getItem('builder:currentKey');
-                if (k) localStorage.removeItem(k);          // 删实际草稿内容
-                localStorage.removeItem('builder:currentKey'); // 再把指针键也删掉
-                alert('已清空本地草稿');
+                if (k) localStorage.removeItem(k);          // åˆ å®žé™…è‰ç¨¿å†…å®¹
+                localStorage.removeItem('builder:currentKey'); // å†æŠŠæŒ‡é’ˆé”®ä¹Ÿåˆ æŽ‰
+                alert('å·²æ¸…ç©ºæœ¬åœ°è‰ç¨¿');
                 location.reload();
             });
         </script>
-        <button class="btn icon" id="btnRedo" type="button" title="重做">↷</button>
-        <button class="btn" id="btnTheme" type="button" title="切换亮/暗">🌗</button>
-        <a href="{{ url_for('create_form') }}?new=1" class="btn">🆕 新建表单</a>
-        <a href="/" class="btn">🏠 首页</a>
-        <a href="/logout" class="btn danger">退出</a>
+        <button class="btn icon" id="btnRedo" type="button" title="é‡åš">â†·</button>
+        <button class="btn" id="btnTheme" type="button" title="åˆ‡æ¢äº®/æš—">ðŸŒ—</button>
+        <a href="{{ url_for('create_form') }}?new=1" class="btn">ðŸ†• æ–°å»ºè¡¨å•</a>
+        <a href="/" class="btn">ðŸ  é¦–é¡µ</a>
+        <a href="/logout" class="btn danger">é€€å‡º</a>
     </div>
 </header>
 
 <main>
-    <!-- 左：图标轨 -->
+    <!-- å·¦ï¼šå›¾æ ‡è½¨ -->
     <aside class="nav-rail">
-        <nav class="tabs vertical" aria-label="主导航">
-            <button class="active" data-tab="questions" title="表单（编辑问题）">📝<span class="lbl">表单</span></button>
-            <button data-tab="responses" title="数据（查看回复）">📋<span class="lbl">数据</span></button>
-            <button data-tab="settings" title="设置（表单配置）">⚙️<span class="lbl">设置</span></button>
-            <button data-tab="charts" title="图表（可视化）">📈<span class="lbl">图表</span></button>
+        <nav class="tabs vertical" aria-label="ä¸»å¯¼èˆª">
+            <button class="active" data-tab="questions" title="è¡¨å•ï¼ˆç¼–è¾‘é—®é¢˜ï¼‰">ðŸ“<span class="lbl">è¡¨å•</span></button>
+            <button data-tab="responses" title="æ•°æ®ï¼ˆæŸ¥çœ‹å›žå¤ï¼‰">ðŸ“‹<span class="lbl">æ•°æ®</span></button>
+            <button data-tab="settings" title="è®¾ç½®ï¼ˆè¡¨å•é…ç½®ï¼‰">âš™ï¸<span class="lbl">è®¾ç½®</span></button>
+            <button data-tab="charts" title="å›¾è¡¨ï¼ˆå¯è§†åŒ–ï¼‰">ðŸ“ˆ<span class="lbl">å›¾è¡¨</span></button>
         </nav>
     </aside>
 
-    <!-- 中：内容区 -->
+    <!-- ä¸­ï¼šå†…å®¹åŒº -->
     <div class="canvas">
         <section class="greet-card">
-            <h1 class="greet-title">欢迎来到设计表单平台<br>设计属于您的表单</h1>
+            <h1 class="greet-title">æ¬¢è¿Žæ¥åˆ°è®¾è®¡è¡¨å•å¹³å°<br>è®¾è®¡å±žäºŽæ‚¨çš„è¡¨å•</h1>
             <div class="chips" aria-hidden="true">
-                <span class="chip">快速设计</span>
-                <span class="chip">高效收集</span>
-                <span class="chip">简单上手</span>
+                <span class="chip">å¿«é€Ÿè®¾è®¡</span>
+                <span class="chip">é«˜æ•ˆæ”¶é›†</span>
+                <span class="chip">ç®€å•ä¸Šæ‰‹</span>
             </div>
         </section>
 
-        <!-- 表单 -->
+        <!-- è¡¨å• -->
         <form method="post"
               action="{{ url_for('create_form') }}{% if site_name %}?site={{ site_name }}{% endif %}"
               id="builder">
-            <!-- Tab 1：问题 -->
+            <!-- Tab 1ï¼šé—®é¢˜ -->
             <div class="tab active" id="tab-questions">
                 <div class="dash-grid">
                     <div class="card">
-                        <div class="hd"><h2>表单基本信息</h2></div>
+                        <div class="hd"><h2>è¡¨å•åŸºæœ¬ä¿¡æ¯</h2></div>
                         <div class="bd">
                             <div class="row2">
-                                <input name="form_name" placeholder="表单名称 *" required value="{{ form_name or '' }}"
+                                <input name="form_name" placeholder="è¡¨å•åç§° *" required value="{{ form_name or '' }}"
                                        class="tiny">
-                                <input name="site_name" placeholder="网站名 *" required value="{{ site_name or '' }}"
+                                <input name="site_name" placeholder="ç½‘ç«™å *" required value="{{ site_name or '' }}"
                                        class="tiny">
                             </div>
-                            <textarea name="form_desc" rows="3" placeholder="表单描述（可选）" class="tiny"
+                            <textarea name="form_desc" rows="3" placeholder="è¡¨å•æè¿°ï¼ˆå¯é€‰ï¼‰" class="tiny"
                                       style="margin-top:10px;">{{ form_desc or '' }}</textarea>
                         </div>
                     </div>
 
                     <div class="card">
-                        <div class="hd"><h2>问题设置</h2></div>
+                        <div class="hd"><h2>é—®é¢˜è®¾ç½®</h2></div>
                         <div class="bd">
                             <div id="list"></div>
                             <div style="text-align:center;margin-top:12px;">
-                                <button type="button" class="btn primary" id="addBtn">➕ 添加问题</button>
+                                <button type="button" class="btn primary" id="addBtn">âž• æ·»åŠ é—®é¢˜</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tab 2：数据 -->
+            <!-- Tab 2ï¼šæ•°æ® -->
             <div class="tab" id="tab-responses">
                 <div class="dash-grid">
                     <div class="card" style="grid-column:1/-1">
-                        <div class="hd"><h2>回复数据</h2></div>
+                        <div class="hd"><h2>å›žå¤æ•°æ®</h2></div>
                         <div class="bd">
                             <div class="row" style="flex-wrap:wrap;gap:10px;margin-bottom:10px;color:#0e1726">
                                 <input id="q" class="tiny" style="min-width:260px;flex:1" type="text"
-                                       placeholder="搜索姓名、活动名、邮箱、电话…"/>
-                                <button type="button" id="btnSearch" class="btn">🔍 搜索</button>
-                                <button type="button" id="btnRefresh" class="btn gray">刷新</button>
+                                       placeholder="æœç´¢å§“åã€æ´»åŠ¨åã€é‚®ç®±ã€ç”µè¯â€¦"/>
+                                <button type="button" id="btnSearch" class="btn">ðŸ” æœç´¢</button>
+                                <button type="button" id="btnRefresh" class="btn gray">åˆ·æ–°</button>
                                 <label class="switch">
-                                    <input id="autoTick" type="checkbox"><span>自动刷新（30秒）</span>
+                                    <input id="autoTick" type="checkbox"><span>è‡ªåŠ¨åˆ·æ–°ï¼ˆ30ç§’ï¼‰</span>
                                 </label>
-                                <button type="button" id="btnExportAll" class="btn">📊 导出 Excel</button>
-                                <button type="button" id="btnGallery" class="btn">🖼️ 全量图片</button>
+                                <button type="button" id="btnExportAll" class="btn">ðŸ“Š å¯¼å‡º Excel</button>
+                                <button type="button" id="btnGallery" class="btn">ðŸ–¼ï¸ å…¨é‡å›¾ç‰‡</button>
                             </div>
 
                             <div class="table-wrap">
@@ -1286,82 +1286,82 @@
                 </div>
             </div>
 
-            <!-- Tab 3：设置 -->
+            <!-- Tab 3ï¼šè®¾ç½® -->
             <div class="tab" id="tab-settings">
                 <div class="dash-grid">
                     <div class="card" style="grid-column:1/-1">
-                        <div class="hd"><h2>外观与主题</h2></div>
+                        <div class="hd"><h2>å¤–è§‚ä¸Žä¸»é¢˜</h2></div>
                         <div class="bd">
                             <div class="grid cols-2">
                                 <div class="gcard">
-                                    <h3>主题色</h3>
+                                    <h3>ä¸»é¢˜è‰²</h3>
                                     <div class="row" style="gap:10px;align-items:center">
                                         <input id="colorPicker" type="color" value="#FF6A2A" data-skey="theme.brand"
                                                style="width:48px;height:48px;border:0;border-radius:12px;cursor:pointer">
                                         <input class="tiny" placeholder="#2563eb" data-skey="theme.brand"
                                                style="max-width:180px">
                                     </div>
-                                    <div class="hint">实时写入 <code>schema.theme.brand</code></div>
+                                    <div class="hint">å®žæ—¶å†™å…¥ <code>schema.theme.brand</code></div>
                                 </div>
 
                                 <div class="gcard">
-                                    <h3>外观模式</h3>
+                                    <h3>å¤–è§‚æ¨¡å¼</h3>
                                     <select class="tiny" data-skey="theme.appearance">
-                                        <option value="auto">跟随系统</option>
-                                        <option value="light">亮色</option>
-                                        <option value="dark">暗色</option>
+                                        <option value="auto">è·Ÿéšç³»ç»Ÿ</option>
+                                        <option value="light">äº®è‰²</option>
+                                        <option value="dark">æš—è‰²</option>
                                     </select>
                                 </div>
 
                                 <div class="gcard">
-                                    <h3>发布设置</h3>
-                                    <label class="switch"><input type="checkbox" data-skey="publish.is_published"><span>公开发布</span></label>
+                                    <h3>å‘å¸ƒè®¾ç½®</h3>
+                                    <label class="switch"><input type="checkbox" data-skey="publish.is_published"><span>å…¬å¼€å‘å¸ƒ</span></label>
                                     <div class="row2" style="margin-top:8px">
-                                        <input class="tiny" placeholder="开始时间（可选）" data-skey="publish.start_at">
-                                        <input class="tiny" placeholder="结束时间（可选）" data-skey="publish.end_at">
+                                        <input class="tiny" placeholder="å¼€å§‹æ—¶é—´ï¼ˆå¯é€‰ï¼‰" data-skey="publish.start_at">
+                                        <input class="tiny" placeholder="ç»“æŸæ—¶é—´ï¼ˆå¯é€‰ï¼‰" data-skey="publish.end_at">
                                     </div>
                                 </div>
 
                                 <div class="gcard">
-                                    <h3>提交限制</h3>
+                                    <h3>æäº¤é™åˆ¶</h3>
                                     <div class="row2">
-                                        <input class="tiny" type="number" min="0" placeholder="每人限次"
+                                        <input class="tiny" type="number" min="0" placeholder="æ¯äººé™æ¬¡"
                                                data-skey="submission.per_user_limit">
-                                        <input class="tiny" type="number" min="0" placeholder="每IP每日限次"
+                                        <input class="tiny" type="number" min="0" placeholder="æ¯IPæ¯æ—¥é™æ¬¡"
                                                data-skey="submission.per_ip_daily_limit">
                                     </div>
                                     <div class="row2" style="margin-top:8px">
-                                        <input class="tiny" type="number" min="0" placeholder="总量上限"
+                                        <input class="tiny" type="number" min="0" placeholder="æ€»é‡ä¸Šé™"
                                                data-skey="submission.max_total">
-                                        <input class="tiny" placeholder="去重关键字（逗号分隔）"
+                                        <input class="tiny" placeholder="åŽ»é‡å…³é”®å­—ï¼ˆé€—å·åˆ†éš”ï¼‰"
                                                data-skey="submission.duplicate_keys">
                                     </div>
                                     <label class="switch" style="margin-top:8px"><input type="checkbox"
-                                                                                        data-skey="submission.require_review"><span>开启审核流程</span></label>
+                                                                                        data-skey="submission.require_review"><span>å¼€å¯å®¡æ ¸æµç¨‹</span></label>
                                 </div>
 
                                 <div class="gcard">
-                                    <h3>上传设置</h3>
+                                    <h3>ä¸Šä¼ è®¾ç½®</h3>
                                     <div class="row2">
-                                        <input class="tiny" placeholder="允许类型（如：jpg,png,pdf）"
+                                        <input class="tiny" placeholder="å…è®¸ç±»åž‹ï¼ˆå¦‚ï¼šjpg,png,pdfï¼‰"
                                                data-skey="upload.allowed_file_types">
                                         <input class="tiny" type="number" min="1" max="10"
-                                               placeholder="最大文件数（默认3）"
+                                               placeholder="æœ€å¤§æ–‡ä»¶æ•°ï¼ˆé»˜è®¤3ï¼‰"
                                                data-skey="upload.max_files">
                                     </div>
                                     <div class="row2" style="margin-top:8px">
-                                        <input class="tiny" type="number" min="100" placeholder="图片最大宽（px）"
+                                        <input class="tiny" type="number" min="100" placeholder="å›¾ç‰‡æœ€å¤§å®½ï¼ˆpxï¼‰"
                                                data-skey="upload.image_max_w">
                                         <input class="tiny" type="number" step="0.05" min="0.1" max="1"
-                                               placeholder="图片质量（0~1）" data-skey="upload.image_quality">
+                                               placeholder="å›¾ç‰‡è´¨é‡ï¼ˆ0~1ï¼‰" data-skey="upload.image_quality">
                                     </div>
                                 </div>
 
                                 <div class="gcard">
-                                    <h3>隐私同意</h3>
+                                    <h3>éšç§åŒæ„</h3>
                                     <label class="switch"><input type="checkbox"
-                                                                 data-skey="privacy.require_consent"><span>提交前需同意隐私条款</span></label>
-                                    <input class="tiny" placeholder="隐私条款链接（可留空）"
+                                                                 data-skey="privacy.require_consent"><span>æäº¤å‰éœ€åŒæ„éšç§æ¡æ¬¾</span></label>
+                                    <input class="tiny" placeholder="éšç§æ¡æ¬¾é“¾æŽ¥ï¼ˆå¯ç•™ç©ºï¼‰"
                                            data-skey="privacy.consent_url" style="margin-top:8px">
                                 </div>
                             </div>
@@ -1370,23 +1370,23 @@
                 </div>
             </div>
 
-            <!-- Tab 4：图表 -->
+            <!-- Tab 4ï¼šå›¾è¡¨ -->
             <div class="tab" id="tab-charts">
                 <div class="dash-grid">
                     <div class="card" style="grid-column:1/-1">
-                        <div class="hd"><h2>表单数据图表</h2></div>
+                        <div class="hd"><h2>è¡¨å•æ•°æ®å›¾è¡¨</h2></div>
                         <div class="bd">
                             <div id="chartsRoot"
                                  style="min-height:280px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
                                 <div style="background:#ffffff; border:1px solid #e8eef6; border-radius:14px; min-height:240px; display:flex;align-items:center;justify-content:center;color:#6b7f99;">
-                                    图表区域 1
+                                    å›¾è¡¨åŒºåŸŸ 1
                                 </div>
                                 <div style="background:#ffffff; border:1px solid #e8eef6; border-radius:14px; min-height:240px; display:flex;align-items:center;justify-content:center;color:#6b7f99;">
-                                    图表区域 2
+                                    å›¾è¡¨åŒºåŸŸ 2
                                 </div>
                             </div>
                             <p class="hint" style="margin-top:10px;color:#c8d3e0">
-                                将可视化渲染到 <code>#chartsRoot</code> 即可，其他逻辑不受影响。
+                                å°†å¯è§†åŒ–æ¸²æŸ“åˆ° <code>#chartsRoot</code> å³å¯ï¼Œå…¶ä»–é€»è¾‘ä¸å—å½±å“ã€‚
                             </p>
                         </div>
                     </div>
@@ -1396,75 +1396,75 @@
             <input type="hidden" name="schema_json" id="schema_json"
                    value='{{ schema_json|tojson if schema_json else "" }}'>
             <div class="form-footer">
-                <button type="submit" id="saveFormBtn" class="btn">✅ 保存表单</button>
+                <button type="submit" id="saveFormBtn" class="btn">âœ… ä¿å­˜è¡¨å•</button>
             </div>
         </form>
     </div>
 
-    <!-- 右：快捷按钮栏 -->
+    <!-- å³ï¼šå¿«æ·æŒ‰é’®æ  -->
     <div class="rail">
-        <button class="icon-btn" id="railAdd" title="添加问题">➕</button>
-        <button class="icon-btn" id="railTitle" title="添加标题/描述">Tt</button>
-        <label class="icon-btn" title="插入图片"
-               style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap">🖼️ 图片
+        <button class="icon-btn" id="railAdd" title="æ·»åŠ é—®é¢˜">âž•</button>
+        <button class="icon-btn" id="railTitle" title="æ·»åŠ æ ‡é¢˜/æè¿°">Tt</button>
+        <label class="icon-btn" title="æ’å…¥å›¾ç‰‡"
+               style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap">ðŸ–¼ï¸ å›¾ç‰‡
             <input id="railImage" type="file" accept="image/*" style="display:none">
         </label>
     </div>
 </main>
 
-<!-- 预览 Modal -->
+<!-- é¢„è§ˆ Modal -->
 <div class="modal" id="previewModal" aria-hidden="true">
     <div class="box">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <strong>表单预览</strong>
-            <button class="btn icon" id="closePreview">✖</button>
+            <strong>è¡¨å•é¢„è§ˆ</strong>
+            <button class="btn icon" id="closePreview">âœ–</button>
         </div>
         <div id="previewRoot"></div>
     </div>
 </div>
 
-<!-- 保存成功 Modal -->
+<!-- ä¿å­˜æˆåŠŸ Modal -->
 <div class="modal" id="linkModal" aria-hidden="true">
     <div class="box">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <strong>表单已保存</strong>
-            <button class="btn icon" id="closeLink">✖</button>
+            <strong>è¡¨å•å·²ä¿å­˜</strong>
+            <button class="btn icon" id="closeLink">âœ–</button>
         </div>
-        <p>请把以下链接发给用户进行填写：</p>
+        <p>è¯·æŠŠä»¥ä¸‹é“¾æŽ¥å‘ç»™ç”¨æˆ·è¿›è¡Œå¡«å†™ï¼š</p>
         <div class="row">
             <input id="pubUrl" class="tiny" style="flex:1" readonly>
-            <button id="copyPub" class="btn primary" type="button">复制</button>
+            <button id="copyPub" class="btn primary" type="button">å¤åˆ¶</button>
         </div>
-        <p class="hint" style="margin-top:8px">提示：也可以在“回复”页右上方复制该链接。</p>
+        <p class="hint" style="margin-top:8px">æç¤ºï¼šä¹Ÿå¯ä»¥åœ¨â€œå›žå¤â€é¡µå³ä¸Šæ–¹å¤åˆ¶è¯¥é“¾æŽ¥ã€‚</p>
     </div>
 </div>
 
-<!-- 图集 Modal -->
+<!-- å›¾é›† Modal -->
 <div class="modal" id="galleryModal" aria-hidden="true">
     <div class="box">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <strong>全量数据（图片）</strong>
-            <button class="btn icon" id="closeGallery">✖</button>
+            <strong>å…¨é‡æ•°æ®ï¼ˆå›¾ç‰‡ï¼‰</strong>
+            <button class="btn icon" id="closeGallery">âœ–</button>
         </div>
         <div id="galleryRoot" class="row" style="flex-wrap:wrap"></div>
     </div>
 </div>
 
-<!-- 文件预览 Modal（新增） -->
+<!-- æ–‡ä»¶é¢„è§ˆ Modalï¼ˆæ–°å¢žï¼‰ -->
 <div class="modal" id="filePreview" aria-hidden="true">
     <div class="box">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <strong>文件预览</strong>
-            <button class="btn icon" id="closeFilePreview">✖</button>
+            <strong>æ–‡ä»¶é¢„è§ˆ</strong>
+            <button class="btn icon" id="closeFilePreview">âœ–</button>
         </div>
         <div id="filePreviewBody"></div>
     </div>
 </div>
 
 
-<!-- 顶部提示 -->
-<div id="toast" class="toast">操作成功</div>
-<!-- 你的逻辑脚本（不变） -->
+<!-- é¡¶éƒ¨æç¤º -->
+<div id="toast" class="toast">æ“ä½œæˆåŠŸ</div>
+<!-- ä½ çš„é€»è¾‘è„šæœ¬ï¼ˆä¸å˜ï¼‰ -->
 <script src="{{ asset('builder.js') }}" defer></script>
 
 
@@ -1479,7 +1479,7 @@
 </style>
 
 <style id="anti-garble">
-  /* 永远隐藏数据页里的占位行，避免“乱码”闪一下 */
+  /* æ°¸è¿œéšè—æ•°æ®é¡µé‡Œçš„å ä½è¡Œï¼Œé¿å…â€œä¹±ç â€é—ªä¸€ä¸‹ */
   #tab-responses .muted { display: none !important; }
 </style>
 
@@ -1638,7 +1638,7 @@
 </script>
 
 <script>
-    /** —— 回复数据表：按 schema 的“题目名称”渲染列 + 文件预览 + 列名“操作” —— */
+    /** â€”â€” å›žå¤æ•°æ®è¡¨ï¼šæŒ‰ schema çš„â€œé¢˜ç›®åç§°â€æ¸²æŸ“åˆ— + æ–‡ä»¶é¢„è§ˆ + åˆ—åâ€œæ“ä½œâ€ â€”â€” */
     (function () {
         const SITE = document.body.dataset.site || "";
 
@@ -1758,7 +1758,7 @@
 
         const SCHEMA_CANDIDATES = loadSchemaCandidates();
         let FIELDS = mergeSchemas(SCHEMA_CANDIDATES);
-        // —— 仅当“还有非随机字段可用”时才过滤，否则保留所有字段（避免把内容全删空）
+        // â€”â€” ä»…å½“â€œè¿˜æœ‰éžéšæœºå­—æ®µå¯ç”¨â€æ—¶æ‰è¿‡æ»¤ï¼Œå¦åˆ™ä¿ç•™æ‰€æœ‰å­—æ®µï¼ˆé¿å…æŠŠå†…å®¹å…¨åˆ ç©ºï¼‰
         const looksRandom = s => typeof s === 'string' && /^q[a-z0-9]{5,}$/i.test(s);
         const nonRandom = FIELDS.filter(f => !looksRandom(f.key));
         if (nonRandom.length) FIELDS = nonRandom;
@@ -1768,7 +1768,7 @@
         if (onlyRandom) {
             FIELDS = FIELDS.map(f => {
                 const lbl = f.label && f.label !== f.key ? f.label : f.key;
-                return {...f, label: f.label === f.key ? f.key : `${f.label}（${f.key}）`};
+                return {...f, label: f.label === f.key ? f.key : `${f.label}ï¼ˆ${f.key}ï¼‰`};
             });
         }
 
@@ -1781,7 +1781,7 @@
         const btnExportAll = document.getElementById("btnExportAll");
         const btnGallery = document.getElementById("btnGallery");
 
-        // 本地转义，专供表头/属性使用（避免与下方的 escHtml/escAttr 顺序冲突）
+        // æœ¬åœ°è½¬ä¹‰ï¼Œä¸“ä¾›è¡¨å¤´/å±žæ€§ä½¿ç”¨ï¼ˆé¿å…ä¸Žä¸‹æ–¹çš„ escHtml/escAttr é¡ºåºå†²çªï¼‰
         function __escHtml(s) {
             return String(s == null ? '' : s).replace(/[&<>]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[m]));
         }
@@ -1800,17 +1800,17 @@
             thead.innerHTML = `<tr>
       <th>ID</th>
       ${FIELDS.map(f => `<th title="${__escAttr(f.key)}">${__escHtml(f.label)}</th>`).join("")}
-      <th>状态</th>
-      <th>审核说明</th>
-      <th>导出</th>
-      <th>操作</th>
-      <th>删除</th>
+      <th>çŠ¶æ€</th>
+      <th>å®¡æ ¸è¯´æ˜Ž</th>
+      <th>å¯¼å‡º</th>
+      <th>æ“ä½œ</th>
+      <th>åˆ é™¤</th>
     </tr>`;
         }
 
         async function jget(url, opt) {
             const r = await fetch(url, opt);
-            const data = await r.json().catch(() => ({ok: false, error: "非JSON响应"}));
+            const data = await r.json().catch(() => ({ok: false, error: "éžJSONå“åº”"}));
             if (!r.ok || data.ok === false) throw new Error(data.error || r.statusText);
             return data;
         }
@@ -1832,7 +1832,7 @@
                 "'": '&#39;'
             }[m]));
             const t = escHtml(text || href);
-            return `<a href="${attr(u)}" data-preview title="预览">${t}</a> <a href="${attr(u)}" download title="下载">⬇</a>`;
+            return `<a href="${attr(u)}" data-preview title="é¢„è§ˆ">${t}</a> <a href="${attr(u)}" download title="ä¸‹è½½">â¬‡</a>`;
         }
 
         function renderValueByType(v, type) {
@@ -1845,7 +1845,7 @@
                 if (url && (fileLike.test(type) || /\.(png|jpe?g|gif|webp|pdf|docx?|xlsx?|mp4|webm|ogg|bmp|svg)$/i.test(url))) {
                     return fileCell(url, name || url);
                 }
-                return Object.entries(v).map(([k, val]) => `<div><span class="muted">${k}：</span>${renderValueByType(val, type)}</div>`).join("");
+                return Object.entries(v).map(([k, val]) => `<div><span class="muted">${k}ï¼š</span>${renderValueByType(val, type)}</div>`).join("");
             }
             const s = String(v);
             if (fileLike.test(type) || /\.(png|jpe?g|gif|webp|pdf|docx?|xlsx?|mp4|webm|ogg|bmp|svg)$/i.test(s)) return fileCell(s);
@@ -1853,29 +1853,29 @@
         }
 
         function pillCls(status) {
-            return status === "已通过" ? "good" : (status === "未通过" ? "bad" : "wait");
+            return status === "å·²é€šè¿‡" ? "good" : (status === "æœªé€šè¿‡" ? "bad" : "wait");
         }
 
         function renderRows(items) {
             tbody.innerHTML = (items || []).map(it => {
                 const d = it.data || {};
                 const cells = FIELDS.map(f => `<td>${renderValueByType(d[f.key], f.type)}</td>`).join("");
-                const status = it.status || "待审核";
+                const status = it.status || "å¾…å®¡æ ¸";
                 const cmt = escAttr(it.review_comment || '');
                 return `<tr data-id="${it.id}">
         <td>${it.id}</td>
         ${cells}
         <td><span class="pill ${pillCls(status)}">${status}</span></td>
-        <td><input class="cmt" placeholder="审核说明" value="${cmt}" /></td>
+        <td><input class="cmt" placeholder="å®¡æ ¸è¯´æ˜Ž" value="${cmt}" /></td>
         <td>
           <a class="btn mini" href="/site/${encodeURIComponent(SITE)}/admin/export_word/${it.id}" target="_blank">Word</a>
           <a class="btn mini" href="/site/${encodeURIComponent(SITE)}/admin/export_excel/${it.id}" target="_blank">Excel</a>
         </td>
         <td>
-          <button class="btn mini good" data-approve>通过</button>
-          <button class="btn mini danger" data-reject>不通过</button>
+          <button class="btn mini good" data-approve>é€šè¿‡</button>
+          <button class="btn mini danger" data-reject>ä¸é€šè¿‡</button>
         </td>
-        <td><button class="btn mini gray" data-del>删除</button></td>
+        <td><button class="btn mini gray" data-del>åˆ é™¤</button></td>
       </tr>`;
             }).join("");
         }
@@ -1902,7 +1902,7 @@
             const url = `/site/${encodeURIComponent(SITE)}/admin/api/responses?q=${encodeURIComponent(qInput?.value || "")}`;
             const data = await jget(url);
 
-            // 如果后端给了列定义/标题映射，优先使用它来生成中文表头
+            // å¦‚æžœåŽç«¯ç»™äº†åˆ—å®šä¹‰/æ ‡é¢˜æ˜ å°„ï¼Œä¼˜å…ˆä½¿ç”¨å®ƒæ¥ç”Ÿæˆä¸­æ–‡è¡¨å¤´
             if (data && (data.columns || data.headers || data.titleMap || data.labels)) {
                 const cols = data.columns || data.headers || [];
                 const map = data.titleMap || data.labels || {};
@@ -1916,21 +1916,21 @@
                     FIELDS = Object.keys(map).map(k => ({key: k, label: String(map[k] || k), type: ''}));
                 }
             }
-            // —— 如果仍然没有列定义，用第一条数据的字段名兜底生成列
+            // â€”â€” å¦‚æžœä»ç„¶æ²¡æœ‰åˆ—å®šä¹‰ï¼Œç”¨ç¬¬ä¸€æ¡æ•°æ®çš„å­—æ®µåå…œåº•ç”Ÿæˆåˆ—
             if ((!FIELDS || !FIELDS.length) && Array.isArray(data.items) && data.items.length) {
                 const first = data.items.find(x => x && x.data) || {data: {}};
                 FIELDS = Object.keys(first.data || {}).map(k => ({key: k, label: k, type: ''}));
-                // 还是“有可读就过滤”，否则保留全部
+                // è¿˜æ˜¯â€œæœ‰å¯è¯»å°±è¿‡æ»¤â€ï¼Œå¦åˆ™ä¿ç•™å…¨éƒ¨
                 const nonRandom2 = FIELDS.filter(f => !looksRandom(f.key));
                 if (nonRandom2.length) FIELDS = nonRandom2;
             }
 
-            buildHeader(); // 先/重新按 FIELDS 刷新表头
-            renderRows(data.items || data.rows || []);
+            buildHeader(); // å…ˆ/é‡æ–°æŒ‰ FIELDS åˆ·æ–°è¡¨å¤´
+            renderRows(data.items || data.rows || []); document.body.classList.add("resp-ready");
         }
 
 
-        // —— 点击事件：文件预览 / 审核 / 发信 / 删除
+        // â€”â€” ç‚¹å‡»äº‹ä»¶ï¼šæ–‡ä»¶é¢„è§ˆ / å®¡æ ¸ / å‘ä¿¡ / åˆ é™¤
         document.addEventListener("click", async (e) => {
             const a = e.target.closest('a[data-preview]');
             if (a) {
@@ -1947,7 +1947,7 @@
             const cmt = tr.querySelector(".cmt")?.value?.trim() || "";
 
             if (e.target.matches("[data-approve],[data-reject]")) {
-                const status = e.target.hasAttribute("data-approve") ? "已通过" : "未通过";
+                const status = e.target.hasAttribute("data-approve") ? "å·²é€šè¿‡" : "æœªé€šè¿‡";
                 try {
                     await jget(`/site/${encodeURIComponent(SITE)}/admin/api/review`, {
                         method: "POST", headers: {"Content-Type": "application/json"},
@@ -1955,14 +1955,14 @@
                     });
                     const pill = tr.querySelector(".pill");
                     pill.textContent = status;
-                    pill.className = `pill ${status === "已通过" ? "good" : "bad"}`;
+                    pill.className = `pill ${status === "å·²é€šè¿‡" ? "good" : "bad"}`;
                 } catch (err) {
-                    alert("保存失败：" + err.message);
+                    alert("ä¿å­˜å¤±è´¥ï¼š" + err.message);
                 }
             }
 
             if (e.target.matches("[data-del]")) {
-                if (!confirm("确定删除这条记录？此操作不可撤销。")) return;
+                if (!confirm("ç¡®å®šåˆ é™¤è¿™æ¡è®°å½•ï¼Ÿæ­¤æ“ä½œä¸å¯æ’¤é”€ã€‚")) return;
                 try {
                     await jget(`/site/${encodeURIComponent(SITE)}/admin/api/delete`, {
                         method: "POST", headers: {"Content-Type": "application/json"},
@@ -1970,7 +1970,7 @@
                     });
                     tr.remove();
                 } catch (err) {
-                    alert("删除失败：" + err.message);
+                    alert("åˆ é™¤å¤±è´¥ï¼š" + err.message);
                 }
             }
         });
@@ -1984,7 +1984,7 @@
     })();
 </script>
 
-<!-- 接管“回复”页旧预览（隐藏旧实现） -->
+<!-- æŽ¥ç®¡â€œå›žå¤â€é¡µæ—§é¢„è§ˆï¼ˆéšè—æ—§å®žçŽ°ï¼‰ -->
 <style>
     #respPreviewMask, .resp-preview-mask {
         display: none !important;
@@ -2017,11 +2017,11 @@ document.addEventListener('DOMContentLoaded', function () {
     try {
       const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/gallery`);
       const data = await r.json().catch(() => ({ items: [] }));
-      alert(`找到图片 ${(data.items || []).length} 张`);
-    } catch { alert('加载失败'); }
+      alert(`æ‰¾åˆ°å›¾ç‰‡ ${(data.items || []).length} å¼ `);
+    } catch { alert('åŠ è½½å¤±è´¥'); }
   });
 
-  // —— 自动刷新：仅“数据”Tab 且页面可见时才跑 —— //
+  // â€”â€” è‡ªåŠ¨åˆ·æ–°ï¼šä»…â€œæ•°æ®â€Tab ä¸”é¡µé¢å¯è§æ—¶æ‰è·‘ â€”â€” //
   let autoTimer = null;
   function stopAuto() { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; } }
   function onResponsesTab() { return document.getElementById('tab-responses')?.classList.contains('active'); }
@@ -2035,35 +2035,35 @@ document.addEventListener('DOMContentLoaded', function () {
     stopAuto();
     if (e.currentTarget.checked) {
       autoTimer = setInterval(tickOnceIfVisible, 30000);
-      tickOnceIfVisible(); // 立即跑一次（仅前台&在数据页时）
+      tickOnceIfVisible(); // ç«‹å³è·‘ä¸€æ¬¡ï¼ˆä»…å‰å°&åœ¨æ•°æ®é¡µæ—¶ï¼‰
     }
   });
 
-  // 切到其他 Tab 就停
+  // åˆ‡åˆ°å…¶ä»– Tab å°±åœ
   document.querySelectorAll('.tabs button').forEach(b => {
     b.addEventListener('click', () => { if (b.dataset.tab !== 'responses') stopAuto(); });
   });
 
-  // 页面重新可见时补一次
+  // é¡µé¢é‡æ–°å¯è§æ—¶è¡¥ä¸€æ¬¡
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') tickOnceIfVisible();
   });
 
-  // 关闭页面前清理
+  // å…³é—­é¡µé¢å‰æ¸…ç†
   window.addEventListener('beforeunload', stopAuto);
 
-  // 默认不启用自动刷新（有老HTML把 checked 带上时，强制关掉）
+  // é»˜è®¤ä¸å¯ç”¨è‡ªåŠ¨åˆ·æ–°ï¼ˆæœ‰è€HTMLæŠŠ checked å¸¦ä¸Šæ—¶ï¼Œå¼ºåˆ¶å…³æŽ‰ï¼‰
   const autoTick = document.getElementById('autoTick');
   if (autoTick) autoTick.checked = false;
 
-  // 首次：重建表头；如果当前就在“数据”页，手动拉一次
+  // é¦–æ¬¡ï¼šé‡å»ºè¡¨å¤´ï¼›å¦‚æžœå½“å‰å°±åœ¨â€œæ•°æ®â€é¡µï¼Œæ‰‹åŠ¨æ‹‰ä¸€æ¬¡
   window.rebuildRespHeader && window.rebuildRespHeader();
   if (onResponsesTab()) window.loadResponses && window.loadResponses();
 });
 </script>
 
 
-<!-- 让顶栏始终固定在顶部（覆盖原来的 sticky） -->
+<!-- è®©é¡¶æ å§‹ç»ˆå›ºå®šåœ¨é¡¶éƒ¨ï¼ˆè¦†ç›–åŽŸæ¥çš„ stickyï¼‰ -->
 <style id="header-follow">
     header {
         position: fixed !important;
@@ -2075,7 +2075,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 </style>
 
-<!-- 根据实际高度给 body 增加 padding-top，避免内容被顶栏遮住 -->
+<!-- æ ¹æ®å®žé™…é«˜åº¦ç»™ body å¢žåŠ  padding-topï¼Œé¿å…å†…å®¹è¢«é¡¶æ é®ä½ -->
 <script id="header-padding-fix">
     (function () {
         const header = document.querySelector('header');
@@ -2096,7 +2096,7 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-    /* 全局文件预览（图片/视频/音频/其他用 iframe） */
+    /* å…¨å±€æ–‡ä»¶é¢„è§ˆï¼ˆå›¾ç‰‡/è§†é¢‘/éŸ³é¢‘/å…¶ä»–ç”¨ iframeï¼‰ */
     window.openPreviewInModal = function (url) {
         const modal = document.getElementById('filePreview');
         const body = document.getElementById('filePreviewBody');
@@ -2150,13 +2150,13 @@ document.addEventListener('DOMContentLoaded', function () {
         let chartsInited = false;
         let chartObjs = [];
 
-        // 切到“图表”页时再加载
+        // åˆ‡åˆ°â€œå›¾è¡¨â€é¡µæ—¶å†åŠ è½½
         document.querySelectorAll('.tabs button').forEach(b => {
             b.addEventListener('click', () => {
                 if (b.dataset.tab === 'charts') ensureCharts();
             });
         });
-        // 如果默认就在图表页，也加载一次
+        // å¦‚æžœé»˜è®¤å°±åœ¨å›¾è¡¨é¡µï¼Œä¹ŸåŠ è½½ä¸€æ¬¡
         if (document.querySelector('.tabs button.active')?.dataset.tab === 'charts') ensureCharts();
 
         async function ensureCharts() {
@@ -2164,10 +2164,10 @@ document.addEventListener('DOMContentLoaded', function () {
             const root = document.getElementById('chartsRoot');
             if (!root) return;
 
-            // 新建还没保存站点时的提示
+            // æ–°å»ºè¿˜æ²¡ä¿å­˜ç«™ç‚¹æ—¶çš„æç¤º
             if (!SITE) {
                 root.innerHTML = `<div style="grid-column:1/-1;color:#6b7f99;background:#fff;border:1px solid #e8eef6;border-radius:14px;padding:16px;text-align:center">
-        保存表单并生成站点后，才能查看图表。</div>`;
+        ä¿å­˜è¡¨å•å¹¶ç”Ÿæˆç«™ç‚¹åŽï¼Œæ‰èƒ½æŸ¥çœ‹å›¾è¡¨ã€‚</div>`;
                 return;
             }
 
@@ -2177,20 +2177,20 @@ document.addEventListener('DOMContentLoaded', function () {
                 const j = await res.json();
                 if (!res.ok || !j.ok) throw new Error(j.error || res.status);
 
-                // 清空占位“图表区域 1/2”
+                // æ¸…ç©ºå ä½â€œå›¾è¡¨åŒºåŸŸ 1/2â€
                 root.innerHTML = '';
 
-                const c1 = addCard(root, '提交趋势（近 14 天）', 'lineDaily');
-                const c2 = addCard(root, '状态分布', 'pieStatus');
-                const c3 = addCard(root, '选择题分布', 'barField', true); // 全宽
+                const c1 = addCard(root, 'æäº¤è¶‹åŠ¿ï¼ˆè¿‘ 14 å¤©ï¼‰', 'lineDaily');
+                const c2 = addCard(root, 'çŠ¶æ€åˆ†å¸ƒ', 'pieStatus');
+                const c3 = addCard(root, 'é€‰æ‹©é¢˜åˆ†å¸ƒ', 'barField', true); // å…¨å®½
 
-                // 1) 折线：近 14 天提交数
+                // 1) æŠ˜çº¿ï¼šè¿‘ 14 å¤©æäº¤æ•°
                 if (Array.isArray(j.daily) && j.daily.length) {
                     chartObjs.push(new Chart(c1, {
                         type: 'line',
                         data: {
                             labels: j.daily.map(x => x.date),
-                            datasets: [{label: '提交数', data: j.daily.map(x => x.count), tension: .3}]
+                            datasets: [{label: 'æäº¤æ•°', data: j.daily.map(x => x.count), tension: .3}]
                         },
                         options: {
                             responsive: true,
@@ -2199,10 +2199,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         }
                     }));
                 } else {
-                    showEmpty(c1, '暂无数据');
+                    showEmpty(c1, 'æš‚æ— æ•°æ®');
                 }
 
-                // 2) 甜甜圈：状态分布
+                // 2) ç”œç”œåœˆï¼šçŠ¶æ€åˆ†å¸ƒ
                 if (Array.isArray(j.status) && j.status.length) {
                     chartObjs.push(new Chart(c2, {
                         type: 'doughnut',
@@ -2210,10 +2210,10 @@ document.addEventListener('DOMContentLoaded', function () {
                         options: {responsive: true}
                     }));
                 } else {
-                    showEmpty(c2, '暂无数据');
+                    showEmpty(c2, 'æš‚æ— æ•°æ®');
                 }
 
-                // 3) 条形图：第一个选择题分布（如果有）
+                // 3) æ¡å½¢å›¾ï¼šç¬¬ä¸€ä¸ªé€‰æ‹©é¢˜åˆ†å¸ƒï¼ˆå¦‚æžœæœ‰ï¼‰
                 if (j.field && Array.isArray(j.field.data) && j.field.data.length) {
                     chartObjs.push(new Chart(c3, {
                         type: 'bar',
@@ -2232,12 +2232,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             } catch (e) {
                 root.innerHTML = `<div style="grid-column:1/-1;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:14px;padding:12px">
-        图表数据加载失败：${e.message}</div>`;
-                chartsInited = false; // 允许重试
+        å›¾è¡¨æ•°æ®åŠ è½½å¤±è´¥ï¼š${e.message}</div>`;
+                chartsInited = false; // å…è®¸é‡è¯•
             }
         }
 
-        // 工具：创建卡片 + canvas
+        // å·¥å…·ï¼šåˆ›å»ºå¡ç‰‡ + canvas
         function addCard(root, title, canvasId, full = false) {
             const card = document.createElement('div');
             card.className = 'chart-card';
@@ -2257,7 +2257,7 @@ document.addEventListener('DOMContentLoaded', function () {
             wrap.innerHTML = `<div style="min-height:200px;display:flex;align-items:center;justify-content:center;color:#6b7f99">${msg}</div>`;
         }
 
-        // 可手动刷新：window.refreshCharts(true)
+        // å¯æ‰‹åŠ¨åˆ·æ–°ï¼šwindow.refreshCharts(true)
         window.refreshCharts = function (force = false) {
             if (force) {
                 chartObjs.forEach(c => {
@@ -2274,7 +2274,7 @@ document.addEventListener('DOMContentLoaded', function () {
     })();
 </script>
 
-<!-- 创建成功弹窗（中间丝滑出现） -->
+<!-- åˆ›å»ºæˆåŠŸå¼¹çª—ï¼ˆä¸­é—´ä¸æ»‘å‡ºçŽ°ï¼‰ -->
 <div class="modal" id="successModal" aria-hidden="true"
      style="display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:120">
     <div class="box" id="successBox" style="
@@ -2282,12 +2282,12 @@ document.addEventListener('DOMContentLoaded', function () {
       background:var(--glass,#ffffffee); border:1px solid var(--glass-border,#e5e7eb);
       backdrop-filter: blur(18px) saturate(160%); box-shadow: 0 18px 36px rgba(0,0,0,.22);
       opacity:0; transform: scale(.92) translateY(8px);">
-        <iframe id="successFrame" title="创建成功" style="width:100%;height:70vh;border:0;background:#fff"></iframe>
+        <iframe id="successFrame" title="åˆ›å»ºæˆåŠŸ" style="width:100%;height:70vh;border:0;background:#fff"></iframe>
     </div>
 </div>
 
 <style>
-    /* 丝滑出现动画 */
+    /* ä¸æ»‘å‡ºçŽ°åŠ¨ç”» */
     #successModal.show #successBox {
         animation: popIn .22s cubic-bezier(.2, .9, .2, 1) forwards;
     }
@@ -2343,7 +2343,7 @@ document.addEventListener('DOMContentLoaded', function () {
             if (e.key === 'Escape') closeModal();
         });
 
-        // 用 fetch 发送表单（仅展示“卡片成功页”，无任何兜底 srcdoc）
+        // ç”¨ fetch å‘é€è¡¨å•ï¼ˆä»…å±•ç¤ºâ€œå¡ç‰‡æˆåŠŸé¡µâ€ï¼Œæ— ä»»ä½•å…œåº• srcdocï¼‰
         form.addEventListener('submit', async (ev) => {
             ev.preventDefault();
             const fd = new FormData(form);
@@ -2359,24 +2359,24 @@ document.addEventListener('DOMContentLoaded', function () {
                 const j = await res.json();
 
                 if (!res.ok || j.ok === false) {
-                    alert(j.error || ('保存失败：HTTP ' + res.status));
+                    alert(j.error || ('ä¿å­˜å¤±è´¥ï¼šHTTP ' + res.status));
                     return;
                 }
 
-                // 优先用后端给的 success_url；没有就用 site_name 拼 /create_success
+                // ä¼˜å…ˆç”¨åŽç«¯ç»™çš„ success_urlï¼›æ²¡æœ‰å°±ç”¨ site_name æ‹¼ /create_success
                 const successURL =
                     j.success_url ||
                     (j.site_name ? ('/site/' + encodeURIComponent(j.site_name) + '/create_success') : null);
 
                 if (!successURL) {
-                    alert('保存成功，但缺少成功页链接'); // 不再使用任何 srcdoc 兜底
+                    alert('ä¿å­˜æˆåŠŸï¼Œä½†ç¼ºå°‘æˆåŠŸé¡µé“¾æŽ¥'); // ä¸å†ä½¿ç”¨ä»»ä½• srcdoc å…œåº•
                     return;
                 }
                 openModal(successURL);
 
             } catch (e) {
                 console.error(e);
-                alert('保存失败：' + e.message);
+                alert('ä¿å­˜å¤±è´¥ï¼š' + e.message);
             }
         }, true);
     })();
@@ -2387,15 +2387,15 @@ document.addEventListener('DOMContentLoaded', function () {
         const root = document.documentElement;
         const body = document.body;
 
-        // 设置面板里的控件
+        // è®¾ç½®é¢æ¿é‡Œçš„æŽ§ä»¶
         const lightPicker = document.querySelector('[data-skey="theme.brand"][type="color"]');
         const lightText = document.querySelector('.tiny[data-skey="theme.brand"]:not([type="color"])');
-        const darkText = document.querySelector('[data-skey="theme.brand_dark"]'); // 你暂时没这个输入，有就会生效
+        const darkText = document.querySelector('[data-skey="theme.brand_dark"]'); // ä½ æš‚æ—¶æ²¡è¿™ä¸ªè¾“å…¥ï¼Œæœ‰å°±ä¼šç”Ÿæ•ˆ
         const appearance = document.querySelector('[data-skey="theme.appearance"]');
 
-        // 从 schema_json / 本地已填值中恢复
+        // ä»Ž schema_json / æœ¬åœ°å·²å¡«å€¼ä¸­æ¢å¤
         function readSchemaTheme() {
-            // 1) schema_json（隐藏域或 <script id="schemaJSON">）里
+            // 1) schema_jsonï¼ˆéšè—åŸŸæˆ– <script id="schemaJSON">ï¼‰é‡Œ
             const raw = document.getElementById('schema_json')?.value
                 || document.getElementById('schemaJSON')?.textContent
                 || '';
@@ -2405,7 +2405,7 @@ document.addEventListener('DOMContentLoaded', function () {
             } catch {
             }
             const t = (j && j.theme) || {};
-            // 2) 表单当前输入值兜底
+            // 2) è¡¨å•å½“å‰è¾“å…¥å€¼å…œåº•
             const light = (lightPicker?.value || lightText?.value || t.brand || '#2563eb').trim();
             const dark = (darkText?.value || t.brand_dark || '').trim() || light;
             const mode = (appearance?.value || t.appearance || 'auto').toLowerCase();
@@ -2421,24 +2421,24 @@ document.addEventListener('DOMContentLoaded', function () {
 
         function apply() {
             const {light, dark, mode} = readSchemaTheme();
-            // 写入 CSS 变量
+            // å†™å…¥ CSS å˜é‡
             setCSS(light, dark);
-            // 同步两个“主题色”输入
+            // åŒæ­¥ä¸¤ä¸ªâ€œä¸»é¢˜è‰²â€è¾“å…¥
             if (lightPicker && lightText) {
                 if (lightPicker.value !== light) lightPicker.value = light;
                 if (lightText.value !== light) lightText.value = light;
             }
-            // 如果设置里切了外观，也同步到页面
+            // å¦‚æžœè®¾ç½®é‡Œåˆ‡äº†å¤–è§‚ï¼Œä¹ŸåŒæ­¥åˆ°é¡µé¢
             if (appearance && (mode === 'light' || mode === 'dark' || mode === 'auto')) {
                 if (mode === 'auto') {
-                    // 保持 data-appearance 不变；按钮切换逻辑控制
+                    // ä¿æŒ data-appearance ä¸å˜ï¼›æŒ‰é’®åˆ‡æ¢é€»è¾‘æŽ§åˆ¶
                 } else {
                     body.setAttribute('data-appearance', mode);
                 }
             }
         }
 
-        // 监听设置变化：颜色 & 外观
+        // ç›‘å¬è®¾ç½®å˜åŒ–ï¼šé¢œè‰² & å¤–è§‚
         ['input', 'change'].forEach(ev => {
             lightPicker?.addEventListener(ev, apply);
             lightText?.addEventListener(ev, apply);
@@ -2446,7 +2446,7 @@ document.addEventListener('DOMContentLoaded', function () {
             appearance?.addEventListener('change', apply);
         });
 
-        // 监听右上角“🌗”按钮，切换时同时切换 --brand
+        // ç›‘å¬å³ä¸Šè§’â€œðŸŒ—â€æŒ‰é’®ï¼Œåˆ‡æ¢æ—¶åŒæ—¶åˆ‡æ¢ --brand
         document.getElementById('btnTheme')?.addEventListener('click', () => {
             const next = body.getAttribute('data-appearance') === 'dark' ? 'light' : 'dark';
             body.setAttribute('data-appearance', next);
@@ -2455,18 +2455,18 @@ document.addEventListener('DOMContentLoaded', function () {
             root.style.setProperty('--brand', next === 'dark' ? d : l);
         });
 
-        // 首次应用
+        // é¦–æ¬¡åº”ç”¨
         apply();
     })();
 </script>
 
 <script>
     (function () {
-        // 1) 判定是否带 new=1
+        // 1) åˆ¤å®šæ˜¯å¦å¸¦ new=1
         var params = new URLSearchParams(location.search);
         var hasNewFlag = params.get('new') === '1' || /\/create_form\/new$/.test(location.pathname);
 
-        // 2) 判定导航类型：只在真正的 navigate 时清；reload / back_forward 不清
+        // 2) åˆ¤å®šå¯¼èˆªç±»åž‹ï¼šåªåœ¨çœŸæ­£çš„ navigate æ—¶æ¸…ï¼›reload / back_forward ä¸æ¸…
         var nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || null;
         var navType = nav ? nav.type
             : (performance.navigation ? (['navigate', 'reload', 'back_forward', 'prerender'][performance.navigation.type] || 'navigate') : 'navigate');
@@ -2478,12 +2478,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 sessionStorage.removeItem('builder:draft_id');
             } catch (e) {
             }
-            // 同时把 window.name 清掉，确保“新建”得到一个全新的 tab id
+            // åŒæ—¶æŠŠ window.name æ¸…æŽ‰ï¼Œç¡®ä¿â€œæ–°å»ºâ€å¾—åˆ°ä¸€ä¸ªå…¨æ–°çš„ tab id
             try {
                 window.name = '';
             } catch (e) {
             }
-            // 把 ?new=1 从地址栏移除（不刷新页面）
+            // æŠŠ ?new=1 ä»Žåœ°å€æ ç§»é™¤ï¼ˆä¸åˆ·æ–°é¡µé¢ï¼‰
             try {
                 if (params.has('new')) {
                     params.delete('new');
@@ -2494,17 +2494,17 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
 
-        // 3) 生成草稿键：有站点名=编辑已有，用 site 锁定；否则用“本标签页 id”
+        // 3) ç”Ÿæˆè‰ç¨¿é”®ï¼šæœ‰ç«™ç‚¹å=ç¼–è¾‘å·²æœ‰ï¼Œç”¨ site é”å®šï¼›å¦åˆ™ç”¨â€œæœ¬æ ‡ç­¾é¡µ idâ€
         var SITE = "{{ site_name or '' }}";
         var TPL = "{{ tpl or '' }}";
         var draftId;
 
         if (SITE) {
-            draftId = 'site:' + SITE;        // 编辑已有：站点唯一
+            draftId = 'site:' + SITE;        // ç¼–è¾‘å·²æœ‰ï¼šç«™ç‚¹å”¯ä¸€
         } else if (TPL) {
-            draftId = 'tpl:' + TPL;          // 模板新建：按模板固定（刷新不新开）
+            draftId = 'tpl:' + TPL;          // æ¨¡æ¿æ–°å»ºï¼šæŒ‰æ¨¡æ¿å›ºå®šï¼ˆåˆ·æ–°ä¸æ–°å¼€ï¼‰
         } else {
-            // 退回你原来的 window.name 逻辑（保持不变）
+            // é€€å›žä½ åŽŸæ¥çš„ window.name é€»è¾‘ï¼ˆä¿æŒä¸å˜ï¼‰
             try {
                 draftId = sessionStorage.getItem('builder:draft_id') || '';
             } catch (e) {
@@ -2534,7 +2534,7 @@ document.addEventListener('DOMContentLoaded', function () {
         } catch (e) {
         }
 
-        // 4) 绑定保存/恢复
+        // 4) ç»‘å®šä¿å­˜/æ¢å¤
         var form = document.getElementById('builder') || document.querySelector('form');
         if (!form) return;
 
@@ -2554,7 +2554,7 @@ document.addEventListener('DOMContentLoaded', function () {
             data.__ce = ces.map(function (el) {
                 return {path: pathOf(el), html: el.innerHTML};
             });
-            // 外观快照
+            // å¤–è§‚å¿«ç…§
             data.__appearance = document.body.getAttribute('data-appearance') || '';
             var brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim();
             if (brand) data.__brand = brand;
@@ -2584,7 +2584,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             if (data.__appearance) document.body.setAttribute('data-appearance', data.__appearance);
             if (data.__brand) document.documentElement.style.setProperty('--brand', data.__brand);
-            tip('已从草稿恢复');
+            tip('å·²ä»Žè‰ç¨¿æ¢å¤');
         }
 
         function save() {
@@ -2607,7 +2607,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.addEventListener('blur', save, true);
         load();
 
-        // ========== 工具 ==========
+        // ========== å·¥å…· ==========
         function pathOf(el) {
             var path = [], cur = el;
             while (cur && cur.nodeType === 1 && cur !== document.body) {
@@ -2662,7 +2662,7 @@ document.addEventListener('DOMContentLoaded', function () {
         function show(html) {
             if (!modal || !root) return;
             root.innerHTML =
-                '<iframe title="表单预览" style="width:100%;height:70vh;border:0;background:#fff;border-radius:12px"></iframe>';
+                '<iframe title="è¡¨å•é¢„è§ˆ" style="width:100%;height:70vh;border:0;background:#fff;border-radius:12px"></iframe>';
             const ifr = root.querySelector('iframe');
             ifr.srcdoc = html;
             modal.style.display = 'flex';
@@ -2682,14 +2682,14 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         async function getSchema() {
-            // 优先取构建器实时 schema（如果 builder.js 暴露了）
+            // ä¼˜å…ˆå–æž„å»ºå™¨å®žæ—¶ schemaï¼ˆå¦‚æžœ builder.js æš´éœ²äº†ï¼‰
             if (window.builder && typeof window.builder.getSchema === 'function') {
                 try {
                     return window.builder.getSchema() || {fields: []};
                 } catch (_) {
                 }
             }
-            // 次选：隐藏域
+            // æ¬¡é€‰ï¼šéšè—åŸŸ
             try {
                 const raw = document.getElementById('schema_json')?.value || '{}';
                 return JSON.parse(raw);
@@ -2713,7 +2713,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const html = await res.text();
                 show(html);
             } catch (e) {
-                alert('预览加载失败：' + (e?.message || e));
+                alert('é¢„è§ˆåŠ è½½å¤±è´¥ï¼š' + (e?.message || e));
             }
         });
     })();
@@ -2721,3 +2721,4 @@ document.addEventListener('DOMContentLoaded', function () {
 
 </body>
 </html>
+
