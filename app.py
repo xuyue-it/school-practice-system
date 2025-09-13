@@ -1157,13 +1157,13 @@ def _api_list_responses(site_name: str):
             "data": data,
         })
 
+    # ✅ 修复：不要在关闭连接后再使用游标（移除了多余的 c2.execute）
+    conn2 = get_conn(); c2 = conn2.cursor()
     try:
-        conn2 = get_conn(); c2 = conn2.cursor()
         c2.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
         row = c2.fetchone()
     finally:
         conn2.close()
-    c2.execute(f'SET search_path TO "{schema}", public')
 
     schema_json = row[0] if (row and isinstance(row[0], dict)) else (json.loads(row[0]) if row and row[0] else {})
     columns = _extract_columns_from_schema(schema_json)
