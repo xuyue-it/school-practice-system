@@ -2667,38 +2667,59 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-    // 你的“单实例 + 退避”的轮询脚本（原样粘贴）
-    let pollTimer = null;
-    let backoff = 15000; const MAX_BACKOFF = 60000;
+  // 轮询器
+  let pollTimer = null;
+  let backoff = 15000; const MAX_BACKOFF = 60000;
 
-    function startPollingOnce(siteName) {
-      if (pollTimer) return;
-      const tick = async () => {
-        if (document.hidden) { schedule(); return; }
-        try {
-            const res = await fetch(`/site/${siteName}/admin/api/responses?limit=50&offset=0`, {
-                headers: {'X-UI-Tab': 'responses'}
-            });
-          if (res.ok) { backoff = 15000; } else { backoff = Math.min(backoff * 2, MAX_BACKOFF); }
-        } catch { backoff = Math.min(backoff * 2, MAX_BACKOFF); }
-        schedule();
-      };
-      const schedule = () => { pollTimer = setTimeout(tick, backoff); };
+  // ★ 新增：判断是否在“数据”Tab
+  function onResponsesTab() {
+    return document.getElementById('tab-responses')?.classList.contains('active');
+  }
+
+  function startPollingOnce(siteName) {
+    if (pollTimer) return;
+
+    const tick = async () => {
+      // ★ 修改：只有“页面可见 且 在数据Tab”才请求
+      if (document.hidden || !onResponsesTab()) { schedule(); return; }
+
+      try {
+        const res = await fetch(`/site/${siteName}/admin/api/responses?limit=50&offset=0`, {
+          headers: { 'X-UI-Tab': 'responses' }
+        });
+        backoff = res.ok ? 15000 : Math.min(backoff * 2, MAX_BACKOFF);
+      } catch {
+        backoff = Math.min(backoff * 2, MAX_BACKOFF);
+      }
       schedule();
-    }
+    };
 
-    function stopPolling() { if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
+    const schedule = () => { pollTimer = setTimeout(tick, backoff); };
+    schedule();
+  }
 
-    /* ✅ 修正监听：绑定到左侧“数据”按钮，而不是内容容器 */
-    document.querySelector('.tabs [data-tab="responses"]')?.addEventListener('click', () => {
-      const siteName = document.body?.dataset?.site || '';
-      if (!siteName) return;
-      startPollingOnce(siteName);
+  function stopPolling() {
+    if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; }
+  }
+
+  /* 保持：点击“数据”才启动 */
+  document.querySelector('.tabs [data-tab="responses"]')?.addEventListener('click', () => {
+    const siteName = document.body?.dataset?.site || '';
+    if (!siteName) return;
+    startPollingOnce(siteName);
+  });
+
+  // ★ 新增：切到其他 Tab 立即停轮询
+  document.querySelectorAll('.tabs button').forEach(b => {
+    b.addEventListener('click', () => {
+      if (b.dataset.tab !== 'responses') stopPolling();
     });
+  });
 
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) stopPolling();
-    });
+  // 失焦就停
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopPolling();
+  });
 </script>
 
 </body>
