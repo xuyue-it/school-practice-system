@@ -8,7 +8,7 @@
 /* ==== responses nuclear guard: block ALL network paths when not in "数据" tab ==== */
 (function () {
   const PATH = /\/admin\/api\/responses(?:\?|$)/i;
-  const inResponsesTab = () =>
+  const inResponsesTab = () => true;
     !!document.getElementById('tab-responses')?.classList.contains('active');
 
   const urlOf = (input) => {
