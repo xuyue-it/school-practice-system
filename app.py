@@ -1022,62 +1022,74 @@ def _extract_columns_from_schema(schema: dict):
     cols = []
     if not isinstance(schema, dict):
         return cols
-    arr = None
-    for k in ("fields", "questions", "items"):
-        v = schema.get(k)
-        if isinstance(v, list):
-            arr = v; break
-    if not arr:
-        return cols
 
-    def _to_text(s: str) -> str:
-        if not isinstance(s, str):
+    # ---------- helpers ----------
+    def _to_text(sval) -> str:
+        if not isinstance(sval, str):
             return ""
-        s = re.sub(r"<[^>]+>", "", s)
-        return s.strip()
+        sval = re.sub(r"<[^>]+>", "", sval)
+        return sval.strip()
 
     def _has_cjk(text: str) -> bool:
         """是否包含中文（CJK）"""
-        return bool(re.search(r'[\u4e00-\u9fff]', str(text or '')))
-
+        return bool(re.search(r"[\u4e00-\u9fff]", str(text or "")))
 
     def pick_label(f: dict) -> str:
-        # 尽量覆盖不同表单构建器的命名方式
+        # 覆盖常见构建器字段名
         for cand in (
-                f.get("label"), f.get("title"), f.get("text"), f.get("name"),
-                f.get("placeholder"), f.get("question"), f.get("displayName"),
-                f.get("desc"), f.get("description"),
-                (f.get("ui") or {}).get("label"), (f.get("ui") or {}).get("title"),
-                (f.get("props") or {}).get("label"), (f.get("props") or {}).get("title"),
-                (f.get("meta") or {}).get("label"), (f.get("meta") or {}).get("title"),
+            f.get("label"), f.get("title"), f.get("text"), f.get("name"),
+            f.get("placeholder"), f.get("question"), f.get("displayName"),
+            f.get("desc"), f.get("description"),
+            (f.get("ui") or {}).get("label"), (f.get("ui") or {}).get("title"),
+            (f.get("props") or {}).get("label"), (f.get("props") or {}).get("title"),
+            (f.get("meta") or {}).get("label"), (f.get("meta") or {}).get("title"),
         ):
             t = _to_text(cand) if cand else ""
             if t:
                 return t
-        # i18n / 富文本对象兜底
+        # i18n / 富文本兜底
         for key in ("i18n", "labelHTML", "label", "title", "question"):
             obj = f.get(key)
             if isinstance(obj, dict):
-                for lang_key in ("zh-CN", "zh_CN", "zh-cn", "zh", "text", "title", "label", "question", "en"):
+                for lang_key in ("zh-CN","zh_CN","zh-cn","zh","text","title","label","question","en"):
                     t = _to_text(obj.get(lang_key) or "")
                     if t:
                         return t
         return ""
 
-    for f in arr:
+    # 深度遍历 schema，尽可能找出字段节点
+    CAND_KEYS = {"fields","questions","items","components","children",
+                 "body","rows","columns","pages","formItems","list",
+                 "properties","elements","schema"}
+    seen_keys = set()
+
+    def iter_fields(node):
+        if isinstance(node, dict):
+            # 当前节点本身可能就是字段
+            if any(k in node for k in ("key","id","name")) and any(k in node for k in ("label","title","text","question","displayName")):
+                yield node
+            for k, v in node.items():
+                if k in CAND_KEYS or isinstance(v, (list, dict)):
+                    yield from iter_fields(v)
+        elif isinstance(node, list):
+            for it in node:
+                yield from iter_fields(it)
+
+    for f in iter_fields(schema):
         if not isinstance(f, dict):
             continue
         key = f.get("key") or f.get("id") or f.get("name")
-        if not key:
+        if not key or key in seen_keys:
             continue
         label = pick_label(f)
-        # 只要中文标题；没有中文就跳过，不出现在表头
+        # 只保留“含中文标题”的列（你现在的需求）
         if not label or not _has_cjk(label):
             continue
         type_ = f.get("type") or (f.get("ui") or {}).get("type") or ""
         cols.append({"key": str(key), "label": label, "type": str(type_)})
-    return cols
+        seen_keys.add(key)
 
+    return cols
 def _api_list_responses(site_name: str):
     q = (request.args.get("q") or "").strip()
     schema = _safe_schema(site_name)
@@ -1137,10 +1149,74 @@ def _api_list_responses(site_name: str):
 def api_responses(site_name):
     return _api_list_responses(site_name)
 
-@app.route("/site/<site_name>/admin/api/list")
+@app.route("/site/<site_name>/admin/api/submissions")  # 兼容旧别名
 @admin_required
-def api_responses_alias1(site_name):
+def api_responses_alias(site_name):
     return _api_list_responses(site_name)
+
+def _api_list_responses(site_name: str):
+    q = (request.args.get("q") or "").strip()
+    schema = _safe_schema(site_name)
+
+    # 读提交数据
+    conn = get_conn(); c = conn.cursor()
+    try:
+        c.execute(f'SET search_path TO "{schema}", public')
+        if q:
+            c.execute("""
+                SELECT id, data, status, review_comment, created_at
+                  FROM submissions
+                 WHERE data::text ILIKE %s
+                 ORDER BY id DESC
+                 LIMIT 500
+            """, (f"%{q}%",))
+        else:
+            c.execute("""
+                SELECT id, data, status, review_comment, created_at
+                  FROM submissions
+                 ORDER BY id DESC
+                 LIMIT 500
+            """)
+        rows = c.fetchall()
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+    items = []
+    for rid, d, status, review, created in rows:
+        data = d if isinstance(d, dict) else (json.loads(d) if d else {})
+        items.append({
+            "id": rid,
+            "status": (status or "待审核"),
+            "review_comment": (review or ""),
+            "created_at": str(created) if created else "",
+            "data": data,
+        })
+
+    # 读表单 schema，生成中文表头
+    conn2 = get_conn(); c2 = conn2.cursor()
+    try:
+        c2.execute(f'SET search_path TO "{schema}", public')
+        c2.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
+        row = c2.fetchone()
+    except Exception:
+        row = None
+    finally:
+        conn2.close()
+
+    schema_json = row[0] if (row and isinstance(row[0], dict)) else (json.loads(row[0]) if row and row[0] else {})
+    columns = _extract_columns_from_schema(schema_json)
+    # 只保留中文列（再保险）
+    def _has_cjk(text: str) -> bool:
+        return bool(re.search(r"[\u4e00-\u9fff]", str(text or "")))
+    columns = [c for c in columns if _has_cjk(c.get("label"))]
+
+    title_map = {c["key"]: c["label"] for c in columns if c.get("key")}
+
+    return jsonify({"ok": True, "items": items, "columns": columns, "titleMap": title_map})
+
 
 @app.route("/site/<site_name>/admin/api/submissions")
 @admin_required
