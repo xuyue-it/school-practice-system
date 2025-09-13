@@ -15,19 +15,27 @@
     try { return typeof input === 'string' ? input : (input && input.url) || ''; } catch { return ''; }
   };
 
-  // fetch
-  const _fetch = window.fetch;
-  window.fetch = function (input, init) {
-    const u = urlOf(input);
-    if (PATH.test(u) && !inResponsesTab()) {
-      try { console.debug('[responses-guard] fetch blocked', u); } catch {}
-      return Promise.resolve(new Response(
-        JSON.stringify({ ok: true, items: [] }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      ));
-    }
-    return _fetch.apply(this, arguments);
-  };
+// 获取当前站点名（后端模板已写在 body data-site 上）
+    const siteName = document.body.dataset.site || "";
+
+// 包装 fetch：只有在有 siteName 时才发请求
+    const _fetch = window.fetch;
+    window.fetch = function (input, init) {
+        const url = typeof input === "string" ? input : (input && input.url) || "";
+
+        if (/\/admin\/api\/responses(?:\?|$)/.test(url)) {
+            if (!siteName) {
+                console.log("还没有生成 site_name，跳过加载 responses");
+                return Promise.resolve(new Response(
+                    JSON.stringify({ok: true, items: []}),
+                    {status: 200, headers: {"Content-Type": "application/json"}}
+                ));
+            }
+        }
+
+        return _fetch.apply(this, arguments);
+    };
+
 
   // XHR
   const _open = XMLHttpRequest.prototype.open;
