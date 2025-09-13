@@ -1486,6 +1486,11 @@
     }
 </style>
 
+<style id="anti-garble">
+  /* 永远隐藏数据页里的占位行，避免“乱码”闪一下 */
+  #tab-responses .muted { display: none !important; }
+</style>
+
 <script>
     window.addEventListener('DOMContentLoaded', function () {
         document.querySelectorAll('.modal').forEach(m => {
