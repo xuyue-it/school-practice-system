@@ -1037,22 +1037,23 @@ def _extract_columns_from_schema(schema: dict):
         return s.strip()
 
     def pick_label(f: dict) -> str:
-        for cand in [
-            f.get("labelHTML"), f.get("label"),
-            f.get("title"), f.get("text"),
-            f.get("placeholder"),
-            f.get("desc"), f.get("description"),
-            (f.get("ui") or {}).get("label"),
-            (f.get("props") or {}).get("label"),
-            (f.get("meta") or {}).get("label"),
-        ]:
+        # 尽量覆盖不同表单构建器的命名方式
+        for cand in (
+                f.get("label"), f.get("title"), f.get("text"), f.get("name"),
+                f.get("placeholder"), f.get("question"), f.get("displayName"),
+                f.get("desc"), f.get("description"),
+                (f.get("ui") or {}).get("label"), (f.get("ui") or {}).get("title"),
+                (f.get("props") or {}).get("label"), (f.get("props") or {}).get("title"),
+                (f.get("meta") or {}).get("label"), (f.get("meta") or {}).get("title"),
+        ):
             t = _to_text(cand) if cand else ""
             if t:
                 return t
-        for key in ("i18n", "labelHTML", "label", "title"):
+        # i18n / 富文本对象里再兜底
+        for key in ("i18n", "labelHTML", "label", "title", "question"):
             obj = f.get(key)
             if isinstance(obj, dict):
-                for lang_key in ("zh-CN","zh_CN","zh-cn","zh","text","title","label","en"):
+                for lang_key in ("zh-CN", "zh_CN", "zh-cn", "zh", "text", "title", "label", "question", "en"):
                     t = _to_text(obj.get(lang_key) or "")
                     if t:
                         return t
