@@ -154,46 +154,56 @@ document.addEventListener('DOMContentLoaded', function(){
    // —— 把现有“保存表单”按钮移到右侧图片（#railImage）正下方 ——
     // 仅移动节点，不改样式/事件
     (function moveSaveUnderRailImage() {
-        var formEl = document.getElementById('builder');
-        if (!formEl) return;
+  var formEl = document.getElementById('builder');
+  if (!formEl) return;
 
-        // 现有“保存表单”按钮（保持原样）
-        var saveBtn = formEl.querySelector('button[type="submit"]')
+  var saveBtn = formEl.querySelector('button[type="submit"], input[type="submit"]')
             || document.getElementById('btnSave')
             || document.querySelector('.btn-save');
-        if (!saveBtn) return;
+  if (!saveBtn) return;
 
-        // 目标锚点：图片控件
-        var railImg = document.getElementById('railImage');
-        if (!railImg) return;
+  // 确保即使按钮被移出 form 仍然提交这个 form
+  saveBtn.setAttribute('form', 'builder');
+  saveBtn.type = 'submit';
 
-        // 确保按钮即使被移到 form 外，依然提交这个表单
-        saveBtn.setAttribute('form', 'builder');
-        saveBtn.type = saveBtn.type || 'submit';
+  if (document.getElementById('railSaveHolder')) return;
 
-        // 只移动一次
-        if (document.getElementById('railSaveHolder')) return;
+  // 1) 先找 #railImage（通常是 <input type="file">）
+  var railImg = document.getElementById('railImage');
 
-        // 找到图片这“一行”的容器（尽量插到这一行的后面，视觉上就是“下面”）
-        var row = railImg.closest('.rail-row, .row, .field, .group, label') || railImg;
+  // 2) 兜底：找一个“文字包含‘图片’”的按钮/label
+  if (!railImg) {
+    railImg = Array.from(document.querySelectorAll('label,button,.btn,input'))
+      .find(function (el) {
+        var t = (el.innerText || el.value || '').trim();
+        return /图片/.test(t);
+      });
+  }
 
-        // 创建一个占满一行的容器，保证在“下面”，不跟图片并排
-        var holder = document.createElement('div');
-        holder.id = 'railSaveHolder';
-        holder.style.display = 'block';
-        holder.style.width = '100%';
-        holder.style.marginTop = '8px';
+  // 占位容器，保证换行在“下面”
+  var holder = document.createElement('div');
+  holder.id = 'railSaveHolder';
+  holder.style.display = 'block';
+  holder.style.width = '100%';
+  holder.style.marginTop = '8px';
 
-        // 若父容器是横向 flex 且不换行，会导致并排；这里只做最小改动以允许换行
-        var parent = row.parentElement;
-        if (parent && getComputedStyle(parent).display.indexOf('flex') !== -1) {
-            parent.style.flexWrap = 'wrap';
-        }
+  // 尽量插在“图片控件”那一行的后面
+  var row = railImg && (railImg.closest('.rail-row, .row, .field, .group, label, .sidebar, .right-rail, .rail') || railImg);
+  if (row) {
+    var parent = row.parentElement;
+    if (parent && getComputedStyle(parent).display.indexOf('flex') !== -1) {
+      parent.style.flexWrap = 'wrap';
+    }
+    row.insertAdjacentElement('afterend', holder);
+  } else {
+    // 实在找不到，就挂到右侧栏的末尾（尽量常见容器选择器）
+    var right = document.getElementById('rail') || document.querySelector('.right-rail, .rail, .sidebar');
+    if (right) right.insertAdjacentElement('beforeend', holder);
+    else formEl.insertAdjacentElement('afterend', holder); // 最兜底
+  }
 
-        // 先把占位容器插到图片行的“后面”，再把按钮放进去
-        row.insertAdjacentElement('afterend', holder);
-        holder.appendChild(saveBtn);
-    })();
+  holder.appendChild(saveBtn);
+})();
 
 
   /* —— 安全绑定：元素存在才绑定，防止 null.addEventListener 报错中断 —— */
@@ -854,20 +864,48 @@ function showSaveSuccess(payloadOrSite) {
     return String(s||'').replace(/[\s_:\-\/（）()\[\]【】<>·.，,。；;:'"|]/g,'').toLowerCase();
   }
   function fmtVal(v){
-    if(v==null) return '';
-    if(Array.isArray(v)) return v.map(fmtVal).filter(Boolean).join('、');
-    if(typeof v==='object'){
-      try{
-        if(v.url) return '<a href="'+String(v.url).replace(/"/g,'&quot;')+'" target="_blank">查看</a>';
-        if('value' in v) return String(v.value);
-        return String(JSON.stringify(v));
-      }catch(_){ return String(v); }
-    }
-    var s=String(v);
-    if(/^https?:/i.test(s) && /\.(png|jpe?g|gif|webp|bmp)$/i.test(s)) return '<a href="'+s.replace(/"/g,'&quot;')+'" target="_blank">图片</a>';
-    if(/^https?:/i.test(s)) return '<a href="'+s.replace(/"/g,'&quot;')+'" target="_blank">链接</a>';
-    return s.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if (v == null) return '';
+
+  // 数组：逐个渲染为链接，换行显示
+  if (Array.isArray(v)) {
+    return v.map(fmtVal).filter(Boolean).join('<br>');
   }
+
+  // 对象：常见 {url,name} 或 {url}；也兼容 {value:...}
+  if (typeof v === 'object') {
+    try {
+      if (v.url) {
+        var raw = String(v.url).trim();
+        var abs = raw.startsWith('/') ? new URL(raw, window.location.origin).href : raw;
+        var name = (v.name && String(v.name).trim()) ||
+                   raw.split('?')[0].split('/').pop() || '查看';
+        return '<a href="'+abs.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener">'+
+               name.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</a>';
+      }
+      if ('value' in v) return String(v.value);
+      return String(JSON.stringify(v));
+    } catch(_) { return String(v); }
+  }
+
+  // 字符串
+  var s = String(v).trim();
+
+  // 如果是“逗号分隔的多个链接”，拆开分别渲染
+  if (s.includes(',') && (/^https?:/i.test(s) || s.trim().startsWith('/'))) {
+    return s.split(',').map(function(x){ return fmtVal(x.trim()); }).join('<br>');
+  }
+
+  // 单个链接：绝对 http(s) 或以 / 开头的站内路径
+  if (/^https?:/i.test(s) || s.startsWith('/')) {
+    var abs2 = s.startsWith('/') ? new URL(s, window.location.origin).href : s;
+    var fname = s.split('?')[0].split('/').pop() || '查看';
+    return '<a href="'+abs2.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener">'+
+           fname.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</a>';
+  }
+
+  // 普通文本：做转义
+  return s.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
   /* =============== 回复表格：动态列 + 稳定取值 =============== */
   var tbody=document.getElementById('respTbody');
