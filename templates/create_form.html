@@ -4,143 +4,6 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
     <title>创建新表单</title>
-    <script>
-/* ==== responses nuclear guard: block ALL network paths when not in "数据" tab ==== */
-(function () {
-  const PATH = /\/admin\/api\/responses(?:\?|$)/i;
-  const inResponsesTab = () =>
-    !!document.getElementById('tab-responses')?.classList.contains('active');
-
-  const urlOf = (input) => {
-    try { return typeof input === 'string' ? input : (input && input.url) || ''; } catch { return ''; }
-  };
-
-// 获取当前站点名（后端模板已写在 body data-site 上）
-    const siteName = document.body.dataset.site || "";
-
-// 包装 fetch：只有在有 siteName 时才发请求
-    const _fetch = window.fetch;
-    window.fetch = function (input, init) {
-        const url = typeof input === "string" ? input : (input && input.url) || "";
-
-        if (/\/admin\/api\/responses(?:\?|$)/.test(url)) {
-            if (!siteName) {
-                console.log("还没有生成 site_name，跳过加载 responses");
-                return Promise.resolve(new Response(
-                    JSON.stringify({ok: true, items: []}),
-                    {status: 200, headers: {"Content-Type": "application/json"}}
-                ));
-            }
-        }
-
-        return _fetch.apply(this, arguments);
-    };
-
-
-  // XHR
-  const _open = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function (method, url) {
-    this.__rg_block = PATH.test(String(url)) && !inResponsesTab();
-    return _open.apply(this, arguments);
-  };
-  const _send = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function (body) {
-    if (this.__rg_block) { try { this.abort(); } catch {} return; }
-    return _send.apply(this, arguments);
-  };
-
-  // sendBeacon
-  if (navigator.sendBeacon) {
-    const _beacon = navigator.sendBeacon.bind(navigator);
-    navigator.sendBeacon = function (url, data) {
-      if (PATH.test(String(url)) && !inResponsesTab()) {
-        try { console.debug('[responses-guard] beacon blocked', url); } catch {}
-        return true;
-      }
-      return _beacon(url, data);
-    };
-  }
-
-  // EventSource (SSE)
-  if (window.EventSource) {
-    const _ES = window.EventSource;
-    window.EventSource = function (url, conf) {
-      if (PATH.test(String(url)) && !inResponsesTab()) {
-        try { console.debug('[responses-guard] EventSource blocked', url); } catch {}
-        const dummy = new EventTarget(); dummy.readyState = 2; dummy.close = function () { };
-        return dummy;
-      }
-      return new _ES(url, conf);
-    };
-    window.EventSource.prototype = _ES.prototype;
-  }
-
-  // WebSocket
-  if (window.WebSocket) {
-    const _WS = window.WebSocket;
-    window.WebSocket = new Proxy(_WS, {
-      construct(target, args) {
-        const u = String(args?.[0] || '');
-        if (PATH.test(u) && !inResponsesTab()) {
-          try { console.debug('[responses-guard] WebSocket blocked', u); } catch {}
-          return { readyState: 3, close() {}, send() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } };
-        }
-        return new target(...args);
-      }
-    });
-  }
-
-  // 元素 src/href（img/script/link/iframe/audio/video/source/embed/object）
-  function guardURLSetter(Ctor, prop) {
-    const desc = Object.getOwnPropertyDescriptor(Ctor.prototype, prop);
-    if (!desc || !desc.set) return;
-    Object.defineProperty(Ctor.prototype, prop, {
-      set(v) {
-        if (PATH.test(String(v)) && !inResponsesTab()) { try { this.setAttribute('data-blocked-'+prop, v); } catch {} return; }
-        return desc.set.call(this, v);
-      },
-      get: desc.get
-    });
-    const _setAttr = Ctor.prototype.setAttribute;
-    Ctor.prototype.setAttribute = function (name, value) {
-      if (String(name).toLowerCase() === prop && PATH.test(String(value)) && !inResponsesTab()) {
-        try { this.setAttribute('data-blocked-'+prop, value); } catch {}
-        return;
-      }
-      return _setAttr.call(this, name, value);
-    };
-  }
-  [HTMLImageElement, HTMLScriptElement, HTMLIFrameElement, HTMLAudioElement, HTMLVideoElement,
-   HTMLEmbedElement, HTMLObjectElement, HTMLSourceElement].forEach(C => guardURLSetter(C, 'src'));
-
-  // link.href 也挡一下
-  if (window.HTMLLinkElement) {
-    const d = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href');
-    if (d && d.set) {
-      Object.defineProperty(HTMLLinkElement.prototype, 'href', {
-        set(v) { if (PATH.test(String(v)) && !inResponsesTab()) { try { this.setAttribute('data-blocked-href', v); } catch {} return; } return d.set.call(this, v); },
-        get: d.get
-      });
-    }
-  }
-
-  // Workers（防在 worker 里绕过拦截）
-  ['Worker', 'SharedWorker'].forEach(k => {
-    const C = window[k];
-    if (!C) return;
-    window[k] = new Proxy(C, {
-      construct(target, args) {
-        const url = String(args?.[0] || '');
-        if (PATH.test(url) && !inResponsesTab()) {
-          try { console.debug('[responses-guard] worker blocked', url); } catch {}
-          return { postMessage() {}, terminate() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } };
-        }
-        return new target(...args);
-      }
-    });
-  });
-})();
-</script>
 
     <!-- 早期开关：首帧决定是否启用 perf-mode -->
     <script>
@@ -1113,11 +976,13 @@
         }
     </style>
 
+<!-- 仅保留这一段 guard：安全读取 body.dataset，且只在数据页 + 有站点名 + 页面可见时放行 -->
 <script id="responses-guard">
 (function () {
-  // ✅ 新增：读当前站点名（新建页为空）
+  // 读站点名（新建页通常为空）
   const siteName = (document.body && document.body.dataset && document.body.dataset.site) || "";
 
+  // 是否在“数据”页
   const inResponsesTab = () =>
     !!document.getElementById('tab-responses')?.classList.contains('active');
 
@@ -1128,10 +993,12 @@
     } catch { return false; }
   };
 
+  const shouldBlock = () => (!inResponsesTab() || !siteName || document.hidden);
+
+  // fetch
   const _fetch = window.fetch;
   window.fetch = function(input, init) {
-    // ✅ 改动点：只要没在“数据”页，或者 siteName 为空，就拦截
-    if (isResponsesApi(input) && (!inResponsesTab() || !siteName)) {
+    if (isResponsesApi(input) && shouldBlock()) {
       try { console.debug('[responses-guard] blocked', typeof input==='string'?input:input.url); } catch {}
       return Promise.resolve(new Response(
         JSON.stringify({ ok: true, items: [], total: 0 }),
@@ -1141,10 +1008,10 @@
     return _fetch.apply(this, arguments);
   };
 
-  // XHR / beacon / SSE 的那几处判断，同样把条件替换成 (!inResponsesTab() || !siteName)
+  // XHR
   const _open = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-    this.__rg_block = /\/admin\/api\/responses(?:\?|$)/.test(String(url)) && (!inResponsesTab() || !siteName);
+    this.__rg_block = /\/admin\/api\/responses(?:\?|$)/.test(String(url)) && shouldBlock();
     return _open.call(this, method, url, ...rest);
   };
   const _send = XMLHttpRequest.prototype.send;
@@ -1153,10 +1020,11 @@
     return _send.call(this, body);
   };
 
+  // sendBeacon
   if (navigator.sendBeacon) {
     const _beacon = navigator.sendBeacon.bind(navigator);
     navigator.sendBeacon = function(url, data) {
-      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && (!inResponsesTab() || !siteName)) {
+      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && shouldBlock()) {
         try { console.debug('[responses-guard] beacon blocked', url); } catch {}
         return true;
       }
@@ -1164,10 +1032,11 @@
     };
   }
 
+  // SSE
   if (window.EventSource) {
     const _ES = window.EventSource;
     window.EventSource = function(url, conf) {
-      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && (!inResponsesTab() || !siteName)) {
+      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && shouldBlock()) {
         try { console.debug('[responses-guard] EventSource blocked', url); } catch {}
         const dummy = new EventTarget();
         dummy.readyState = 2; dummy.close = function(){};
@@ -1177,8 +1046,14 @@
     };
     window.EventSource.prototype = _ES.prototype;
   }
+
+  // 页面从隐藏->可见时，下一次才允许发；隐藏时自动拦截
+  document.addEventListener('visibilitychange', () => {
+    try { console.debug('[responses-guard] visibility:', document.hidden ? 'hidden' : 'visible'); } catch {}
+  });
 })();
 </script>
+
 
 </head>
 
@@ -2724,6 +2599,39 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     })();
+</script>
+
+<script>
+    // 你的“单实例 + 退避”的轮询脚本（原样粘贴）
+    let pollTimer = null;
+    let backoff = 15000; const MAX_BACKOFF = 60000;
+
+    function startPollingOnce(siteName) {
+      if (pollTimer) return;
+      const tick = async () => {
+        if (document.hidden) { schedule(); return; }
+        try {
+          const res = await fetch(`/site/${siteName}/admin/api/responses?limit=50&offset=0`);
+          if (res.ok) { backoff = 15000; } else { backoff = Math.min(backoff * 2, MAX_BACKOFF); }
+        } catch { backoff = Math.min(backoff * 2, MAX_BACKOFF); }
+        schedule();
+      };
+      const schedule = () => { pollTimer = setTimeout(tick, backoff); };
+      schedule();
+    }
+
+    function stopPolling() { if (pollTimer) { clearTimeout(pollTimer); pollTimer = null; } }
+
+    /* ✅ 修正监听：绑定到左侧“数据”按钮，而不是内容容器 */
+    document.querySelector('.tabs [data-tab="responses"]')?.addEventListener('click', () => {
+      const siteName = document.body?.dataset?.site || '';
+      if (!siteName) return;
+      startPollingOnce(siteName);
+    });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) stopPolling();
+    });
 </script>
 
 </body>
