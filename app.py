@@ -1008,7 +1008,7 @@ def api_delete_submission(site_name):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
     try:
-        c.execute(f"SET search_path TO {schema}")
+        c.execute(f'SET search_path TO "{schema}", public')
         c.execute("DELETE FROM submissions WHERE id=%s", (sub_id,))
         conn.commit()
         return jsonify({"ok": True})
@@ -1049,7 +1049,7 @@ def _extract_columns_from_schema(schema: dict):
             t = _to_text(cand) if cand else ""
             if t:
                 return t
-        # i18n / 富文本对象里再兜底
+        # i18n / 富文本对象兜底
         for key in ("i18n", "labelHTML", "label", "title", "question"):
             obj = f.get(key)
             if isinstance(obj, dict):
@@ -1076,7 +1076,7 @@ def _api_list_responses(site_name: str):
 
     conn = get_conn(); c = conn.cursor()
     try:
-        c.execute(f"SET search_path TO {schema}")
+        c.execute(f'SET search_path TO "{schema}", public')
         if q:
             c.execute("""
                 SELECT id, data, status, review_comment, created_at
@@ -1284,7 +1284,7 @@ def api_review(site_name):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
     try:
-        c.execute(f"SET search_path TO {schema}")
+        c.execute(f'SET search_path TO "{schema}", public')
         c.execute("UPDATE submissions SET status=%s, review_comment=%s WHERE id=%s",
                   (status, review_comment, sub_id))
         conn.commit()
@@ -1303,7 +1303,7 @@ def api_send_mail(site_name):
     schema = _safe_schema(site_name)
 
     conn = get_conn(); c = conn.cursor()
-    c.execute(f"SET search_path TO {schema}")
+    c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data, status, review_comment FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone()
     conn.close()
@@ -1530,7 +1530,7 @@ def public_status_query(site_name):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
     try:
-        c.execute(f"SET search_path TO {schema}")
+        c.execute(f'SET search_path TO "{schema}", public')
         c.execute("""
             SELECT id, data, status, review_comment, created_at
             FROM submissions
@@ -1869,7 +1869,7 @@ def _extract_email(data: dict) -> str:
 def export_word(site_name, sub_id):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
-    c.execute(f"SET search_path TO {schema}")
+    c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
     if not row: return "❌ 记录不存在", 404
@@ -1886,7 +1886,7 @@ def export_word(site_name, sub_id):
 def export_excel(site_name, sub_id):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
-    c.execute(f"SET search_path TO {schema}")
+    c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
     if not row: return "❌ 记录不存在", 404
@@ -1919,7 +1919,7 @@ def export_excel(site_name, sub_id):
 def export_all_excel(site_name):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
-    c.execute(f"SET search_path TO {schema}")
+    c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT id, data, status, review_comment, created_at FROM submissions ORDER BY id")
     rows = c.fetchall(); conn.close()
 
@@ -1962,7 +1962,7 @@ def export_all_excel(site_name):
 def api_gallery(site_name):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
-    c.execute(f"SET search_path TO {schema}")
+    c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data FROM submissions ORDER BY id DESC LIMIT 1000")
     rows = c.fetchall(); conn.close()
 
