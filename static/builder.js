@@ -994,7 +994,7 @@ function showSaveSuccess(payloadOrSite) {
 
     rebuildRespHeader();
 
-    var url='/site/'+encodeURIComponent(site)+'/admin/api/list?query='+encodeURIComponent(qInp.value||'');
+    var url='/site/'+encodeURIComponent(site)+'/admin/api/submissions?q='+encodeURIComponent(qInp.value||'');
     try{
       var res=await fetch(url); var data=await res.json();
       var cols=document.querySelectorAll('#respTable thead th').length||14;
@@ -1059,24 +1059,23 @@ function showSaveSuccess(payloadOrSite) {
         passBtn.addEventListener('click',async function(){await updateStatus(site,row.id,'已通过',commentInput.value); showToast('已标记通过')});
         failBtn.addEventListener('click',async function(){await updateStatus(site,row.id,'未通过',commentInput.value); showToast('已标记不通过')});
         tr.querySelector('[data-del="'+row.id+'"]').addEventListener('click',async function(){if(!confirm('确认删除该记录？'))return; await delRow(site,row.id); showToast('已删除')});
-        tr.querySelector('[data-mail="'+row.id+'"]').addEventListener('click', async function () {
-          var subject = prompt('邮件主题：','您在本表单的申请结果通知');
-          if (subject === null) return;
-          var body = prompt('邮件内容：','你好，您的申请已处理。');
-          if (body === null) return;
-          try {
-            var r = await fetch('/site/' + site + '/admin/api/send_email/' + row.id, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ subject: subject, body: body })
-            });
-            var d2 = await r.json();
-            if (!r.ok || !d2.ok) { alert('发送失败：' + (d2.error || r.status)); return; }
-            showToast('邮件已发送');
-          } catch (err) {
-            alert('发送失败：' + err.message);
-          }
-        });
+          tr.querySelector('[data-mail="' + row.id + '"]').addEventListener('click', async function () {
+              try {
+                  const r = await fetch('/site/' + site + '/admin/api/send_mail', {
+                      method: 'POST',
+                      headers: {'Content-Type': 'application/json'},
+                      body: JSON.stringify({id: row.id})
+                  });
+                  const d2 = await r.json().catch(() => ({}));
+                  if (!r.ok || !d2.ok) {
+                      alert('发送失败：' + (d2.error || r.status));
+                      return;
+                  }
+                  showToast('邮件已发送');
+              } catch (err) {
+                  alert('发送失败：' + err.message);
+              }
+          });
       });
     }catch(e){
       var cols=document.querySelectorAll('#respTable thead th').length||14;
@@ -1084,23 +1083,38 @@ function showSaveSuccess(payloadOrSite) {
     }
   }
   async function updateStatus(site, id, status, comment) {
-  var r = await fetch('/site/' + site + '/admin/api/status', {
+  const r = await fetch('/site/' + encodeURIComponent(site) + '/admin/api/review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: id, status: status, review_comment: comment || '' })
+    body: JSON.stringify({
+      id: id,
+      status: status,
+      review_comment: comment || ''
+    })
   });
-  var d = await r.json();
-  if (!r.ok || !d.ok) { alert('操作失败：' + (d.error || r.status)); return; }
-  loadResponses();
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) {
+    alert('操作失败：' + (d.error || r.status));
+    return;
   }
-  async function delRow(site, id) {
-  var r = await fetch('/site/' + site + '/admin/api/delete/' + id, {
-    method: 'DELETE'
+  showToast('已更新状态');
+  loadResponses();
+}
+async function delRow(site, id) {
+  const r = await fetch('/site/' + encodeURIComponent(site) + '/admin/api/delete', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: id })
   });
-  var d = await r.json();
-  if (!r.ok || !d.ok) { alert('删除失败：' + (d.error || r.status)); return; }
-  loadResponses();
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.ok) {
+    alert('删除失败：' + (d.error || r.status));
+    return;
   }
+  showToast('已删除');
+  loadResponses();
+}
+
   bind(document.getElementById('btnExportAll'),'click',function(){
     var site=(document.body.dataset.site||'').trim(); if(!site){alert('请先填写网站名，系统会自动保存'); return;}
     location.href='/site/'+site+'/admin/api/export_all_excel'; showToast('已开始导出');
