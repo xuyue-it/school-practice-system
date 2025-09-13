@@ -1109,7 +1109,7 @@
 <script id="responses-guard">
 (function () {
   // 当前是否正处在“数据”页
-  const inResponsesTab = () =>
+  const inResponsesTab = () => true;
     !!document.getElementById('tab-responses')?.classList.contains('active');
 
   // 识别 /admin/api/responses 接口
@@ -1900,7 +1900,7 @@
             return fields.length && fields.every(f => f.label === f.key || /^q[a-z0-9]{5,}$/i.test(f.label || ''));
         }
 
-        async function load() {
+        async function loadResponses() {
             const url = `/site/${encodeURIComponent(SITE)}/admin/api/responses?q=${encodeURIComponent(qInput?.value || "")}`;
             const data = await jget(url);
 
@@ -2719,6 +2719,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     })();
 </script>
+<script>window.loadResponses = window.loadResponses || (typeof loadResponses==="function" ? loadResponses : null);</script>
 
 </body>
 </html>
