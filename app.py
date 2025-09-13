@@ -1036,6 +1036,11 @@ def _extract_columns_from_schema(schema: dict):
         s = re.sub(r"<[^>]+>", "", s)
         return s.strip()
 
+    def _has_cjk(text: str) -> bool:
+        """是否包含中文（CJK）"""
+        return bool(re.search(r'[\u4e00-\u9fff]', str(text or '')))
+
+
     def pick_label(f: dict) -> str:
         # 尽量覆盖不同表单构建器的命名方式
         for cand in (
@@ -1065,7 +1070,10 @@ def _extract_columns_from_schema(schema: dict):
         key = f.get("key") or f.get("id") or f.get("name")
         if not key:
             continue
-        label = pick_label(f) or str(key)
+        label = pick_label(f)
+        # 只要中文标题；没有中文就跳过，不出现在表头
+        if not label or not _has_cjk(label):
+            continue
         type_ = f.get("type") or (f.get("ui") or {}).get("type") or ""
         cols.append({"key": str(key), "label": label, "type": str(type_)})
     return cols
@@ -2141,6 +2149,11 @@ def allow_embed(resp):
         except Exception:
             pass
     return resp
+
+def _has_cjk(text: str) -> bool:
+    if not text: return False
+    import re as _re
+    return bool(_re.search(r"[\u4e00-\u9fff]", str(text)))
 
 # ========== 健康检查 ==========
 @app.route("/_health")

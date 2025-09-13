@@ -2720,6 +2720,11 @@ document.addEventListener('DOMContentLoaded', function () {
     })();
 </script>
 <script>window.loadResponses = window.loadResponses || (typeof loadResponses==="function" ? loadResponses : null);</script>
+<script>
+window.addEventListener('load', ()=>{ try{
+    if (typeof loadResponses==='function') loadResponses();
+}catch(e){} });
+</script>
 
 </body>
 </html>
