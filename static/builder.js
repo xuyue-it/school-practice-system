@@ -863,49 +863,44 @@ function showSaveSuccess(payloadOrSite) {
   function normalizeKey(s){
     return String(s||'').replace(/[\s_:\-\/（）()\[\]【】<>·.，,。；;:'"|]/g,'').toLowerCase();
   }
-  function fmtVal(v){
-  if (v == null) return '';
-
-  // 数组：逐个渲染为链接，换行显示
-  if (Array.isArray(v)) {
-    return v.map(fmtVal).filter(Boolean).join('<br>');
-  }
-
-  // 对象：常见 {url,name} 或 {url}；也兼容 {value:...}
-  if (typeof v === 'object') {
+function fmtVal(v){
+  if(v==null) return '';
+  const makeLink = (s) => {
     try {
-      if (v.url) {
-        var raw = String(v.url).trim();
-        var abs = raw.startsWith('/') ? new URL(raw, window.location.origin).href : raw;
-        var name = (v.name && String(v.name).trim()) ||
-                   raw.split('?')[0].split('/').pop() || '查看';
-        return '<a href="'+abs.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener">'+
-               name.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</a>';
-      }
-      if ('value' in v) return String(v.value);
+      const isAbsHttp = /^https?:/i.test(s);
+      const abs = isAbsHttp ? s : new URL(s, window.location.origin).href;
+      const nameFromPath = () => {
+        try {
+          const u = new URL(abs);
+          const base = decodeURIComponent((u.pathname.split('/').pop() || '').trim()) || '文件';
+          return base || '文件';
+        } catch { return '文件'; }
+      };
+      const isImg = /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(abs);
+      const text = isImg ? '图片' : nameFromPath();
+      return '<a href="'+abs.replace(/"/g,'&quot;')+'" target="_blank" style="color:#2563eb;text-decoration:underline;">'+text+'</a>';
+    } catch {
+      return String(s);
+    }
+  };
+
+  if(Array.isArray(v)){
+    return v.map(x => fmtVal(x)).filter(Boolean).join('、');
+  }
+  if(typeof v === 'object'){
+    try{
+      if(v.url){ return makeLink(String(v.url)); }
+      if('value' in v) return String(v.value);
       return String(JSON.stringify(v));
-    } catch(_) { return String(v); }
+    }catch(_){ return String(v); }
   }
-
-  // 字符串
-  var s = String(v).trim();
-
-  // 如果是“逗号分隔的多个链接”，拆开分别渲染
-  if (s.includes(',') && (/^https?:/i.test(s) || s.trim().startsWith('/'))) {
-    return s.split(',').map(function(x){ return fmtVal(x.trim()); }).join('<br>');
-  }
-
-  // 单个链接：绝对 http(s) 或以 / 开头的站内路径
+  const s = String(v);
   if (/^https?:/i.test(s) || s.startsWith('/')) {
-    var abs2 = s.startsWith('/') ? new URL(s, window.location.origin).href : s;
-    var fname = s.split('?')[0].split('/').pop() || '查看';
-    return '<a href="'+abs2.replace(/"/g,'&quot;')+'" target="_blank" rel="noopener">'+
-           fname.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</a>';
+    return makeLink(s);
   }
-
-  // 普通文本：做转义
   return s.replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
+
 
   /* =============== 回复表格：动态列 + 稳定取值 =============== */
   var tbody=document.getElementById('respTbody');
@@ -1082,7 +1077,7 @@ function showSaveSuccess(payloadOrSite) {
       tbody.innerHTML='<tr><td colspan="'+cols+'">加载失败</td></tr>';
     }
   }
-  async function updateStatus(site, id, status, comment) {
+async function updateStatus(site, id, status, comment) {
   const r = await fetch('/site/' + encodeURIComponent(site) + '/admin/api/review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1100,6 +1095,7 @@ function showSaveSuccess(payloadOrSite) {
   showToast('已更新状态');
   loadResponses();
 }
+
 async function delRow(site, id) {
   const r = await fetch('/site/' + encodeURIComponent(site) + '/admin/api/delete', {
     method: 'POST',
@@ -1114,6 +1110,7 @@ async function delRow(site, id) {
   showToast('已删除');
   loadResponses();
 }
+
 
   bind(document.getElementById('btnExportAll'),'click',function(){
     var site=(document.body.dataset.site||'').trim(); if(!site){alert('请先填写网站名，系统会自动保存'); return;}
