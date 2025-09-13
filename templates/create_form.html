@@ -980,50 +980,85 @@
 <!-- 放在 <head>，并确保这是页面里唯一的“responses-guard”脚本 -->
 <script id="responses-guard">
 (function () {
-  const PATH = /\/admin\/api\/responses(?:\?|$)/i;
+  const PATH = /\/admin\/api\/responses(?:[\/?#]|$)/i;
 
-  function hasAllowHeader(init) {
+  function hasAllowHeaderFrom(initOrHeaders) {
     try {
-      const h = init && init.headers;
+      if (!initOrHeaders) return false;
+      const h = initOrHeaders.headers ? initOrHeaders.headers : initOrHeaders;
       if (!h) return false;
-      if (typeof h.get === 'function') return String(h.get('X-UI-Tab') || '').toLowerCase() === 'responses';
-      if (Array.isArray(h)) return h.some(([k,v]) => String(k).toLowerCase()==='x-ui-tab' && String(v).toLowerCase()==='responses');
+      if (typeof h.get === 'function') {
+        return String(h.get('X-UI-Tab') || '').toLowerCase() === 'responses';
+      }
+      if (Array.isArray(h)) {
+        return h.some(([k, v]) =>
+          String(k).toLowerCase() === 'x-ui-tab' && String(v).toLowerCase() === 'responses'
+        );
+      }
       if (typeof h === 'object') {
-        for (const k in h) if (Object.prototype.hasOwnProperty.call(h,k)
-            && String(k).toLowerCase()==='x-ui-tab'
-            && String(h[k]).toLowerCase()==='responses') return true;
+        for (const k in h) if (Object.prototype.hasOwnProperty.call(h, k)
+          && String(k).toLowerCase() === 'x-ui-tab'
+          && String(h[k]).toLowerCase() === 'responses') return true;
       }
       return false;
     } catch { return false; }
   }
 
-  // fetch：除非带白名单头，否则拦截并返回空数据
-  const _fetch = window.fetch;
-  function guardedFetch(input, init) {
+  function isResponsesURL(input) {
     try {
       const url = typeof input === 'string' ? input : (input && input.url) || '';
-      if (PATH.test(url) && !hasAllowHeader(init)) {
-        try { console.debug('[responses-guard] blocked fetch', url); } catch {}
-        return Promise.resolve(new Response(
-          JSON.stringify({ ok: true, items: [], total: 0 }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        ));
+      return PATH.test(url);
+    } catch { return false; }
+  }
+
+  // —— 可复写安全的 fetch 访问器：谁再改 fetch，我们继续包它 —— //
+  let _rawFetch = (globalThis.fetch || function () { throw new Error('fetch missing'); }).bind(globalThis);
+
+  function guardedFetch(input, init) {
+    try {
+      if (isResponsesURL(input)) {
+        // 允许条件：init.headers 或 Request.headers 里带 X-UI-Tab: responses
+        const fromInit = hasAllowHeaderFrom(init);
+        let fromReq = false;
+        try {
+          if (input && typeof input === 'object' && typeof input.headers === 'object') {
+            fromReq = hasAllowHeaderFrom(input.headers);
+          }
+        } catch {}
+        if (!(fromInit || fromReq)) {
+          try { console.debug('[responses-guard] blocked fetch', typeof input === 'string' ? input : input.url); } catch {}
+          return Promise.resolve(new Response(
+            JSON.stringify({ ok: true, items: [], total: 0 }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          ));
+        }
       }
     } catch {}
-    return _fetch.apply(this, arguments);
+    return _rawFetch(input, init);
   }
-  try {
-    Object.defineProperty(window, 'fetch', { configurable: false, writable: false, value: guardedFetch });
-  } catch { window.fetch = guardedFetch; }
 
-  // XHR：我们自己的代码不用 XHR 拉这个接口，直接一律拦掉
+  try {
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      get() { return guardedFetch; },
+      set(fn) {
+        try { _rawFetch = (fn || _rawFetch).bind(globalThis); }
+        catch {}
+      }
+    });
+  } catch {
+    // 极老环境降级
+    globalThis.fetch = guardedFetch;
+  }
+
+  // —— XHR：一律拦 /responses —— //
   const _open = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+  XMLHttpRequest.prototype.open = function (method, url, ...rest) {
     this.__block_resp = PATH.test(String(url));
     return _open.call(this, method, url, ...rest);
   };
   const _send = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function(body) {
+  XMLHttpRequest.prototype.send = function (body) {
     if (this.__block_resp) {
       try { console.debug('[responses-guard] blocked XHR'); } catch {}
       try { this.abort(); } catch {}
@@ -1032,17 +1067,19 @@
     return _send.call(this, body);
   };
 
-  // 兜底：beacon / SSE / WS / Worker
+  // —— sendBeacon —— //
   if (navigator.sendBeacon) {
     const _beacon = navigator.sendBeacon.bind(navigator);
-    navigator.sendBeacon = function(url, data) {
+    navigator.sendBeacon = function (url, data) {
       if (PATH.test(String(url))) { try { console.debug('[responses-guard] beacon blocked', url); } catch {} return true; }
       return _beacon(url, data);
     };
   }
+
+  // —— SSE —— //
   if (window.EventSource) {
     const _ES = window.EventSource;
-    window.EventSource = function(url, conf) {
+    window.EventSource = function (url, conf) {
       if (PATH.test(String(url))) {
         try { console.debug('[responses-guard] EventSource blocked', url); } catch {}
         const dummy = new EventTarget(); dummy.readyState = 2; dummy.close = function(){};
@@ -1052,6 +1089,8 @@
     };
     window.EventSource.prototype = _ES.prototype;
   }
+
+  // —— WebSocket —— //
   if (window.WebSocket) {
     const _WS = window.WebSocket;
     window.WebSocket = new Proxy(_WS, {
@@ -1067,6 +1106,7 @@
   }
 })();
 </script>
+
 
 
 
