@@ -1812,6 +1812,8 @@
             renderRows(data.items || data.rows || []);
         }
 
+        window.loadResponses = load;   // ← 加上这行
+
 
         // —— 点击事件：文件预览 / 审核 / 发信 / 删除
         document.addEventListener("click", async (e) => {
