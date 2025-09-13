@@ -1501,7 +1501,6 @@
             btns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabKey));
 
             if (tabKey === 'responses') {
-                document.getElementById('tab-responses')?.classList.remove('ready'); // 先隐藏
                 try {
                     if (typeof rebuildRespHeader === 'function') rebuildRespHeader();
                     if (typeof loadResponses === 'function') loadResponses();
@@ -1903,40 +1902,36 @@
         }
 
         async function load() {
-            try {
-                tab && tab.classList.remove('ready');
-                const url = `/site/${encodeURIComponent(SITE)}/admin/api/responses?q=${encodeURIComponent(qInput?.value || "")}`;
-                const data = await jget(url);
+            const url = `/site/${encodeURIComponent(SITE)}/admin/api/responses?q=${encodeURIComponent(qInput?.value || "")}`;
+            const data = await jget(url);
 
-                // 如果后端给了列定义/标题映射，优先使用它来生成中文表头
-                if (data && (data.columns || data.headers || data.titleMap || data.labels)) {
-                    const cols = data.columns || data.headers || [];
-                    const map = data.titleMap || data.labels || {};
-                    if (cols.length) {
-                        FIELDS = cols.map(c => ({
-                            key: c.key || c.id || c.name,
-                            label: (c.title || c.label || c.text || c.name || c.key),
-                            type: (c.type || '')
-                        }));
-                    } else if (Object.keys(map).length) {
-                        FIELDS = Object.keys(map).map(k => ({key: k, label: String(map[k] || k), type: ''}));
-                    }
+            // 如果后端给了列定义/标题映射，优先使用它来生成中文表头
+            if (data && (data.columns || data.headers || data.titleMap || data.labels)) {
+                const cols = data.columns || data.headers || [];
+                const map = data.titleMap || data.labels || {};
+                if (cols.length) {
+                    FIELDS = cols.map(c => ({
+                        key: c.key || c.id || c.name,
+                        label: (c.title || c.label || c.text || c.name || c.key),
+                        type: (c.type || '')
+                    }));
+                } else if (Object.keys(map).length) {
+                    FIELDS = Object.keys(map).map(k => ({key: k, label: String(map[k] || k), type: ''}));
                 }
-                // —— 如果仍然没有列定义，用第一条数据的字段名兜底生成列
-                if ((!FIELDS || !FIELDS.length) && Array.isArray(data.items) && data.items.length) {
-                    const first = data.items.find(x => x && x.data) || {data: {}};
-                    FIELDS = Object.keys(first.data || {}).map(k => ({key: k, label: k, type: ''}));
-                    // 还是“有可读就过滤”，否则保留全部
-                    const nonRandom2 = FIELDS.filter(f => !looksRandom(f.key));
-                    if (nonRandom2.length) FIELDS = nonRandom2;
-                }
-
-                buildHeader(); // 先/重新按 FIELDS 刷新表头
-                renderRows(data.items || data.rows || []);
-            } finally {
-                tab && tab.classList.add('ready');      // 不管成功失败，最后都显示
             }
+            // —— 如果仍然没有列定义，用第一条数据的字段名兜底生成列
+            if ((!FIELDS || !FIELDS.length) && Array.isArray(data.items) && data.items.length) {
+                const first = data.items.find(x => x && x.data) || {data: {}};
+                FIELDS = Object.keys(first.data || {}).map(k => ({key: k, label: k, type: ''}));
+                // 还是“有可读就过滤”，否则保留全部
+                const nonRandom2 = FIELDS.filter(f => !looksRandom(f.key));
+                if (nonRandom2.length) FIELDS = nonRandom2;
+            }
+
+            buildHeader(); // 先/重新按 FIELDS 刷新表头
+            renderRows(data.items || data.rows || []);
         }
+
 
         // —— 点击事件：文件预览 / 审核 / 发信 / 删除
         document.addEventListener("click", async (e) => {
@@ -1982,8 +1977,7 @@
                 }
             }
         });
-          // 让其它脚本按钮用得到
-        window.loadResponses = load;
+
         window.rebuildRespHeader = buildHeader;
         window.rebuildRespHeader && window.rebuildRespHeader();
         if (document.getElementById('tab-responses')?.classList.contains('active')) {
@@ -2319,15 +2313,6 @@ document.addEventListener('DOMContentLoaded', function () {
             transform: none;
         }
     }
-    /* 数据表：渲染完成前不显示，避免任何占位文本闪现 */
-#tab-responses .table-wrap { visibility: hidden; }
-#tab-responses.ready .table-wrap { visibility: visible; }
-
-/* 只隐藏表头/表体里用于占位的“准备中… / 暂无数据”
-   （精准命中 td.muted 且带 colspan，不影响其它 .muted 样式） */
-#respThead td.muted[colspan],
-#respTbody td.muted[colspan] { display: none !important; }
-
 </style>
 
 
