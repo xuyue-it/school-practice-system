@@ -4,135 +4,6 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
     <title>创建新表单</title>
-    <script>
-/* ==== responses nuclear guard: block ALL network paths when not in "数据" tab ==== */
-(function () {
-  const PATH = /\/admin\/api\/responses(?:\?|$)/i;
-  const inResponsesTab = () =>
-    !!document.getElementById('tab-responses')?.classList.contains('active');
-
-  const urlOf = (input) => {
-    try { return typeof input === 'string' ? input : (input && input.url) || ''; } catch { return ''; }
-  };
-
-  // fetch
-  const _fetch = window.fetch;
-  window.fetch = function (input, init) {
-    const u = urlOf(input);
-    if (PATH.test(u) && !inResponsesTab()) {
-      try { console.debug('[responses-guard] fetch blocked', u); } catch {}
-      return Promise.resolve(new Response(
-        JSON.stringify({ ok: true, items: [] }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      ));
-    }
-    return _fetch.apply(this, arguments);
-  };
-
-  // XHR
-  const _open = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function (method, url) {
-    this.__rg_block = PATH.test(String(url)) && !inResponsesTab();
-    return _open.apply(this, arguments);
-  };
-  const _send = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function (body) {
-    if (this.__rg_block) { try { this.abort(); } catch {} return; }
-    return _send.apply(this, arguments);
-  };
-
-  // sendBeacon
-  if (navigator.sendBeacon) {
-    const _beacon = navigator.sendBeacon.bind(navigator);
-    navigator.sendBeacon = function (url, data) {
-      if (PATH.test(String(url)) && !inResponsesTab()) {
-        try { console.debug('[responses-guard] beacon blocked', url); } catch {}
-        return true;
-      }
-      return _beacon(url, data);
-    };
-  }
-
-  // EventSource (SSE)
-  if (window.EventSource) {
-    const _ES = window.EventSource;
-    window.EventSource = function (url, conf) {
-      if (PATH.test(String(url)) && !inResponsesTab()) {
-        try { console.debug('[responses-guard] EventSource blocked', url); } catch {}
-        const dummy = new EventTarget(); dummy.readyState = 2; dummy.close = function () { };
-        return dummy;
-      }
-      return new _ES(url, conf);
-    };
-    window.EventSource.prototype = _ES.prototype;
-  }
-
-  // WebSocket
-  if (window.WebSocket) {
-    const _WS = window.WebSocket;
-    window.WebSocket = new Proxy(_WS, {
-      construct(target, args) {
-        const u = String(args?.[0] || '');
-        if (PATH.test(u) && !inResponsesTab()) {
-          try { console.debug('[responses-guard] WebSocket blocked', u); } catch {}
-          return { readyState: 3, close() {}, send() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } };
-        }
-        return new target(...args);
-      }
-    });
-  }
-
-  // 元素 src/href（img/script/link/iframe/audio/video/source/embed/object）
-  function guardURLSetter(Ctor, prop) {
-    const desc = Object.getOwnPropertyDescriptor(Ctor.prototype, prop);
-    if (!desc || !desc.set) return;
-    Object.defineProperty(Ctor.prototype, prop, {
-      set(v) {
-        if (PATH.test(String(v)) && !inResponsesTab()) { try { this.setAttribute('data-blocked-'+prop, v); } catch {} return; }
-        return desc.set.call(this, v);
-      },
-      get: desc.get
-    });
-    const _setAttr = Ctor.prototype.setAttribute;
-    Ctor.prototype.setAttribute = function (name, value) {
-      if (String(name).toLowerCase() === prop && PATH.test(String(value)) && !inResponsesTab()) {
-        try { this.setAttribute('data-blocked-'+prop, value); } catch {}
-        return;
-      }
-      return _setAttr.call(this, name, value);
-    };
-  }
-  [HTMLImageElement, HTMLScriptElement, HTMLIFrameElement, HTMLAudioElement, HTMLVideoElement,
-   HTMLEmbedElement, HTMLObjectElement, HTMLSourceElement].forEach(C => guardURLSetter(C, 'src'));
-
-  // link.href 也挡一下
-  if (window.HTMLLinkElement) {
-    const d = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href');
-    if (d && d.set) {
-      Object.defineProperty(HTMLLinkElement.prototype, 'href', {
-        set(v) { if (PATH.test(String(v)) && !inResponsesTab()) { try { this.setAttribute('data-blocked-href', v); } catch {} return; } return d.set.call(this, v); },
-        get: d.get
-      });
-    }
-  }
-
-  // Workers（防在 worker 里绕过拦截）
-  ['Worker', 'SharedWorker'].forEach(k => {
-    const C = window[k];
-    if (!C) return;
-    window[k] = new Proxy(C, {
-      construct(target, args) {
-        const url = String(args?.[0] || '');
-        if (PATH.test(url) && !inResponsesTab()) {
-          try { console.debug('[responses-guard] worker blocked', url); } catch {}
-          return { postMessage() {}, terminate() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } };
-        }
-        return new target(...args);
-      }
-    });
-  });
-})();
-</script>
 
     <!-- 早期开关：首帧决定是否启用 perf-mode -->
     <script>
@@ -710,7 +581,7 @@
         }
 
         .pill.bad {
-            background: #fee2e2;
+           背景: #fee2e2;
             color: #b91c1c
         }
 
@@ -1086,11 +957,6 @@
             color: #6b7f99 !important;
         }
 
-        #tab-questions .qcard select,
-        #tab-questions .qcard select:disabled {
-            color: #0e1726 !important;
-        }
-
         body[data-appearance="dark"] header .btn,
         body[data-appearance="dark"] .nav-rail .tabs button,
         body[data-appearance="dark"] .toast,
@@ -1174,6 +1040,42 @@
   }
 })();
 </script>
+
+<!-- ★★★★★ 智能解码工具：统一前端容错（新增） ★★★★★ -->
+<script>
+/** 智能解码：优先按响应头 charset，失败则尝试 UTF-8 / GB18030 / GBK / Big5 */
+async function decodeSmart(res) {
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  const m = ct.match(/charset=([^;]+)/i);
+  const buf = await res.arrayBuffer();
+  const tryList = [
+    m && m[1].trim(),
+    'utf-8', 'gb18030', 'gbk', 'big5'
+  ].filter(Boolean);
+  for (const enc of tryList) {
+    try { return new TextDecoder(enc).decode(buf); } catch (_) {}
+  }
+  return new TextDecoder('utf-8').decode(buf);
+}
+
+async function smartFetchJSON(url, init) {
+  const res = await fetch(url, init);
+  if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  if (ct.includes('application/json')) return res.json();
+  const txt = await decodeSmart(res);
+  try { return JSON.parse(txt); }
+  catch (e) { throw new Error('JSON 解析失败：' + e.message); }
+}
+
+async function smartFetchText(url, init) {
+  const res = await fetch(url, init);
+  if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+  return decodeSmart(res);
+}
+</script>
+<!-- ★★★★★ 智能解码工具结束 ★★★★★ -->
+
 </head>
 
 <body data-appearance="light" data-site="{{ site_name or '' }}" data-tpl="{{ tpl or '' }}">
@@ -1184,7 +1086,7 @@
         <div class="title">📝 创建新表单</div>
         <div class="grow"></div>
         <button class="btn icon" id="btnPreview" type="button" title="预览">👁️</button>
-        <button type="button" class="btn gray" id="clearDraftBtn">🧹 清空草稿</button>
+        <button class="btn gray" id="clearDraftBtn">🧹 清空草稿</button>
         <script>
             document.getElementById('clearDraftBtn')?.addEventListener('click', () => {
                 const k = localStorage.getItem('builder:currentKey');
@@ -1573,7 +1475,7 @@
 <style id="kill-transitions">
     html.no-anim *, html.no-anim *::before, html.no-anim *::after {
         transition: none !important;
-        animation: none !important;
+        animation: none !重要;
         scroll-behavior: auto !important;
     }
 
@@ -1810,17 +1712,19 @@
     </tr>`;
         }
 
+        // ★ 改造：统一用 smartFetchJSON 容错解码
         async function jget(url, opt) {
-            const r = await fetch(url, opt);
-            const data = await r.json().catch(() => ({ok: false, error: "非JSON响应"}));
-            if (!r.ok || data.ok === false) throw new Error(data.error || r.statusText);
+            const data = await smartFetchJSON(url, opt);
+            if (data && data.ok === false) throw new Error(data.error || '请求失败');
             return data;
         }
 
+        // ★ 改造：更稳的路径段编码，避免中文/空格/特殊符号导致 404 或“文件名乱码”
         function fileUrl(s) {
             if (!s) return '';
             if (/^(https?:|blob:|data:)/i.test(s) || s.startsWith('/')) return s;
-            return `/site/${encodeURIComponent(SITE)}/uploads/${encodeURI(s)}`;
+            const segs = String(s).split('/').map(encodeURIComponent).join('/');
+            return `/site/${encodeURIComponent(SITE)}/uploads/${segs}`;
         }
 
 
@@ -1900,7 +1804,7 @@
             return fields.length && fields.every(f => f.label === f.key || /^q[a-z0-9]{5,}$/i.test(f.label || ''));
         }
 
-        async function load() {
+        async function loadResponses() {
             const url = `/site/${encodeURIComponent(SITE)}/admin/api/responses?q=${encodeURIComponent(qInput?.value || "")}`;
             const data = await jget(url);
 
@@ -2017,8 +1921,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
   rewire('btnGallery', 'click', async () => {
     try {
-      const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/gallery`);
-      const data = await r.json().catch(() => ({ items: [] }));
+      const data = await smartFetchJSON(`/site/${encodeURIComponent(SITE)}/admin/api/gallery`);
       alert(`找到图片 ${(data.items || []).length} 张`);
     } catch { alert('加载失败'); }
   });
@@ -2052,7 +1955,7 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   // 关闭页面前清理
-  window.addEventListener('beforeunload', stopAuto);
+  window.addEventListener('beforeunload', stopAuto());
 
   // 默认不启用自动刷新（有老HTML把 checked 带上时，强制关掉）
   const autoTick = document.getElementById('autoTick');
@@ -2175,9 +2078,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
             chartsInited = true;
             try {
-                const res = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/charts`, {credentials: 'same-origin'});
-                const j = await res.json();
-                if (!res.ok || !j.ok) throw new Error(j.error || res.status);
+                // ★ 改造：容错 JSON 解码
+                const j = await smartFetchJSON(`/site/${encodeURIComponent(SITE)}/admin/api/charts`, {credentials: 'same-origin'});
 
                 // 清空占位“图表区域 1/2”
                 root.innerHTML = '';
@@ -2276,383 +2178,6 @@ document.addEventListener('DOMContentLoaded', function () {
     })();
 </script>
 
-<!-- 创建成功弹窗（中间丝滑出现） -->
-<div class="modal" id="successModal" aria-hidden="true"
-     style="display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:120">
-    <div class="box" id="successBox" style="
-      width:min(920px,92vw); max-height:86vh; border-radius:20px; overflow:hidden;
-      background:var(--glass,#ffffffee); border:1px solid var(--glass-border,#e5e7eb);
-      backdrop-filter: blur(18px) saturate(160%); box-shadow: 0 18px 36px rgba(0,0,0,.22);
-      opacity:0; transform: scale(.92) translateY(8px);">
-        <iframe id="successFrame" title="创建成功" style="width:100%;height:70vh;border:0;background:#fff"></iframe>
-    </div>
-</div>
-
-<style>
-    /* 丝滑出现动画 */
-    #successModal.show #successBox {
-        animation: popIn .22s cubic-bezier(.2, .9, .2, 1) forwards;
-    }
-
-    @keyframes popIn {
-        from {
-            opacity: 0;
-            transform: scale(.92) translateY(8px)
-        }
-        to {
-            opacity: 1;
-            transform: scale(1) translateY(0)
-        }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        #successModal.show #successBox {
-            animation: none;
-            opacity: 1;
-            transform: none;
-        }
-    }
-</style>
-
-<script>
-    (function () {
-        const form = document.getElementById('builder');
-        if (!form) return;
-
-        const modal = document.getElementById('successModal');
-        const frame = document.getElementById('successFrame');
-
-        function openModal(url) {
-            frame.removeAttribute('srcdoc');
-            frame.src = url + (url.includes('?') ? '&' : '?') + 'embed=1';
-            modal.style.display = 'flex';
-            requestAnimationFrame(() => modal.classList.add('show'));
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeModal() {
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-            frame.src = 'about:blank';
-            document.body.style.overflow = '';
-        }
-
-        modal.addEventListener('click', e => {
-            if (e.target === modal) closeModal();
-        });
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') closeModal();
-        });
-
-        // 用 fetch 发送表单（仅展示“卡片成功页”，无任何兜底 srcdoc）
-        form.addEventListener('submit', async (ev) => {
-            ev.preventDefault();
-            const fd = new FormData(form);
-            const u = new URL(form.action, location.origin);
-            u.searchParams.set('ajax', '1');
-
-            try {
-                const res = await fetch(u, {
-                    method: 'POST',
-                    body: fd,
-                    headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
-                });
-                const j = await res.json();
-
-                if (!res.ok || j.ok === false) {
-                    alert(j.error || ('保存失败：HTTP ' + res.status));
-                    return;
-                }
-
-                // 优先用后端给的 success_url；没有就用 site_name 拼 /create_success
-                const successURL =
-                    j.success_url ||
-                    (j.site_name ? ('/site/' + encodeURIComponent(j.site_name) + '/create_success') : null);
-
-                if (!successURL) {
-                    alert('保存成功，但缺少成功页链接'); // 不再使用任何 srcdoc 兜底
-                    return;
-                }
-                openModal(successURL);
-
-            } catch (e) {
-                console.error(e);
-                alert('保存失败：' + e.message);
-            }
-        }, true);
-    })();
-</script>
-
-<script id="live-theme-sync">
-    (function () {
-        const root = document.documentElement;
-        const body = document.body;
-
-        // 设置面板里的控件
-        const lightPicker = document.querySelector('[data-skey="theme.brand"][type="color"]');
-        const lightText = document.querySelector('.tiny[data-skey="theme.brand"]:not([type="color"])');
-        const darkText = document.querySelector('[data-skey="theme.brand_dark"]'); // 你暂时没这个输入，有就会生效
-        const appearance = document.querySelector('[data-skey="theme.appearance"]');
-
-        // 从 schema_json / 本地已填值中恢复
-        function readSchemaTheme() {
-            // 1) schema_json（隐藏域或 <script id="schemaJSON">）里
-            const raw = document.getElementById('schema_json')?.value
-                || document.getElementById('schemaJSON')?.textContent
-                || '';
-            let j = null;
-            try {
-                j = JSON.parse(raw || 'null');
-            } catch {
-            }
-            const t = (j && j.theme) || {};
-            // 2) 表单当前输入值兜底
-            const light = (lightPicker?.value || lightText?.value || t.brand || '#2563eb').trim();
-            const dark = (darkText?.value || t.brand_dark || '').trim() || light;
-            const mode = (appearance?.value || t.appearance || 'auto').toLowerCase();
-            return {light, dark, mode};
-        }
-
-        function setCSS(light, dark) {
-            root.style.setProperty('--brand-light', light);
-            root.style.setProperty('--brand-dark', dark);
-            const cur = body.getAttribute('data-appearance') === 'dark' ? dark : light;
-            root.style.setProperty('--brand', cur);
-        }
-
-        function apply() {
-            const {light, dark, mode} = readSchemaTheme();
-            // 写入 CSS 变量
-            setCSS(light, dark);
-            // 同步两个“主题色”输入
-            if (lightPicker && lightText) {
-                if (lightPicker.value !== light) lightPicker.value = light;
-                if (lightText.value !== light) lightText.value = light;
-            }
-            // 如果设置里切了外观，也同步到页面
-            if (appearance && (mode === 'light' || mode === 'dark' || mode === 'auto')) {
-                if (mode === 'auto') {
-                    // 保持 data-appearance 不变；按钮切换逻辑控制
-                } else {
-                    body.setAttribute('data-appearance', mode);
-                }
-            }
-        }
-
-        // 监听设置变化：颜色 & 外观
-        ['input', 'change'].forEach(ev => {
-            lightPicker?.addEventListener(ev, apply);
-            lightText?.addEventListener(ev, apply);
-            darkText?.addEventListener(ev, apply);
-            appearance?.addEventListener('change', apply);
-        });
-
-        // 监听右上角“🌗”按钮，切换时同时切换 --brand
-        document.getElementById('btnTheme')?.addEventListener('click', () => {
-            const next = body.getAttribute('data-appearance') === 'dark' ? 'light' : 'dark';
-            body.setAttribute('data-appearance', next);
-            const l = getComputedStyle(root).getPropertyValue('--brand-light').trim() || '#2563eb';
-            const d = getComputedStyle(root).getPropertyValue('--brand-dark').trim() || l;
-            root.style.setProperty('--brand', next === 'dark' ? d : l);
-        });
-
-        // 首次应用
-        apply();
-    })();
-</script>
-
-<script>
-    (function () {
-        // 1) 判定是否带 new=1
-        var params = new URLSearchParams(location.search);
-        var hasNewFlag = params.get('new') === '1' || /\/create_form\/new$/.test(location.pathname);
-
-        // 2) 判定导航类型：只在真正的 navigate 时清；reload / back_forward 不清
-        var nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || null;
-        var navType = nav ? nav.type
-            : (performance.navigation ? (['navigate', 'reload', 'back_forward', 'prerender'][performance.navigation.type] || 'navigate') : 'navigate');
-        var isReload = navType === 'reload';
-        var isBackFwd = navType === 'back_forward';
-
-        if (hasNewFlag && !isReload && !isBackFwd) {
-            try {
-                sessionStorage.removeItem('builder:draft_id');
-            } catch (e) {
-            }
-            // 同时把 window.name 清掉，确保“新建”得到一个全新的 tab id
-            try {
-                window.name = '';
-            } catch (e) {
-            }
-            // 把 ?new=1 从地址栏移除（不刷新页面）
-            try {
-                if (params.has('new')) {
-                    params.delete('new');
-                    var newURL = location.pathname + (params.toString() ? '?' + params.toString() : '');
-                    history.replaceState(null, '', newURL);
-                }
-            } catch (e) {
-            }
-        }
-
-        // 3) 生成草稿键：有站点名=编辑已有，用 site 锁定；否则用“本标签页 id”
-        var SITE = "{{ site_name or '' }}";
-        var TPL = "{{ tpl or '' }}";
-        var draftId;
-
-        if (SITE) {
-            draftId = 'site:' + SITE;        // 编辑已有：站点唯一
-        } else if (TPL) {
-            draftId = 'tpl:' + TPL;          // 模板新建：按模板固定（刷新不新开）
-        } else {
-            // 退回你原来的 window.name 逻辑（保持不变）
-            try {
-                draftId = sessionStorage.getItem('builder:draft_id') || '';
-            } catch (e) {
-                draftId = '';
-            }
-            if (!draftId) {
-                if (!window.name || !/^tab:/.test(window.name)) {
-                    var gen = (crypto && crypto.randomUUID) ? crypto.randomUUID()
-                        : (Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
-                    try {
-                        window.name = 'tab:' + gen;
-                    } catch (e) {
-                    }
-                }
-                draftId = window.name;
-                try {
-                    sessionStorage.setItem('builder:draft_id', draftId);
-                } catch (e) {
-                }
-            }
-        }
-
-
-        var KEY = 'draft:builder:' + draftId;
-        try {
-            localStorage.setItem('builder:currentKey', KEY);
-        } catch (e) {
-        }
-
-        // 4) 绑定保存/恢复
-        var form = document.getElementById('builder') || document.querySelector('form');
-        if (!form) return;
-
-        function serialize() {
-            var data = {};
-            try {
-                var fd = new FormData(form);
-                fd.forEach(function (v, k) {
-                    if (data[k] === undefined) data[k] = v;
-                    else if (Array.isArray(data[k])) data[k].push(v);
-                    else data[k] = [data[k], v];
-                });
-            } catch (e) {
-            }
-            // contenteditable
-            var ces = Array.from(document.querySelectorAll('[contenteditable="true"]'));
-            data.__ce = ces.map(function (el) {
-                return {path: pathOf(el), html: el.innerHTML};
-            });
-            // 外观快照
-            data.__appearance = document.body.getAttribute('data-appearance') || '';
-            var brand = getComputedStyle(document.documentElement).getPropertyValue('--brand').trim();
-            if (brand) data.__brand = brand;
-            return data;
-        }
-
-        function restore(data) {
-            if (!data) return;
-            Object.keys(data).forEach(function (k) {
-                if (k.startsWith('__')) return;
-                var els = form.querySelectorAll('[name="' + CSS.escape(k) + '"]');
-                if (!els.length) return;
-                var val = data[k], values = Array.isArray(val) ? val : [val];
-                els.forEach(function (el) {
-                    if (el.type === 'checkbox' || el.type === 'radio') {
-                        el.checked = values.indexOf(el.value) >= 0;
-                    } else {
-                        el.value = values[0];
-                    }
-                });
-            });
-            if (Array.isArray(data.__ce)) {
-                data.__ce.forEach(function (item) {
-                    var el = queryPath(item.path);
-                    if (el) el.innerHTML = item.html;
-                });
-            }
-            if (data.__appearance) document.body.setAttribute('data-appearance', data.__appearance);
-            if (data.__brand) document.documentElement.style.setProperty('--brand', data.__brand);
-            tip('已从草稿恢复');
-        }
-
-        function save() {
-            try {
-                localStorage.setItem(KEY, JSON.stringify(serialize()));
-            } catch (e) {
-            }
-        }
-
-        function load() {
-            try {
-                var raw = localStorage.getItem(KEY);
-                if (raw) restore(JSON.parse(raw));
-            } catch (e) {
-            }
-        }
-
-        document.addEventListener('input', save, true);
-        document.addEventListener('change', save, true);
-        document.addEventListener('blur', save, true);
-        load();
-
-        // ========== 工具 ==========
-        function pathOf(el) {
-            var path = [], cur = el;
-            while (cur && cur.nodeType === 1 && cur !== document.body) {
-                var i = 0, s = cur;
-                while (s = s.previousElementSibling) i++;
-                path.unshift(cur.tagName.toLowerCase() + ':' + i);
-                cur = cur.parentElement;
-            }
-            return path.join('/');
-        }
-
-        function queryPath(path) {
-            var parts = (path || '').split('/'), ctx = document.body;
-            for (var i = 0; i < parts.length; i++) {
-                var p = parts[i];
-                if (!p) continue;
-                var a = p.split(':'), tag = a[0], idx = +a[1];
-                var kids = [].filter.call(ctx.children, function (x) {
-                    return x.tagName.toLowerCase() === tag;
-                });
-                ctx = kids[idx] || null;
-                if (!ctx) break;
-            }
-            return ctx;
-        }
-
-        function tip(msg) {
-            var t = document.getElementById('draft-toast');
-            if (!t) {
-                t = document.createElement('div');
-                t.id = 'draft-toast';
-                t.style.cssText = 'position:fixed;z-index:2147483647;top:12px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:999px;font-weight:800;box-shadow:0 10px 20px rgba(0,0,0,.2)';
-                document.body.appendChild(t);
-            }
-            t.textContent = msg;
-            t.style.opacity = '1';
-            setTimeout(function () {
-                t.style.transition = 'opacity .6s';
-                t.style.opacity = '0';
-            }, 1600);
-        }
-    })();
-</script>
-
 <script>
     (function () {
         const btn = document.getElementById('btnPreview');
@@ -2710,8 +2235,8 @@ document.addEventListener('DOMContentLoaded', function () {
             fd.append('schema_json', JSON.stringify(schema));
 
             try {
-                const res = await fetch('/preview', {method: 'POST', body: fd, headers: {'Accept': 'text/html'}});
-                const html = await res.text();
+                // ★ 改造：预览页用智能解码，避免服务端误发 GBK/GB2312 出现乱码
+                const html = await smartFetchText('/preview', {method: 'POST', body: fd, headers: {'Accept': 'text/html'}});
                 show(html);
             } catch (e) {
                 alert('预览加载失败：' + (e?.message || e));
@@ -2719,6 +2244,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     })();
 </script>
+<script>window.loadResponses = window.loadResponses || (typeof loadResponses==="function" ? loadResponses : null);</script>
 
 </body>
 </html>
