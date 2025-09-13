@@ -1475,7 +1475,7 @@ async function smartFetchText(url, init) {
 <style id="kill-transitions">
     html.no-anim *, html.no-anim *::before, html.no-anim *::after {
         transition: none !important;
-        animation: none !重要;
+        animation: none !important;
         scroll-behavior: auto !important;
     }
 
@@ -1542,233 +1542,161 @@ async function smartFetchText(url, init) {
 </script>
 
 <script>
-    /** —— 回复数据表：按 schema 的“题目名称”渲染列 + 文件预览 + 列名“操作” —— */
-    (function () {
-        const SITE = document.body.dataset.site || "";
+/** —— 回复数据表 v2：晚解析字段 + 优先用后端列映射 + 站点未保存提示 —— */
+(function () {
+  const SITE = document.body.dataset.site || "";
 
-        function safeParse(txt) {
-            try {
-                let j = JSON.parse(txt);
-                if (typeof j === "string") {
-                    try {
-                        j = JSON.parse(j);
-                    } catch {
-                    }
-                }
-                return j && typeof j === "object" ? j : null;
-            } catch {
-                return null;
-            }
-        }
+  // 便捷
+  const thead = document.getElementById("respThead");
+  const tbody = document.getElementById("respTbody");
+  const qInput = document.getElementById("q");
 
-        function loadSchemaCandidates() {
-            const out = [];
-            const el = document.getElementById('schemaJSON');
-            if (el) {
-                const j = safeParse((el.textContent || '').trim());
-                if (j) out.push(j);
-            }
-            const inp = document.getElementById('schema_json');
-            if (inp) {
-                const j = safeParse((inp.value || inp.getAttribute('value') || '').trim());
-                if (j) out.push(j);
-            }
-            ['schema', 'formSchema', 'FORM_SCHEMA', 'builderSchema', '__schema__'].forEach(k => {
-                if (window[k]) out.push(window[k]);
-            });
-            for (let i = 0; i < localStorage.length; i++) {
-                const k = localStorage.key(i);
-                const v = localStorage.getItem(k);
-                if (!v || v.length > 200000) continue;
-                const j = safeParse(v);
-                if (j && (j.fields || j.questions || j.items || j.titleMap || j.labels || j.fieldLabels)) out.push(j);
-            }
-            const cards = [...document.querySelectorAll('#list .qcard')];
-            if (cards.length) {
-                const guess = {
-                    fields: cards.map(c => ({
-                        key: c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '',
-                        label: (c.querySelector('.q-title')?.textContent || '').trim()
-                    })).filter(x => x.key)
-                };
-                out.push(guess);
-            }
-            return out;
-        }
+  // —— 工具函数 —— //
+  function escHtml(s){return String(s==null?'':s).replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]))}
+  function escAttr(s){return String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+  function safeParse(txt){try{let j=JSON.parse(txt);if(typeof j==='string'){try{j=JSON.parse(j)}catch{}}return j&&typeof j==='object'?j:null}catch{return null}}
+  const looksRandom = s => typeof s==='string' && /^q[a-z0-9]{5,}$/i.test(s);
 
-        function getI18nString(v) {
-            if (v == null) return "";
-            if (typeof v === "string") return v.trim();
-            if (typeof v === "object") {
-                const order = ["zh-CN", "zh_CN", "zh-cn", "zh", "cn", "text", "title", "label", "value", "en"];
-                for (const k of order) {
-                    if (typeof v[k] === "string" && v[k].trim()) return v[k].trim();
-                }
-                for (const k in v) {
-                    if (typeof v[k] === "string" && v[k].trim()) return v[k].trim();
-                }
-            }
-            return "";
-        }
+  function getI18nString(v){
+    if(v==null) return "";
+    if(typeof v==="string") return v.trim();
+    if(typeof v==="object"){
+      const order=["zh-CN","zh_CN","zh-cn","zh","cn","text","title","label","name","value","en"];
+      for(const k of order){ if(typeof v[k]==="string" && v[k].trim()) return v[k].trim(); }
+      for(const k in v){ if(typeof v[k]==="string" && v[k].trim()) return v[k].trim(); }
+    }
+    return "";
+  }
+  function extractLabel(f){
+    const cands=[f.label,f.title,f.text,f.name,f.placeholder,f.question,f.desc,f.description,
+      f?.ui?.label,f?.ui?.title,f?.props?.label,f?.props?.title,f?.meta?.label,f?.meta?.title,
+      f?.i18n,f?.displayName];
+    for(const c of cands){ const s=getI18nString(c); if(s) return s; }
+    return "";
+  }
 
-        function extractLabel(f) {
-            const cands = [
-                f.label, f.title, f.text, f.name, f.placeholder, f.question, f.desc, f.description,
-                f?.ui?.label, f?.ui?.title, f?.props?.label, f?.props?.title, f?.meta?.label, f?.meta?.title,
-                f?.i18n, f?.displayName
-            ];
-            for (const c of cands) {
-                const s = getI18nString(c);
-                if (s) return s;
-            }
-            return "";
-        }
+  // 「每次」动态收集 schema 候选（builder 已渲染后才能拿到中文题目）
+  function collectSchemaCandidates(){
+    const out=[];
+    // 1) <script id="schemaJSON"> 与隐藏域
+    const sEl=document.getElementById('schemaJSON'); if(sEl){ const j=safeParse((sEl.textContent||'').trim()); if(j) out.push(j); }
+    const hEl=document.getElementById('schema_json'); if(hEl){ const j=safeParse((hEl.value||hEl.getAttribute('value')||'').trim()); if(j) out.push(j); }
+    // 2) 全局变量兜底
+    ['schema','formSchema','FORM_SCHEMA','builderSchema','__schema__'].forEach(k=>{ if(window[k]) out.push(window[k]); });
+    // 3) 本地存储里可能保存过的草稿
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i); const v=localStorage.getItem(k);
+      if(!v || v.length>200000) continue;
+      const j=safeParse(v);
+      if(j && (j.fields||j.questions||j.items||j.titleMap||j.labels||j.fieldLabels)) out.push(j);
+    }
+    // 4) 直接从 DOM 读取当前问题卡片（最可靠）
+    const cards=[...document.querySelectorAll('#list .qcard')];
+    if(cards.length){
+      out.push({ fields: cards.map(c=>{
+        const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+        const label = (c.querySelector('.q-title')?.textContent || '').trim();
+        return key?{key, label}:null;
+      }).filter(Boolean) });
+    }
+    return out;
+  }
 
-        function mergeSchemas(cands) {
-            const titleMap = {};
-            const tmp = [];
+  function mergeSchemas(cands){
+    const titleMap={}; const tmp=[];
+    cands.forEach(s=>{
+      const map=s?.titleMap||s?.labels||s?.fieldLabels||{};
+      Object.keys(map).forEach(k=>{ if(map[k]) titleMap[k]=getI18nString(map[k])||map[k]; });
 
-            cands.forEach(s => {
-                const map = s?.titleMap || s?.labels || s?.fieldLabels || {};
-                Object.keys(map || {}).forEach(k => {
-                    if (map[k]) titleMap[k] = getI18nString(map[k]) || map[k];
-                });
+      const raw=s?.fields||s?.questions||s?.items||[];
+      const arr=Array.isArray(raw)?raw:Object.values(raw||{});
+      arr.forEach(f=>{
+        const key = f.key||f.id||f.name||f.field||f.valueKey||f.code||f.slug;
+        if(!key) return;
+        const label = extractLabel(f) || titleMap[key] || '';
+        const type = String(f.type||f.kind||f.widget||f.input||'').toLowerCase();
+        tmp.push({key,label,type});
+      });
+    });
+    // 去重：挑更像“中文名”的
+    const byKey={};
+    tmp.forEach(f=>{
+      if(!byKey[f.key]) byKey[f.key]=f;
+      else{
+        const old=byKey[f.key];
+        const oldBad = !old.label || looksRandom(old.label) || old.label===old.key;
+        const newBetter = f.label && !looksRandom(f.label) && f.label!==f.key;
+        if(oldBad && newBetter) byKey[f.key]=f;
+      }
+    });
+    // 如果一个都没有中文名，也保留 key（后面还会用后端 columns 覆盖）
+    return Object.values(byKey);
+  }
 
-                const raw = s?.fields || s?.questions || s?.items || [];
-                const arr = Array.isArray(raw) ? raw : Object.values(raw || {});
+  async function recomputeFields(){
+    const F = mergeSchemas(collectSchemaCandidates());
+    // 若全是随机 key，则保持，但不要丢掉，等后端 columns/titleMap 来覆盖
+    return F;
+  }
 
-                arr.forEach(f => {
-                    const key = f.key || f.id || f.name || f.field || f.valueKey || f.code || f.slug;
-                    if (!key) return;
-                    const label = extractLabel(f) || titleMap[key] || key;
-                    const type = String(f.type || f.kind || f.widget || f.input || "").toLowerCase();
-                    tmp.push({key, label, type});
-                });
-            });
+  function pillCls(status){ return status==="已通过"?"good":(status==="未通过"?"bad":"wait"); }
 
-            const byKey = {};
-            const looksRandom = s => typeof s === 'string' && /^q[a-z0-9]{5,}$/i.test(s);
-            tmp.forEach(f => {
-                if (!byKey[f.key]) byKey[f.key] = f;
-                else if (looksRandom(byKey[f.key].label) && !looksRandom(f.label)) byKey[f.key] = f;
-            });
-            Object.keys(titleMap).forEach(k => {
-                if (!byKey[k]) byKey[k] = {key: k, label: titleMap[k], type: ''};
-                else if (!byKey[k].label || looksRandom(byKey[k].label)) byKey[k].label = titleMap[k];
-            });
+  function fileUrl(href){
+    if(!href) return '';
+    if(/^(https?:|blob:|data:)/i.test(href) || href.startsWith('/')) return href;
+    const SITE = document.body.dataset.site || "";
+    return `/site/${encodeURIComponent(SITE)}/uploads/${encodeURI(href)}`;
+  }
+  function fileCell(href,text){
+    const u=fileUrl(href);
+    const t=escHtml(text||href);
+    return `<a href="${escAttr(u)}" data-preview title="预览">${t}</a> <a href="${escAttr(u)}" download title="下载">⬇</a>`;
+  }
+  function renderValueByType(v,type){
+    const fileLike=/file|image|upload|picture|photo/;
+    if(v==null) return "";
+    if(Array.isArray(v)) return v.map(x=>renderValueByType(x,type)).join("<br>");
+    if(typeof v==="object"){
+      const name=v.filename||v.name||v.file||"";
+      const url=v.url||v.path||name||"";
+      if(url && (fileLike.test(type)||/\.(png|jpe?g|gif|webp|pdf|docx?|xlsx?|mp4|webm|ogg|bmp|svg)$/i.test(url))){
+        return fileCell(url,name||url);
+      }
+      return Object.entries(v).map(([k,val])=>`<div><span class="muted">${escHtml(k)}：</span>${renderValueByType(val,type)}</div>`).join("");
+    }
+    const s=String(v);
+    if(fileLike.test(type)||/\.(png|jpe?g|gif|webp|pdf|docx?|xlsx?|mp4|webm|ogg|bmp|svg)$/i.test(s)) return fileCell(s);
+    return escHtml(s);
+  }
 
-            return Object.values(byKey);
-        }
+  async function jget(url,opt){
+    const r=await fetch(url,opt);
+    const data=await r.json().catch(()=>({ok:false,error:"非JSON响应"}));
+    if(!r.ok || data.ok===false) throw new Error(data.error||r.statusText);
+    return data;
+  }
 
-        const SCHEMA_CANDIDATES = loadSchemaCandidates();
-        let FIELDS = mergeSchemas(SCHEMA_CANDIDATES);
-        // —— 仅当“还有非随机字段可用”时才过滤，否则保留所有字段（避免把内容全删空）
-        const looksRandom = s => typeof s === 'string' && /^q[a-z0-9]{5,}$/i.test(s);
-        const nonRandom = FIELDS.filter(f => !looksRandom(f.key));
-        if (nonRandom.length) FIELDS = nonRandom;
-
-
-        const onlyRandom = FIELDS.length && FIELDS.every(f => f.label === f.key || /^q[a-z0-9]{5,}$/i.test(f.label || ''));
-        if (onlyRandom) {
-            FIELDS = FIELDS.map(f => {
-                const lbl = f.label && f.label !== f.key ? f.label : f.key;
-                return {...f, label: f.label === f.key ? f.key : `${f.label}（${f.key}）`};
-            });
-        }
-
-        const thead = document.getElementById("respThead");
-        const tbody = document.getElementById("respTbody");
-        const qInput = document.getElementById("q");
-        const btnSearch = document.getElementById("btnSearch");
-        const btnRefresh = document.getElementById("btnRefresh");
-        const autoTick = document.getElementById("autoTick");
-        const btnExportAll = document.getElementById("btnExportAll");
-        const btnGallery = document.getElementById("btnGallery");
-
-        // 本地转义，专供表头/属性使用（避免与下方的 escHtml/escAttr 顺序冲突）
-        function __escHtml(s) {
-            return String(s == null ? '' : s).replace(/[&<>]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[m]));
-        }
-
-        function __escAttr(s) {
-            return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#39;'
-            }[m]));
-        }
-
-        function buildHeader() {
-            thead.innerHTML = `<tr>
+  // —— 生成表头 —— //
+  function buildHeader(FIELDS){
+    thead.innerHTML = `<tr>
       <th>ID</th>
-      ${FIELDS.map(f => `<th title="${__escAttr(f.key)}">${__escHtml(f.label)}</th>`).join("")}
+      ${FIELDS.map(f=>`<th title="${escAttr(f.key)}">${escHtml(f.label||f.key)}</th>`).join('')}
       <th>状态</th>
       <th>审核说明</th>
       <th>导出</th>
       <th>操作</th>
       <th>删除</th>
     </tr>`;
-        }
+  }
 
-        // ★ 改造：统一用 smartFetchJSON 容错解码
-        async function jget(url, opt) {
-            const data = await smartFetchJSON(url, opt);
-            if (data && data.ok === false) throw new Error(data.error || '请求失败');
-            return data;
-        }
-
-        // ★ 改造：更稳的路径段编码，避免中文/空格/特殊符号导致 404 或“文件名乱码”
-        function fileUrl(s) {
-            if (!s) return '';
-            if (/^(https?:|blob:|data:)/i.test(s) || s.startsWith('/')) return s;
-            const segs = String(s).split('/').map(encodeURIComponent).join('/');
-            return `/site/${encodeURIComponent(SITE)}/uploads/${segs}`;
-        }
-
-
-        function fileCell(href, text) {
-            const u = fileUrl(href);
-            const attr = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, m => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#39;'
-            }[m]));
-            const t = escHtml(text || href);
-            return `<a href="${attr(u)}" data-preview title="预览">${t}</a> <a href="${attr(u)}" download title="下载">⬇</a>`;
-        }
-
-        function renderValueByType(v, type) {
-            const fileLike = /file|image|upload|picture|photo/;
-            if (v == null) return "";
-            if (Array.isArray(v)) return v.map(x => renderValueByType(x, type)).join("<br>");
-            if (typeof v === "object") {
-                const name = v.filename || v.name || v.file || "";
-                const url = v.url || v.path || name || "";
-                if (url && (fileLike.test(type) || /\.(png|jpe?g|gif|webp|pdf|docx?|xlsx?|mp4|webm|ogg|bmp|svg)$/i.test(url))) {
-                    return fileCell(url, name || url);
-                }
-                return Object.entries(v).map(([k, val]) => `<div><span class="muted">${k}：</span>${renderValueByType(val, type)}</div>`).join("");
-            }
-            const s = String(v);
-            if (fileLike.test(type) || /\.(png|jpe?g|gif|webp|pdf|docx?|xlsx?|mp4|webm|ogg|bmp|svg)$/i.test(s)) return fileCell(s);
-            return s.replace(/[<>&]/g, m => ({'<': '&lt;', '>': '&gt;', '&': '&amp;'}[m]));
-        }
-
-        function pillCls(status) {
-            return status === "已通过" ? "good" : (status === "未通过" ? "bad" : "wait");
-        }
-
-        function renderRows(items) {
-            tbody.innerHTML = (items || []).map(it => {
-                const d = it.data || {};
-                const cells = FIELDS.map(f => `<td>${renderValueByType(d[f.key], f.type)}</td>`).join("");
-                const status = it.status || "待审核";
-                const cmt = escAttr(it.review_comment || '');
-                return `<tr data-id="${it.id}">
+  function renderRows(FIELDS, items){
+    tbody.innerHTML = (items||[]).map(it=>{
+      const d=it.data||{};
+      const cells=FIELDS.map(f=>`<td>${renderValueByType(d[f.key],f.type)}</td>`).join('');
+      const status=it.status||"待审核";
+      const cmt=escAttr(it.review_comment||'');
+      const SITE=document.body.dataset.site||"";
+      return `<tr data-id="${it.id}">
         <td>${it.id}</td>
         ${cells}
         <td><span class="pill ${pillCls(status)}">${status}</span></td>
@@ -1783,112 +1711,97 @@ async function smartFetchText(url, init) {
         </td>
         <td><button class="btn mini gray" data-del>删除</button></td>
       </tr>`;
-            }).join("");
+    }).join('') || `<tr><td colspan="14" class="muted">暂无数据</td></tr>`;
+  }
+
+  // —— 主流程：每次进入“数据”页都重算字段，再拉数据 —— //
+  async function loadResponses(){
+    // 站点还没保存：给出明确提示
+    if(!SITE){
+      thead.innerHTML = `<tr><th>提示</th></tr>`;
+      tbody.innerHTML = `<tr><td class="muted">请先点击右上角“保存表单”，生成站点后再查看回复数据。</td></tr>`;
+      return;
+    }
+
+    // 先用前端能拿到的 schema 重算一次表头（有中文题目时马上可见）
+    let FIELDS = await recomputeFields();
+    if(!FIELDS.length){ thead.innerHTML = `<tr><td class="muted">准备中…</td></tr>`; }
+
+    // 请求后端数据
+    const url = `/site/${encodeURIComponent(SITE)}/admin/api/responses?q=${encodeURIComponent(qInput?.value||"")}`;
+    const data = await jget(url);
+
+    // 后端若提供更权威的列定义/标题映射，则优先覆盖（确保不是随机 key）
+    if(data && (data.columns || data.headers || data.titleMap || data.labels)){
+      if(Array.isArray(data.columns||data.headers)){
+        FIELDS = (data.columns||data.headers).map(c=>({
+          key: c.key||c.id||c.name,
+          label: c.title||c.label||c.text||c.name||c.key,
+          type: (c.type||'')
+        })).filter(x=>x && x.key);
+      }else{
+        const map = data.titleMap || data.labels || {};
+        const keys = Object.keys(map);
+        if(keys.length){
+          FIELDS = keys.map(k=>({key:k,label:String(map[k]||k),type:''}));
         }
+      }
+    }
 
-        function escHtml(s) {
-            return String(s).replace(/[&<>]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[m]));
-        }
+    // 如果依然全是随机 key，则至少也显示 key，不做空表头
+    if(!FIELDS.length){
+      const first = (data.items||data.rows||[]).find(x=>x&&x.data) || {data:{}};
+      FIELDS = Object.keys(first.data||{}).map(k=>({key:k,label:k,type:''}));
+    }
 
-        function escAttr(s) {
-            return String(s).replace(/[&<>"']/g, m => ({
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#39;'
-            }[m]));
-        }
+    buildHeader(FIELDS);
+    renderRows(FIELDS, data.items || data.rows || []);
+  }
 
-        function looksAllRandom(fields) {
-            return fields.length && fields.every(f => f.label === f.key || /^q[a-z0-9]{5,}$/i.test(f.label || ''));
-        }
+  // —— 事件绑定（审核 / 删除 / 文件预览） —— //
+  document.addEventListener("click", async (e)=>{
+    const a=e.target.closest('a[data-preview]');
+    if(a){ e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation) e.stopImmediatePropagation(); openPreviewInModal&&openPreviewInModal(a.getAttribute('href')); return; }
 
-        async function loadResponses() {
-            const url = `/site/${encodeURIComponent(SITE)}/admin/api/responses?q=${encodeURIComponent(qInput?.value || "")}`;
-            const data = await jget(url);
+    const tr=e.target.closest("tr[data-id]"); if(!tr) return;
+    const id=Number(tr.dataset.id);
+    const cmt=tr.querySelector(".cmt")?.value?.trim()||"";
+    const SITE=document.body.dataset.site||"";
 
-            // 如果后端给了列定义/标题映射，优先使用它来生成中文表头
-            if (data && (data.columns || data.headers || data.titleMap || data.labels)) {
-                const cols = data.columns || data.headers || [];
-                const map = data.titleMap || data.labels || {};
-                if (cols.length) {
-                    FIELDS = cols.map(c => ({
-                        key: c.key || c.id || c.name,
-                        label: (c.title || c.label || c.text || c.name || c.key),
-                        type: (c.type || '')
-                    }));
-                } else if (Object.keys(map).length) {
-                    FIELDS = Object.keys(map).map(k => ({key: k, label: String(map[k] || k), type: ''}));
-                }
-            }
-            // —— 如果仍然没有列定义，用第一条数据的字段名兜底生成列
-            if ((!FIELDS || !FIELDS.length) && Array.isArray(data.items) && data.items.length) {
-                const first = data.items.find(x => x && x.data) || {data: {}};
-                FIELDS = Object.keys(first.data || {}).map(k => ({key: k, label: k, type: ''}));
-                // 还是“有可读就过滤”，否则保留全部
-                const nonRandom2 = FIELDS.filter(f => !looksRandom(f.key));
-                if (nonRandom2.length) FIELDS = nonRandom2;
-            }
-
-            buildHeader(); // 先/重新按 FIELDS 刷新表头
-            renderRows(data.items || data.rows || []);
-        }
-
-
-        // —— 点击事件：文件预览 / 审核 / 发信 / 删除
-        document.addEventListener("click", async (e) => {
-            const a = e.target.closest('a[data-preview]');
-            if (a) {
-                e.preventDefault();
-                e.stopPropagation();
-                if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-                openPreviewInModal && openPreviewInModal(a.getAttribute('href'));
-                return;
-            }
-
-            const tr = e.target.closest("tr[data-id]");
-            if (!tr) return;
-            const id = Number(tr.dataset.id);
-            const cmt = tr.querySelector(".cmt")?.value?.trim() || "";
-
-            if (e.target.matches("[data-approve],[data-reject]")) {
-                const status = e.target.hasAttribute("data-approve") ? "已通过" : "未通过";
-                try {
-                    await jget(`/site/${encodeURIComponent(SITE)}/admin/api/review`, {
-                        method: "POST", headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({id, status, review_comment: cmt})
-                    });
-                    const pill = tr.querySelector(".pill");
-                    pill.textContent = status;
-                    pill.className = `pill ${status === "已通过" ? "good" : "bad"}`;
-                } catch (err) {
-                    alert("保存失败：" + err.message);
-                }
-            }
-
-            if (e.target.matches("[data-del]")) {
-                if (!confirm("确定删除这条记录？此操作不可撤销。")) return;
-                try {
-                    await jget(`/site/${encodeURIComponent(SITE)}/admin/api/delete`, {
-                        method: "POST", headers: {"Content-Type": "application/json"},
-                        body: JSON.stringify({id})
-                    });
-                    tr.remove();
-                } catch (err) {
-                    alert("删除失败：" + err.message);
-                }
-            }
+    if(e.target.matches("[data-approve],[data-reject]")){
+      const status=e.target.hasAttribute("data-approve")?"已通过":"未通过";
+      try{
+        await jget(`/site/${encodeURIComponent(SITE)}/admin/api/review`, {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({id,status,review_comment:cmt})
         });
+        const pill=tr.querySelector(".pill"); pill.textContent=status; pill.className=`pill ${status==="已通过"?"good":"bad"}`;
+      }catch(err){ alert("保存失败："+err.message); }
+    }
 
-        window.rebuildRespHeader = buildHeader;
-        window.rebuildRespHeader && window.rebuildRespHeader();
-        if (document.getElementById('tab-responses')?.classList.contains('active')) {
-            window.loadResponses && window.loadResponses();
-        }
+    if(e.target.matches("[data-del]")){
+      if(!confirm("确定删除这条记录？此操作不可撤销。")) return;
+      try{
+        await jget(`/site/${encodeURIComponent(SITE)}/admin/api/delete`, {
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({id})
+        });
+        tr.remove();
+      }catch(err){ alert("删除失败："+err.message); }
+    }
+  });
 
-    })();
+  // 暴露：供“数据”Tab 切换时调用
+  window.loadResponses = loadResponses;
+  window.rebuildRespHeader = async function(){ const F=await recomputeFields(); buildHeader(F); };
+
+  // 如果默认就在“数据”页，立刻加载一次
+  if(document.getElementById('tab-responses')?.classList.contains('active')){
+    loadResponses().catch(e=>{ thead.innerHTML=`<tr><td class="muted">加载失败：${escHtml(e.message)}</td></tr>`; });
+  }
+})();
 </script>
+
 
 <!-- 接管“回复”页旧预览（隐藏旧实现） -->
 <style>

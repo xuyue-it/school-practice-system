@@ -947,3 +947,351 @@
     window.ensureServerSaved = ensureServerSaved;
   });
 })();
+
+/* ======== HOTFIX: Responses table header + data mapping (final) ======== */
+(function () {
+  const $ = (sel, root=document) => root.querySelector(sel);
+
+  const thead = $('#respTable thead');
+  const tbody = $('#respTable tbody');
+  const qInput = $('#q');
+
+  if (!thead || !tbody) return; // 当前页面没有“回复数据”，安全退出
+
+  // 读取 schema（优先从全局 builder，否则从隐藏域）
+  function getSchema() {
+    if (window.builder && typeof window.builder.getSchema === 'function') {
+      try { return window.builder.getSchema(); } catch(_) {}
+    }
+    try {
+      const h = document.getElementById('schema_json');
+      return h ? JSON.parse(h.value || '{}') : {fields:[]};
+    } catch { return {fields:[]}; }
+  }
+
+  function textOfLabelHTML(html) {
+    const d = document.createElement('div'); d.innerHTML = html || '';
+    return (d.textContent || '').trim();
+  }
+  function normalizeKey(s){
+    return String(s||'').replace(/[\s_:\-\/（）()\[\]【】<>·.，,。；;:'"|]/g,'').toLowerCase();
+  }
+  function fmtVal(v){
+    if (v == null) return '';
+    if (Array.isArray(v)) return v.map(fmtVal).filter(Boolean).join('、');
+    if (typeof v === 'object') {
+      try {
+        if (v.url) return '<a href="'+String(v.url).replace(/"/g,'&quot;')+'" target="_blank">查看</a>';
+        if ('value' in v) return String(v.value);
+        return String(JSON.stringify(v));
+      } catch { return String(v); }
+    }
+    const s = String(v);
+    if (/^https?:/i.test(s) && /\.(png|jpe?g|gif|webp|bmp)$/i.test(s)) return '<a href="'+s.replace(/"/g,'&quot;')+'" target="_blank">图片</a>';
+    if (/^https?:/i.test(s)) return '<a href="'+s.replace(/"/g,'&quot;')+'" target="_blank">链接</a>';
+    return s.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // 固定字段（用于更友好的前置列）
+  function getFixedFieldIds(schema){
+    function fid(keys){
+      keys = Array.isArray(keys) ? keys : [keys];
+      const f = (schema.fields||[]).find(q => keys.some(k => textOfLabelHTML(q.labelHTML||'').includes(k)));
+      return f ? f.id : null;
+    }
+    return {
+      name:  fid(['姓名','名字','称呼','name','Name']),
+      phone: fid(['电话','手机','手机号','联系电话','phone','tel','联系方式','電話']),
+      email: fid(['邮箱','电子邮箱','email','Email','郵箱']),
+      group: fid(['团体','团队','单位','公司','学校','组织','小组','group']),
+      event: fid(['活动名','活动名称','活动','课程','会议','event']),
+      startDate: fid(['开始日期','起始日期','start date']),
+      startTime: fid(['开始时间','start time']),
+      endDate:   fid(['结束日期','截止日期','end date']),
+      endTime:   fid(['结束时间','end time']),
+      people: fid(['人数','参与人数','报名人数','人数（人）','participants']),
+    };
+  }
+
+  // 从 payload 推导“动态列”：优先用后端 columns / titleMap；否则从第一条数据的键推断，再映射到题目中文标题
+  function deriveColumns(payload, schema){
+    const fields = schema.fields || [];
+    const byId = Object.fromEntries(fields.map(q => [q.id, q]));
+    const byNormText = Object.fromEntries(fields.map(q => [ normalizeKey(textOfLabelHTML(q.labelHTML||'')), q ]));
+
+    // 1) 后端明确给了 columns / headers
+    const cols = payload?.columns || payload?.headers;
+    if (Array.isArray(cols) && cols.length) {
+      return cols.map(c => ({
+        key: c.key || c.id || c.name || c.field || c.dataIndex || '',
+        title: c.title || c.label || c.text || c.name || c.key || '',
+        q: byId[c.key || c.id || ''] || null
+      })).filter(c => c.key);
+    }
+    // 2) 后端给了 titleMap / labels
+    const map = payload?.titleMap || payload?.labels;
+    if (map && typeof map === 'object') {
+      return Object.keys(map).map(k => ({
+        key: k,
+        title: String(map[k] || k),
+        q: byId[k] || byNormText[normalizeKey(map[k])] || null
+      }));
+    }
+    // 3) 自行从数据推断
+    const first = (payload?.items && payload.items[0]) || (payload?.rows && payload.rows[0]) || null;
+    const data = first ? (first.data || first) : {};
+    return Object.keys(data).map(k => {
+      const q = byId[k] || byNormText[normalizeKey(k)] || null;
+      return { key: k, title: q ? textOfLabelHTML(q.labelHTML||'') : k, q };
+    });
+  }
+
+  function rebuildRespHeaderFix(){
+    const schema = getSchema();
+    const fixed = getFixedFieldIds(schema);
+    const headRow = document.createElement('tr');
+
+    // 固定“ID”
+    headRow.appendChild(th('ID'));
+
+    // 固定友好列（仅对应题目存在时才展示）
+    function pushIf(title, ok){ if(ok) headRow.appendChild(th(title)); }
+    pushIf('姓名', fixed.name);
+    pushIf('电话', fixed.phone);
+    pushIf('邮箱', fixed.email);
+    pushIf('团体', fixed.group);
+    pushIf('活动名', fixed.event);
+    pushIf('开始', fixed.startDate || fixed.startTime);
+    pushIf('结束', fixed.endDate || fixed.endTime);
+    pushIf('人数', fixed.people);
+
+    // 动态列（先占位，真正列表加载时会用 payload 列覆盖）
+    (schema.fields||[]).forEach(q=>{
+      headRow.appendChild(th(textOfLabelHTML(q.labelHTML||'') || ''));
+    });
+
+    // 操作列
+    ['状态','审核说明','导出','发送邮件','删除'].forEach(t=> headRow.appendChild(th(t)));
+
+    thead.innerHTML = ''; thead.appendChild(headRow);
+
+    function th(text){ const el=document.createElement('th'); el.textContent = text; return el; }
+  }
+
+  async function loadResponsesFix(){
+    const schema = getSchema();
+
+    // 保证有 site
+    let site = (document.body.dataset.site || '').trim();
+    if (!site && typeof window.ensureServerSaved === 'function') {
+      tbody.innerHTML = `<tr><td colspan="${thead.querySelectorAll('th').length||14}" class="muted">正在自动保存表单以加载数据…</td></tr>`;
+      await window.ensureServerSaved();
+      site = (document.body.dataset.site || '').trim();
+      if (!site) {
+        tbody.innerHTML = `<tr><td colspan="${thead.querySelectorAll('th').length||14}" class="muted">请先填写“网站名”，系统会自动保存后再加载数据</td></tr>`;
+        return;
+      }
+    }
+
+    const base = `/site/${encodeURIComponent(site)}/admin/api/`;
+    const q = encodeURIComponent(qInput?.value || '');
+    const endpoints = [
+      // 优先常见接口 + 各种参数名
+      `responses?q=${q}`, `responses?query=${q}`, `responses?search=${q}`, `responses?keyword=${q}`,
+      `list?q=${q}`,      `list?query=${q}`,      `list?search=${q}`,      `list?keyword=${q}`,
+      `submissions?q=${q}`, `entries?q=${q}`
+    ];
+
+    async function fetchJSON(u){
+      const r = await fetch(base + u);
+      const ct = r.headers.get('content-type') || '';
+      const j = ct.includes('application/json') ? await r.json() : null;
+      return {ok:r.ok, status:r.status, data:j};
+    }
+
+    // 依次尝试直到拿到 items
+    let hit = null;
+    for (const path of endpoints) {
+      try {
+        const res = await fetchJSON(path);
+        const items = res?.data?.items || res?.data?.rows || res?.data?.data;
+        if (res.ok && Array.isArray(items)) { hit = res; break; }
+      } catch(_) {}
+    }
+    // 最后再试一次“无参请求”
+    if (!hit) {
+      const res = await fetchJSON('responses');
+      const items = res?.data?.items || res?.data?.rows || res?.data?.data;
+      if (res.ok && Array.isArray(items)) hit = res;
+    }
+    if (!hit) {
+      tbody.innerHTML = `<tr><td colspan="${thead.querySelectorAll('th').length||14}">加载失败：接口不可用</td></tr>`;
+      return;
+    }
+
+    const payload = hit.data || {};
+    const items = payload.items || payload.rows || payload.data || [];
+    // 用 payload 的列信息重建表头（优先）
+    const dynCols = deriveColumns(payload, schema);
+    if (dynCols.length) {
+      const fixed = getFixedFieldIds(schema);
+      const row = document.createElement('tr');
+      row.appendChild(th('ID'));
+      function pushIf(title, ok){ if(ok) row.appendChild(th(title)); }
+      pushIf('姓名', fixed.name);
+      pushIf('电话', fixed.phone);
+      pushIf('邮箱', fixed.email);
+      pushIf('团体', fixed.group);
+      pushIf('活动名', fixed.event);
+      pushIf('开始', fixed.startDate || fixed.startTime);
+      pushIf('结束', fixed.endDate || fixed.endTime);
+      pushIf('人数', fixed.people);
+      dynCols.forEach(c => row.appendChild(th(c.title || c.key)));
+      ['状态','审核说明','导出','发送邮件','删除'].forEach(t=> row.appendChild(th(t)));
+      thead.innerHTML = ''; thead.appendChild(row);
+    }
+
+    if (!items.length) {
+      tbody.innerHTML = `<tr><td colspan="${thead.querySelectorAll('th').length||14}" class="muted">暂无数据</td></tr>`;
+      return;
+    }
+
+    // 渲染数据
+    tbody.innerHTML = '';
+    const fixed = getFixedFieldIds(schema);
+
+    const qById = Object.fromEntries((schema.fields||[]).map(q => [q.id, q]));
+    const qByNormText = Object.fromEntries((schema.fields||[]).map(q => [normalizeKey(textOfLabelHTML(q.labelHTML||'')), q]));
+
+    // 方便取值：按 key 直取；不行就按题目匹配
+    function getValue(d, key){
+      if (key && Object.prototype.hasOwnProperty.call(d, key)) return d[key];
+      const q = qById[key] || qByNormText[normalizeKey(key)] || null;
+      if (!q) return '';
+      // 三步：id → label → 归一化匹配
+      if (q.id && Object.prototype.hasOwnProperty.call(d, q.id)) return d[q.id];
+      const label = textOfLabelHTML(q.labelHTML||'');
+      if (label && Object.prototype.hasOwnProperty.call(d, label)) return d[label];
+      const want = normalizeKey(label);
+      let hit = '';
+      Object.keys(d||{}).some(k => {
+        if (normalizeKey(k) === want) { hit = d[k]; return true; }
+        return false;
+      });
+      return hit;
+    }
+
+    const dynKeys = dynCols.length ? dynCols.map(c => c.key) : (function(){
+      const first = items[0]?.data || items[0] || {};
+      return Object.keys(first);
+    })();
+
+    items.forEach(row => {
+      const d = row.data || row;
+
+      const tds = [];
+      function push(v){ tds.push('<td>'+(v||'—')+'</td>'); }
+
+      // 固定列（保持顺序）
+      if (fixed.name)  push(fmtVal(getValue(d, fixed.name)));
+      if (fixed.phone) push(fmtVal(getValue(d, fixed.phone)));
+      if (fixed.email) push(fmtVal(getValue(d, fixed.email)));
+      if (fixed.group) push(fmtVal(getValue(d, fixed.group)));
+      if (fixed.event) push(fmtVal(getValue(d, fixed.event)));
+      if (fixed.startDate || fixed.startTime) {
+        const s = [ getValue(d, fixed.startDate), getValue(d, fixed.startTime) ].map(fmtVal).filter(Boolean).join(' ');
+        push(s);
+      }
+      if (fixed.endDate || fixed.endTime) {
+        const e = [ getValue(d, fixed.endDate), getValue(d, fixed.endTime) ].map(fmtVal).filter(Boolean).join(' ');
+        push(e);
+      }
+      if (fixed.people) push(fmtVal(getValue(d, fixed.people)));
+
+      // 动态列
+      const dynTds = dynKeys.map(k => '<td>' + (fmtVal(getValue(d, k)) || '—') + '</td>').join('');
+
+      const pill = row.status === '已通过' ? '<span class="pill good">通过</span>'
+                  : (row.status === '未通过' ? '<span class="pill bad">不通过</span>'
+                  : '<span class="pill wait">待审核</span>');
+
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + (row.id || row._id || '') + '</td>' +
+        tds.join('') + dynTds +
+        '<td>' + pill + '</td>' +
+        '<td><input class="tiny" style="width:160px" placeholder="审核说明" value="' + (row.review_comment || '') + '" data-cid="' + (row.id || row._id || '') + '"></td>' +
+        '<td><a class="btn gray" href="/site/' + encodeURIComponent((document.body.dataset.site||'').trim()) + '/admin/export_word/' + (row.id || row._id || '') + '" target="_blank">Word</a> ' +
+              '<a class="btn gray" href="/site/' + encodeURIComponent((document.body.dataset.site||'').trim()) + '/admin/export_excel/' + (row.id || row._id || '') + '" target="_blank">Excel</a></td>' +
+        '<td><button class="btn" data-mail="' + (row.id || row._id || '') + '">发送邮件</button></td>' +
+        '<td><button class="btn danger" data-del="' + (row.id || row._id || '') + '">删除</button></td>';
+
+      tbody.appendChild(tr);
+
+      // 事件
+      const id = row.id || row._id || '';
+      const commentInput = tr.querySelector('input[data-cid="'+id+'"]');
+      const opDiv = document.createElement('div'); opDiv.style.display='flex'; opDiv.style.gap='6px'; opDiv.style.marginTop='6px';
+      const passBtn = document.createElement('button'); passBtn.className='btn'; passBtn.style.background='linear-gradient(180deg,#22c55e,#16a34a)'; passBtn.style.color='#fff'; passBtn.textContent='通过';
+      const failBtn = document.createElement('button'); failBtn.className='btn'; failBtn.style.background='linear-gradient(180deg,#ef4444,#b91c1c)'; failBtn.style.color='#fff'; failBtn.textContent='不通过';
+      opDiv.appendChild(passBtn); opDiv.appendChild(failBtn);
+      commentInput.parentNode.appendChild(opDiv);
+
+      passBtn.addEventListener('click', async function(){
+        const r = await fetch('/site/' + encodeURIComponent((document.body.dataset.site||'').trim()) + '/admin/api/status', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ id, status:'已通过', review_comment: commentInput.value || '' })
+        });
+        const d2 = await r.json();
+        if (!r.ok || !d2.ok) return alert('操作失败：' + (d2.error || r.status));
+        loadResponsesFix();
+      });
+      failBtn.addEventListener('click', async function(){
+        const r = await fetch('/site/' + encodeURIComponent((document.body.dataset.site||'').trim()) + '/admin/api/status', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ id, status:'未通过', review_comment: commentInput.value || '' })
+        });
+        const d2 = await r.json();
+        if (!r.ok || !d2.ok) return alert('操作失败：' + (d2.error || r.status));
+        loadResponsesFix();
+      });
+      tr.querySelector('[data-del="'+id+'"]').addEventListener('click', async function(){
+        if (!confirm('确认删除该记录？')) return;
+        const r = await fetch('/site/' + encodeURIComponent((document.body.dataset.site||'').trim()) + '/admin/api/delete/' + id, { method:'DELETE' });
+        const d2 = await r.json();
+        if (!r.ok || !d2.ok) return alert('删除失败：' + (d2.error || r.status));
+        loadResponsesFix();
+      });
+      tr.querySelector('[data-mail="'+id+'"]').addEventListener('click', async function () {
+        const subject = prompt('邮件主题：','您在本表单的申请结果通知'); if (subject === null) return;
+        const body = prompt('邮件内容：','你好，您的申请已处理。'); if (body === null) return;
+        try {
+          const r = await fetch('/site/' + encodeURIComponent((document.body.dataset.site||'').trim()) + '/admin/api/send_email/' + id, {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ subject, body })
+          });
+          const d2 = await r.json();
+          if (!r.ok || !d2.ok) return alert('发送失败：' + (d2.error || r.status));
+          const t = document.getElementById('toast'); if (t) { t.textContent='邮件已发送'; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1500); }
+        } catch (err) { alert('发送失败：' + err.message); }
+      });
+    });
+
+    function th(text){ const el=document.createElement('th'); el.textContent = text; return el; }
+  }
+
+  // 覆盖原方法
+  window.rebuildRespHeader = rebuildRespHeaderFix;
+  window.loadResponses = loadResponsesFix;
+
+  // 搜索/刷新按钮自动走新方法
+  const btnSearch = document.getElementById('btnSearch');
+  const btnRefresh = document.getElementById('btnRefresh');
+  btnSearch && btnSearch.addEventListener('click', function(){ rebuildRespHeaderFix(); loadResponsesFix(); });
+  btnRefresh && btnRefresh.addEventListener('click', function(){ rebuildRespHeaderFix(); loadResponsesFix(); });
+
+  // 如果当前就在“回复数据”标签页，自动加载一次
+  const tab = document.getElementById('tab-responses');
+  if (tab && tab.classList.contains('active')) { rebuildRespHeaderFix(); loadResponsesFix(); }
+})();
+

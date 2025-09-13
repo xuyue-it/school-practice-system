@@ -30,6 +30,10 @@ from flask import render_template, request, abort
 
 # ========== Flask 应用 ==========
 app = Flask(__name__)
+try:
+    app.json.ensure_ascii = False  # Flask >= 2.3/3.x 推荐写法
+except Exception:
+    app.config['JSON_AS_ASCII'] = False  # 老版本兜底
 app.secret_key = "dev-secret"  # 或者从环境变量读
 app.permanent_session_lifetime = timedelta(days=365)
 
@@ -74,6 +78,10 @@ def get_conn():
     conn = _POOL.getconn()
     # 会话级安全优化（失败忽略）
     try:
+        conn.set_client_encoding('UTF8')
+    except Exception:
+        pass
+    try:
         with conn.cursor() as c:
             c.execute("SET statement_timeout TO 60000")                     # 60s
             c.execute("SET idle_in_transaction_session_timeout TO 30000")   # 30s
@@ -110,6 +118,33 @@ def _perf_add_cache_headers(resp):
         # 静态资源缓存一周（第一次加载后明显加速）
         elif "javascript" in ct or "css" in ct or "image/" in ct or "svg+xml" in ct or "font/" in ct:
             resp.headers.setdefault("Cache-Control", "public, max-age=604800, immutable")
+    except Exception:
+        pass
+    return resp
+
+# === UTF-8 兜底(1)：强制所有 HTML/JSON 响应带 charset=utf-8 ===
+@app.after_request
+def _force_utf8_headers(resp):
+    try:
+        ct = resp.headers.get("Content-Type", "")
+        low = ct.lower()
+        if (low.startswith("text/") or "application/json" in low) and "charset=" not in low:
+            base = ct.split(";")[0].strip() or "text/plain"
+            resp.headers["Content-Type"] = f"{base}; charset=utf-8"
+    except Exception:
+        pass
+    return resp
+
+# === UTF-8 兜底(2)：HTML 没有 <meta charset> 时自动注入 ===
+@app.after_request
+def _ensure_meta_charset(resp):
+    try:
+        if resp.content_type and resp.content_type.startswith("text/html"):
+            html = resp.get_data(as_text=True)
+            low = html.lower()
+            if "</head>" in low and "<meta charset=" not in low:
+                html = html.replace("</head>", '<meta charset="utf-8"></head>', 1)
+                resp.set_data(html)
     except Exception:
         pass
     return resp
@@ -1000,7 +1035,7 @@ def api_delete_submission(site_name):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
     try:
-        c.execute(f"SET search_path TO {schema}")
+        c.execute(f'SET search_path TO "{schema}", public')
         c.execute("DELETE FROM submissions WHERE id=%s", (sub_id,))
         conn.commit()
         return jsonify({"ok": True})
@@ -1014,60 +1049,81 @@ def _extract_columns_from_schema(schema: dict):
     cols = []
     if not isinstance(schema, dict):
         return cols
-    arr = None
-    for k in ("fields", "questions", "items"):
-        v = schema.get(k)
-        if isinstance(v, list):
-            arr = v; break
-    if not arr:
-        return cols
 
-    def _to_text(s: str) -> str:
-        if not isinstance(s, str):
+    # ---------- helpers ----------
+    def _to_text(sval) -> str:
+        if not isinstance(sval, str):
             return ""
-        s = re.sub(r"<[^>]+>", "", s)
-        return s.strip()
+        sval = re.sub(r"<[^>]+>", "", sval)
+        return sval.strip()
+
+    def _has_cjk(text: str) -> bool:
+        """是否包含中文（CJK）"""
+        return bool(re.search(r"[\u4e00-\u9fff]", str(text or "")))
 
     def pick_label(f: dict) -> str:
-        for cand in [
-            f.get("labelHTML"), f.get("label"),
-            f.get("title"), f.get("text"),
-            f.get("placeholder"),
+        # 覆盖常见构建器字段名
+        for cand in (
+            f.get("label"), f.get("title"), f.get("text"), f.get("name"),
+            f.get("placeholder"), f.get("question"), f.get("displayName"),
             f.get("desc"), f.get("description"),
-            (f.get("ui") or {}).get("label"),
-            (f.get("props") or {}).get("label"),
-            (f.get("meta") or {}).get("label"),
-        ]:
+            (f.get("ui") or {}).get("label"), (f.get("ui") or {}).get("title"),
+            (f.get("props") or {}).get("label"), (f.get("props") or {}).get("title"),
+            (f.get("meta") or {}).get("label"), (f.get("meta") or {}).get("title"),
+        ):
             t = _to_text(cand) if cand else ""
             if t:
                 return t
-        for key in ("i18n", "labelHTML", "label", "title"):
+        # i18n / 富文本兜底
+        for key in ("i18n", "labelHTML", "label", "title", "question"):
             obj = f.get(key)
             if isinstance(obj, dict):
-                for lang_key in ("zh-CN","zh_CN","zh-cn","zh","text","title","label","en"):
+                for lang_key in ("zh-CN","zh_CN","zh-cn","zh","text","title","label","question","en"):
                     t = _to_text(obj.get(lang_key) or "")
                     if t:
                         return t
         return ""
 
-    for f in arr:
+    # 深度遍历 schema，尽可能找出字段节点
+    CAND_KEYS = {"fields","questions","items","components","children",
+                 "body","rows","columns","pages","formItems","list",
+                 "properties","elements","schema"}
+    seen_keys = set()
+
+    def iter_fields(node):
+        if isinstance(node, dict):
+            # 当前节点本身可能就是字段
+            if any(k in node for k in ("key","id","name")) and any(k in node for k in ("label","title","text","question","displayName")):
+                yield node
+            for k, v in node.items():
+                if k in CAND_KEYS or isinstance(v, (list, dict)):
+                    yield from iter_fields(v)
+        elif isinstance(node, list):
+            for it in node:
+                yield from iter_fields(it)
+
+    for f in iter_fields(schema):
         if not isinstance(f, dict):
             continue
         key = f.get("key") or f.get("id") or f.get("name")
-        if not key:
+        if not key or key in seen_keys:
             continue
-        label = pick_label(f) or str(key)
+        label = pick_label(f)
+        # 只保留“含中文标题”的列（你现在的需求）
+        if not label or not _has_cjk(label):
+            continue
         type_ = f.get("type") or (f.get("ui") or {}).get("type") or ""
         cols.append({"key": str(key), "label": label, "type": str(type_)})
-    return cols
+        seen_keys.add(key)
 
+    return cols
 def _api_list_responses(site_name: str):
     q = (request.args.get("q") or "").strip()
     schema = _safe_schema(site_name)
 
     conn = get_conn(); c = conn.cursor()
     try:
-        c.execute(f"SET search_path TO {schema}")
+        c.execute(f'SET search_path TO "{schema}", public')
         if q:
             c.execute("""
                 SELECT id, data, status, review_comment, created_at
@@ -1079,7 +1135,7 @@ def _api_list_responses(site_name: str):
         else:
             c.execute("""
                 SELECT id, data, status, review_comment, created_at
-                  FROM submissions
+                 FROM submissions
                  ORDER BY id DESC
                  LIMIT 500
             """)
@@ -1107,6 +1163,8 @@ def _api_list_responses(site_name: str):
         row = c2.fetchone()
     finally:
         conn2.close()
+    c2.execute(f'SET search_path TO "{schema}", public')
+
     schema_json = row[0] if (row and isinstance(row[0], dict)) else (json.loads(row[0]) if row and row[0] else {})
     columns = _extract_columns_from_schema(schema_json)
     title_map = {c["key"]: c["label"] for c in columns if c.get("key")}
@@ -1118,10 +1176,74 @@ def _api_list_responses(site_name: str):
 def api_responses(site_name):
     return _api_list_responses(site_name)
 
-@app.route("/site/<site_name>/admin/api/list")
+@app.route("/site/<site_name>/admin/api/submissions")  # 兼容旧别名
 @admin_required
-def api_responses_alias1(site_name):
+def api_responses_alias(site_name):
     return _api_list_responses(site_name)
+
+def _api_list_responses(site_name: str):
+    q = (request.args.get("q") or "").strip()
+    schema = _safe_schema(site_name)
+
+    # 读提交数据
+    conn = get_conn(); c = conn.cursor()
+    try:
+        c.execute(f'SET search_path TO "{schema}", public')
+        if q:
+            c.execute("""
+                SELECT id, data, status, review_comment, created_at
+                  FROM submissions
+                 WHERE data::text ILIKE %s
+                 ORDER BY id DESC
+                 LIMIT 500
+            """, (f"%{q}%",))
+        else:
+            c.execute("""
+                SELECT id, data, status, review_comment, created_at
+                 FROM submissions
+                 ORDER BY id DESC
+                 LIMIT 500
+            """)
+        rows = c.fetchall()
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+    items = []
+    for rid, d, status, review, created in rows:
+        data = d if isinstance(d, dict) else (json.loads(d) if d else {})
+        items.append({
+            "id": rid,
+            "status": (status or "待审核"),
+            "review_comment": (review or ""),
+            "created_at": str(created) if created else "",
+            "data": data,
+        })
+
+    # 读表单 schema，生成中文表头
+    conn2 = get_conn(); c2 = conn2.cursor()
+    try:
+        c2.execute(f'SET search_path TO "{schema}", public')
+        c2.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
+        row = c2.fetchone()
+    except Exception:
+        row = None
+    finally:
+        conn2.close()
+
+    schema_json = row[0] if (row and isinstance(row[0], dict)) else (json.loads(row[0]) if row and row[0] else {})
+    columns = _extract_columns_from_schema(schema_json)
+    # 只保留中文列（再保险）
+    def _has_cjk(text: str) -> bool:
+        return bool(re.search(r"[\u4e00-\u9fff]", str(text or "")))
+    columns = [c for c in columns if _has_cjk(c.get("label"))]
+
+    title_map = {c["key"]: c["label"] for c in columns if c.get("key")}
+
+    return jsonify({"ok": True, "items": items, "columns": columns, "titleMap": title_map})
+
 
 @app.route("/site/<site_name>/admin/api/submissions")
 @admin_required
@@ -1275,7 +1397,7 @@ def api_review(site_name):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
     try:
-        c.execute(f"SET search_path TO {schema}")
+        c.execute(f'SET search_path TO "{schema}", public')
         c.execute("UPDATE submissions SET status=%s, review_comment=%s WHERE id=%s",
                   (status, review_comment, sub_id))
         conn.commit()
@@ -1294,7 +1416,7 @@ def api_send_mail(site_name):
     schema = _safe_schema(site_name)
 
     conn = get_conn(); c = conn.cursor()
-    c.execute(f"SET search_path TO {schema}")
+    c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data, status, review_comment FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone()
     conn.close()
@@ -1521,7 +1643,7 @@ def public_status_query(site_name):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
     try:
-        c.execute(f"SET search_path TO {schema}")
+        c.execute(f'SET search_path TO "{schema}", public')
         c.execute("""
             SELECT id, data, status, review_comment, created_at
             FROM submissions
@@ -1860,7 +1982,7 @@ def _extract_email(data: dict) -> str:
 def export_word(site_name, sub_id):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
-    c.execute(f"SET search_path TO {schema}")
+    c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
     if not row: return "❌ 记录不存在", 404
@@ -1877,7 +1999,7 @@ def export_word(site_name, sub_id):
 def export_excel(site_name, sub_id):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
-    c.execute(f"SET search_path TO {schema}")
+    c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
     if not row: return "❌ 记录不存在", 404
@@ -1910,7 +2032,7 @@ def export_excel(site_name, sub_id):
 def export_all_excel(site_name):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
-    c.execute(f"SET search_path TO {schema}")
+    c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT id, data, status, review_comment, created_at FROM submissions ORDER BY id")
     rows = c.fetchall(); conn.close()
 
@@ -1953,7 +2075,7 @@ def export_all_excel(site_name):
 def api_gallery(site_name):
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
-    c.execute(f"SET search_path TO {schema}")
+    c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data FROM submissions ORDER BY id DESC LIMIT 1000")
     rows = c.fetchall(); conn.close()
 
@@ -1997,142 +2119,108 @@ def drop_bg_notify_from_all():
     conn.commit(); conn.close()
 
 @app.route("/site/<site_name>/admin/api/charts", methods=["GET"])
+@admin_required
 def api_charts(site_name):
-    import json
-    from collections import Counter, defaultdict
+    """返回图表页需要的小数据集：
+    {
+      ok: true,
+      daily:  [{date:"YYYY-MM-DD", count:N}, ... 14天],
+      status: [{name:"待审核", count:N}, ...],
+      field:  {label:"字段名", items:[{name:"选项", count:N}, ...]}
+    }
+    """
+    from collections import Counter
     from datetime import datetime, timedelta
+    import json
 
-    # === 这两行请“原样照抄”你 api_responses 里用的权限检查与数据库连接 ===
-    # 例如：if not is_admin(site_name): return abort(403)
-    #       conn = get_site_db(site_name); c = conn.cursor()
-    # -------------------------------------------------------------------------
-    conn = get_site_db(site_name)       # ← 用你项目里的同名函数/写法
-    c = conn.cursor()
-    # -------------------------------------------------------------------------
+    schema_name = _safe_schema(site_name)
 
+    # 读取最近提交
+    conn = get_conn(); c = conn.cursor()
     try:
-        # 读表单 schema，找第一个可分类字段（select/radio/checkbox），没有就 later 再从 data 里猜
-        first_key = first_label = first_type = None
-        try:
-            c.execute("SELECT schema_json FROM form_defs WHERE site_name = ?", (site_name,))
-        except Exception:
-            # 兼容没有 site_name 列的旧结构
-            try:
-                c.execute("SELECT schema_json FROM form_defs ORDER BY id ASC LIMIT 1")
-            except Exception:
-                pass
-        row = c.fetchone()
-        if row and row[0]:
-            try:
-                schema = row[0] if isinstance(row[0], dict) else json.loads(row[0])
-                for f in (schema or {}).get("fields") or []:
-                    t = (f.get("type") or "").lower()
-                    if t in ("select", "radio", "checkbox"):
-                        first_key   = f.get("key") or f.get("id") or f.get("name")
-                        first_label = f.get("labelHTML") or f.get("label") or f.get("title") or first_key
-                        first_type  = t
-                        break
-            except Exception:
-                pass
-
-        # 取全部提交（或最近一段时间），用 Python 聚合，避免依赖 JSONB/JSON1
-        c.execute("SELECT * FROM submissions")
+        c.execute(f"SET search_path TO {schema_name}")
+        c.execute("""
+            SELECT data, status, created_at
+            FROM submissions
+            ORDER BY id DESC
+            LIMIT 2000
+        """)
         rows = c.fetchall()
-        cols = [d[0] for d in c.description]
-        idx = {name: i for i, name in enumerate(cols)}
-
-        def pick(row, names):
-            for n in names:
-                if n in idx:
-                    return row[idx[n]]
-            return None
-
-        # 解析行
-        daily_counter = Counter()
-        status_counter = Counter()
-        field_counter = Counter()
-
-        # 如果 schema 没给出 first_key，就从第一条 data 的 key 猜一个
-        maybe_first_key = None
-
-        for r in rows:
-            # 时间
-            ts = pick(r, ["created_at", "created", "submitted_at", "ts", "timestamp"])
-            # 转日期字符串（YYYY-MM-DD）
-            if isinstance(ts, (int, float)):
-                dt = datetime.utcfromtimestamp(ts)
-            elif isinstance(ts, str):
-                # 常见几种格式兜底
-                for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d"):
-                    try:
-                        dt = datetime.strptime(ts.split(".")[0], fmt)
-                        break
-                    except Exception:
-                        dt = None
-                if dt is None:
-                    dt = datetime.utcnow()
-            elif isinstance(ts, datetime):
-                dt = ts
-            else:
-                dt = datetime.utcnow()
-            daily_counter[dt.strftime("%Y-%m-%d")] += 1
-
-            # 状态
-            s = pick(r, ["status", "state"]) or "待审核"
-            status_counter[str(s)] += 1
-
-            # 数据字段
-            raw = pick(r, ["data", "payload", "json"])
-            try:
-                data = raw if isinstance(raw, dict) else (json.loads(raw) if raw else {})
-            except Exception:
-                data = {}
-
-            if maybe_first_key is None and not first_key and isinstance(data, dict):
-                # 猜一个第一字段
-                for k, v in data.items():
-                    if isinstance(v, (list, str, int, float)) and str(k).strip():
-                        maybe_first_key = k
-                        break
-
-            key = first_key or maybe_first_key
-            if key and isinstance(data, dict) and key in data:
-                val = data.get(key)
-                if isinstance(val, list):
-                    for x in val:
-                        if x not in (None, "", []):
-                            field_counter[str(x)] += 1
-                else:
-                    if val not in (None, ""):
-                        field_counter[str(val)] += 1
-
-        # 只保留最近14天（有些老数据可能很多）
-        today = datetime.utcnow().date()
-        last14 = [(today - timedelta(days=i)).strftime("%Y-%m-%d") for i in range(13, -1, -1)]
-        daily = [{"date": d, "count": int(daily_counter.get(d, 0))} for d in last14]
-
-        status = [{"name": k, "count": int(v)} for k, v in status_counter.most_common()]
-
-        field = None
-        key_used = first_key or maybe_first_key
-        if key_used:
-            data_sorted = [{"value": k, "count": int(v)} for k, v in field_counter.most_common(20)]
-            field = {
-                "key": key_used,
-                "label": first_label or key_used,
-                "type": first_type or ("checkbox" if any(isinstance(pick(r, ["data"]), (list,)) for r in rows) else "text"),
-                "data": data_sorted,
-            }
-
-        return jsonify({"ok": True, "daily": daily, "status": status, "field": field})
-
     except Exception as e:
-        try: conn.rollback()
-        except Exception: pass
+        conn.rollback()
         return jsonify({"ok": False, "error": str(e)}), 500
     finally:
-        try: conn.close()
-        except Exception: pass
+        conn.close()
+
+    # 读取表单 schema，挑一个适合做分布图的字段
+    field_key, field_label = None, None
+    conn2 = get_conn(); c2 = conn2.cursor()
+    try:
+        c2.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
+        r = c2.fetchone()
+    finally:
+        conn2.close()
+    schema_json = r[0] if (r and isinstance(r[0], dict)) else (json.loads(r[0]) if r and r[0] else {})
+    for f in (schema_json or {}).get("fields", []):
+        t = (f.get("type") or "").lower()
+        if t in ("select", "radio", "checkbox"):
+            field_key = f.get("key") or f.get("id") or f.get("name")
+            field_label = f.get("label") or field_key
+            break
+
+    daily = Counter()
+    status_counter = Counter()
+    field_counter = Counter()
+
+    now = datetime.utcnow()
+    start_day = (now - timedelta(days=13)).date()
+
+    for data, status, created_at in rows:
+        # data 可能是 JSONB dict 或 JSON 字符串
+        try:
+            d = data if isinstance(data, dict) else (json.loads(data) if data else {})
+        except Exception:
+            d = {}
+
+        # 日期
+        try:
+            dt = created_at if isinstance(created_at, datetime) else datetime.fromisoformat(str(created_at))
+        except Exception:
+            dt = now
+        day = dt.date()
+        if day >= start_day:
+            daily[day.isoformat()] += 1
+
+        # 状态
+        s = (status or "").strip() or "待审核"
+        status_counter[s] += 1
+
+        # 字段分布（若 schema 没挑到，就退化用第一个字段）
+        if not field_key and isinstance(d, dict) and d:
+            field_key = next(iter(d.keys()), None)
+            field_label = field_key or "字段"
+        if field_key and isinstance(d, dict) and field_key in d:
+            v = d[field_key]
+            if isinstance(v, list):
+                for each in v:
+                    field_counter[str(each)] += 1
+            else:
+                field_counter[str(v)] += 1
+
+    # 组装 14 天序列
+    dates = [(now - timedelta(days=i)).date() for i in range(13, -1, -1)]
+    daily_arr = [{"date": d.isoformat(), "count": int(daily.get(d.isoformat(), 0))} for d in dates]
+
+    status_arr = [{"name": k, "count": int(v)} for k, v in status_counter.items()]
+    field_items = [{"name": k, "count": int(v)} for k, v in field_counter.items()]
+
+    return jsonify({
+        "ok": True,
+        "daily": daily_arr,
+        "status": status_arr,
+        "field": {"label": field_label or "字段", "items": field_items}
+    })
+
 
 
 
@@ -2166,6 +2254,11 @@ def allow_embed(resp):
         except Exception:
             pass
     return resp
+
+def _has_cjk(text: str) -> bool:
+    if not text: return False
+    import re as _re
+    return bool(_re.search(r"[\u4e00-\u9fff]", str(text)))
 
 # ========== 健康检查 ==========
 @app.route("/_health")
