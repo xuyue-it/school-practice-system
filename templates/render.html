@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: formly
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app -k gthread -w 2 -b 0.0.0.0:$PORT --timeout 120
+    healthCheckPath: /_health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: SECRET_KEY
+        generateValue: true
+      # DB_URL 请在 Render 控制台上填真实的 Neon Pooler 连接串（不要提交到仓库）
