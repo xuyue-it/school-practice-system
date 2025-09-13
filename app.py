@@ -34,6 +34,9 @@ try:
     app.json.ensure_ascii = False  # Flask >= 2.3/3.x 推荐写法
 except Exception:
     app.config['JSON_AS_ASCII'] = False  # 老版本兜底
+# 👇 确保所有 JSON 响应头都带 charset，前端/浏览器不再出现中文乱码
+app.config['JSONIFY_MIMETYPE'] = 'application/json; charset=utf-8'
+
 app.secret_key = "dev-secret"  # 或者从环境变量读
 app.permanent_session_lifetime = timedelta(days=365)
 
@@ -1173,7 +1176,7 @@ def _api_list_responses(site_name: str):
         else:
             c.execute("""
                 SELECT id, data, status, review_comment, created_at
-                  FROM submissions
+                 FROM submissions
                  ORDER BY id DESC
                  LIMIT 500
             """)
@@ -1993,7 +1996,7 @@ def export_excel(site_name, sub_id):
     except Exception:
         csv_io = io.StringIO()
         df.to_csv(csv_io, index=False)
-        mem = io.BytesIO(csv_io.getvalue().encode("utf-8-sig"))
+        mem = io.BytesIO(csv_io.getvalue().encode("utf-8-sig"))  # UTF-8 BOM，Excel 直接识别中文
         return send_file(
             mem, as_attachment=True,
             download_name=f"submission_{sub_id}.csv",
@@ -2038,7 +2041,7 @@ def export_all_excel(site_name):
     except Exception:
         csv_io = io.StringIO()
         df.to_csv(csv_io, index=False)
-        mem = io.BytesIO(csv_io.getvalue().encode("utf-8-sig"))
+        mem = io.BytesIO(csv_io.getvalue().encode("utf-8-sig"))  # UTF-8 BOM，Excel 直接识别中文
         return send_file(mem, as_attachment=True,
                          download_name=f"{site_name}_all.csv",
                          mimetype="text/csv; charset=utf-8")
@@ -2226,6 +2229,17 @@ def allow_embed(resp):
                     resp.set_data(html)
         except Exception:
             pass
+    return resp
+
+# 👇 统一把所有 application/json 响应补上 charset=utf-8，杜绝中文乱码/转义
+@app.after_request
+def _force_utf8_json_header(resp):
+    try:
+        ct = resp.headers.get("Content-Type", "")
+        if ct.startswith("application/json") and "charset" not in ct.lower():
+            resp.headers["Content-Type"] = "application/json; charset=utf-8"
+    except Exception:
+        pass
     return resp
 
 def _has_cjk(text: str) -> bool:
