@@ -5,7 +5,7 @@ database.db-shm
 
 # 忽略用户目录持久化数据库（与 app.py/merge_db.py 保持一致）
 masland-data/
-.env
+../.env
 *.db
 *.db-shm
 *.db-wal

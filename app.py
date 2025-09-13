@@ -1114,9 +1114,22 @@ def _api_list_responses(site_name: str):
     return jsonify({"ok": True, "items": items, "columns": columns, "titleMap": title_map})
 
 @app.route("/site/<site_name>/admin/api/responses")
-@admin_required
 def api_responses(site_name):
-    return _api_list_responses(site_name)
+    conn = get_site_db(site_name)
+    c = conn.cursor()
+
+    limit = int(request.args.get("limit", 20))   # 默认一次取 50 条
+    offset = int(request.args.get("offset", 0))
+
+    c.execute("""
+        SELECT * FROM submissions
+        WHERE site_name = ?
+        ORDER BY id DESC
+        LIMIT ? OFFSET ?
+    """, (site_name, limit, offset))
+
+    rows = [dict(r) for r in c.fetchall()]
+    return jsonify(rows)
 
 @app.route("/site/<site_name>/admin/api/list")
 @admin_required
