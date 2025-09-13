@@ -977,82 +977,97 @@
     </style>
 
 <!-- 仅保留这一段 guard：安全读取 body.dataset，且只在数据页 + 有站点名 + 页面可见时放行 -->
+<!-- 放在 <head>，并确保这是页面里唯一的“responses-guard”脚本 -->
 <script id="responses-guard">
 (function () {
-  // 读站点名（新建页通常为空）
-  const siteName = (document.body && document.body.dataset && document.body.dataset.site) || "";
+  const PATH = /\/admin\/api\/responses(?:\?|$)/i;
 
-  // 是否在“数据”页
-  const inResponsesTab = () =>
-    !!document.getElementById('tab-responses')?.classList.contains('active');
+  function hasAllowHeader(init) {
+    try {
+      const h = init && init.headers;
+      if (!h) return false;
+      if (typeof h.get === 'function') return String(h.get('X-UI-Tab') || '').toLowerCase() === 'responses';
+      if (Array.isArray(h)) return h.some(([k,v]) => String(k).toLowerCase()==='x-ui-tab' && String(v).toLowerCase()==='responses');
+      if (typeof h === 'object') {
+        for (const k in h) if (Object.prototype.hasOwnProperty.call(h,k)
+            && String(k).toLowerCase()==='x-ui-tab'
+            && String(h[k]).toLowerCase()==='responses') return true;
+      }
+      return false;
+    } catch { return false; }
+  }
 
-  const isResponsesApi = (input) => {
+  // fetch：除非带白名单头，否则拦截并返回空数据
+  const _fetch = window.fetch;
+  function guardedFetch(input, init) {
     try {
       const url = typeof input === 'string' ? input : (input && input.url) || '';
-      return /\/admin\/api\/responses(?:\?|$)/.test(url);
-    } catch { return false; }
-  };
-
-  const shouldBlock = () => (!inResponsesTab() || !siteName || document.hidden);
-
-  // fetch
-  const _fetch = window.fetch;
-  window.fetch = function(input, init) {
-    if (isResponsesApi(input) && shouldBlock()) {
-      try { console.debug('[responses-guard] blocked', typeof input==='string'?input:input.url); } catch {}
-      return Promise.resolve(new Response(
-        JSON.stringify({ ok: true, items: [], total: 0 }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      ));
-    }
+      if (PATH.test(url) && !hasAllowHeader(init)) {
+        try { console.debug('[responses-guard] blocked fetch', url); } catch {}
+        return Promise.resolve(new Response(
+          JSON.stringify({ ok: true, items: [], total: 0 }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        ));
+      }
+    } catch {}
     return _fetch.apply(this, arguments);
-  };
+  }
+  try {
+    Object.defineProperty(window, 'fetch', { configurable: false, writable: false, value: guardedFetch });
+  } catch { window.fetch = guardedFetch; }
 
-  // XHR
+  // XHR：我们自己的代码不用 XHR 拉这个接口，直接一律拦掉
   const _open = XMLHttpRequest.prototype.open;
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-    this.__rg_block = /\/admin\/api\/responses(?:\?|$)/.test(String(url)) && shouldBlock();
+    this.__block_resp = PATH.test(String(url));
     return _open.call(this, method, url, ...rest);
   };
   const _send = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.send = function(body) {
-    if (this.__rg_block) { try { this.abort(); } catch {} return; }
+    if (this.__block_resp) {
+      try { console.debug('[responses-guard] blocked XHR'); } catch {}
+      try { this.abort(); } catch {}
+      return;
+    }
     return _send.call(this, body);
   };
 
-  // sendBeacon
+  // 兜底：beacon / SSE / WS / Worker
   if (navigator.sendBeacon) {
     const _beacon = navigator.sendBeacon.bind(navigator);
     navigator.sendBeacon = function(url, data) {
-      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && shouldBlock()) {
-        try { console.debug('[responses-guard] beacon blocked', url); } catch {}
-        return true;
-      }
+      if (PATH.test(String(url))) { try { console.debug('[responses-guard] beacon blocked', url); } catch {} return true; }
       return _beacon(url, data);
     };
   }
-
-  // SSE
   if (window.EventSource) {
     const _ES = window.EventSource;
     window.EventSource = function(url, conf) {
-      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && shouldBlock()) {
+      if (PATH.test(String(url))) {
         try { console.debug('[responses-guard] EventSource blocked', url); } catch {}
-        const dummy = new EventTarget();
-        dummy.readyState = 2; dummy.close = function(){};
+        const dummy = new EventTarget(); dummy.readyState = 2; dummy.close = function(){};
         return dummy;
       }
       return new _ES(url, conf);
     };
     window.EventSource.prototype = _ES.prototype;
   }
-
-  // 页面从隐藏->可见时，下一次才允许发；隐藏时自动拦截
-  document.addEventListener('visibilitychange', () => {
-    try { console.debug('[responses-guard] visibility:', document.hidden ? 'hidden' : 'visible'); } catch {}
-  });
+  if (window.WebSocket) {
+    const _WS = window.WebSocket;
+    window.WebSocket = new Proxy(_WS, {
+      construct(target, args) {
+        const u = String(args?.[0] || '');
+        if (PATH.test(u)) {
+          try { console.debug('[responses-guard] WebSocket blocked', u); } catch {}
+          return { readyState: 3, close(){}, send(){}, addEventListener(){}, removeEventListener(){}, dispatchEvent(){ return false; } };
+        }
+        return new target(...args);
+      }
+    });
+  }
 })();
 </script>
+
 
 
 </head>
@@ -1692,6 +1707,14 @@
         }
 
         async function jget(url, opt) {
+            opt = opt || {};
+            if (!(opt.headers instanceof Headers)) {
+                opt.headers = new Headers(opt.headers || {});
+            }
+            // ★ 关键：允许真正访问接口的白名单头
+            opt.headers.set('X-UI-Tab', 'responses');
+            opt.headers.set('Accept', 'application/json');
+
             const r = await fetch(url, opt);
             const data = await r.json().catch(() => ({ok: false, error: "非JSON响应"}));
             if (!r.ok || data.ok === false) throw new Error(data.error || r.statusText);
@@ -2613,7 +2636,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const tick = async () => {
         if (document.hidden) { schedule(); return; }
         try {
-          const res = await fetch(`/site/${siteName}/admin/api/responses?limit=50&offset=0`);
+            const res = await fetch(`/site/${siteName}/admin/api/responses?limit=50&offset=0`, {
+                headers: {'X-UI-Tab': 'responses'}
+            });
           if (res.ok) { backoff = 15000; } else { backoff = Math.min(backoff * 2, MAX_BACKOFF); }
         } catch { backoff = Math.min(backoff * 2, MAX_BACKOFF); }
         schedule();
