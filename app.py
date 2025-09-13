@@ -1124,6 +1124,8 @@ def _api_list_responses(site_name: str):
         row = c2.fetchone()
     finally:
         conn2.close()
+    c2.execute(f'SET search_path TO "{schema}", public')
+
     schema_json = row[0] if (row and isinstance(row[0], dict)) else (json.loads(row[0]) if row and row[0] else {})
     columns = _extract_columns_from_schema(schema_json)
     title_map = {c["key"]: c["label"] for c in columns if c.get("key")}

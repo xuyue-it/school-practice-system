@@ -2723,6 +2723,8 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 window.addEventListener('load', ()=>{ try{
     if (typeof loadResponses==='function') loadResponses();
+    function hasCJK(s){ return /[\u4E00-\u9FFF]/.test(String(s||'')); }
+    FIELDS = FIELDS.filter(f => hasCJK(f.label));
 }catch(e){} });
 </script>
 
