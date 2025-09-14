@@ -1993,7 +1993,10 @@ def export_word(site_name, sub_id):
     if not row: return "❌ 记录不存在", 404
     data = row[0] if isinstance(row[0], dict) else (json.loads(row[0]) if row[0] else {})
     doc = Document(); doc.add_heading(f"提交 #{sub_id}", level=1)
-    for k,v in data.items(): doc.add_paragraph(f"{k}: {v}")
+    for k, v in data.items():
+        safe_k = str(k)
+        safe_v = str(v) if v is not None else ""
+        doc.add_paragraph(f"{safe_k}: {safe_v}")
     buffer = io.BytesIO(); doc.save(buffer); buffer.seek(0)
     return send_file(buffer, as_attachment=True,
                      download_name=f"submission_{sub_id}.docx",
@@ -2024,8 +2027,7 @@ def export_excel(site_name, sub_id):
         )
     except Exception:
         csv_io = io.StringIO()
-        df.to_csv(csv_io, index=False)
-        mem = io.BytesIO(csv_io.getvalue().encode("utf-8-sig"))
+        df.to_csv(csv_io, index=False, encoding="utf-8-sig")
         return send_file(
             mem, as_attachment=True,
             download_name=f"submission_{sub_id}.csv",
