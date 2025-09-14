@@ -2002,6 +2002,14 @@ def export_word(site_name, sub_id):
                      download_name=f"submission_{sub_id}.docx",
                      mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
+def try_fix(s):
+    if not isinstance(s, str):
+        return s
+    try:
+        return s.encode("latin1").decode("utf-8")
+    except Exception:
+        return s
+
 @app.route("/site/<site_name>/admin/export_excel/<int:sub_id>")
 @admin_required
 def export_excel(site_name, sub_id):
@@ -2034,6 +2042,13 @@ def export_excel(site_name, sub_id):
             download_name=f"submission_{sub_id}.csv",
             mimetype="text/csv; charset=utf-8"
         )
+def try_fix(s):
+    if not isinstance(s, str):
+        return s
+    try:
+        return s.encode("latin1").decode("utf-8")
+    except Exception:
+        return s
 
 @app.route("/site/<site_name>/admin/api/export_all_excel")
 @admin_required
@@ -2077,6 +2092,13 @@ def export_all_excel(site_name):
         return send_file(mem, as_attachment=True,
                          download_name=f"{site_name}_all.csv",
                          mimetype="text/csv; charset=utf-8")
+def try_fix(s):
+    if not isinstance(s, str):
+        return s
+    try:
+        return s.encode("latin1").decode("utf-8")
+    except Exception:
+        return s
 
 @app.route("/site/<site_name>/admin/api/gallery")
 @admin_required
