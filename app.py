@@ -2027,7 +2027,8 @@ def export_excel(site_name, sub_id):
         )
     except Exception:
         csv_io = io.StringIO()
-        df.to_csv(csv_io, index=False, encoding="utf-8-sig")
+        df.to_csv(csv_io, index=False)
+        mem = io.BytesIO(csv_io.getvalue().encode("utf-8-sig"))
         return send_file(
             mem, as_attachment=True,
             download_name=f"submission_{sub_id}.csv",
