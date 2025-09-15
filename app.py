@@ -28,6 +28,7 @@ from psycopg2.pool import SimpleConnectionPool
 import os, psycopg2
 from flask import render_template, request, abort
 from time import time
+import unicodedata
 # ========== Flask 应用 ==========
 app = Flask(__name__)
 try:
@@ -41,8 +42,50 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=True,   # 仅 HTTPS 时安全发送
 )
-# 放在 app 初始化后
 
+# —— 常见“中文→UTF-8→被按latin1读”的假字符标记
+_MOJIBAKE_MARKERS = ("Ã", "Â", "â€™", "â€œ", "â€", "å¼", "æ", "ç", "�")
+
+def _maybe_fix_encoding(s: str) -> str:
+    """把 'å¼'、'Ã§' 这类假字符尽量还原为真正UTF-8中文，并清理控制符。"""
+    if not isinstance(s, str):
+        return s
+    t = s
+    # 1) 只有看起来像乱码才尝试回转
+    if any(m in s for m in _MOJIBAKE_MARKERS):
+        for enc in ("latin1", "cp1252"):
+            try:
+                t2 = s.encode(enc, errors="strict").decode("utf-8")
+                # 如果回转后不再包含常见乱码标记，就认为成功
+                if not any(m in t2 for m in _MOJIBAKE_MARKERS):
+                    t = t2
+                    break
+            except Exception:
+                pass
+    # 2) 统一做Unicode规范化，并去掉不可见控制字符
+    try:
+        t = unicodedata.normalize("NFC", t)
+    except Exception:
+        pass
+    # 清掉不可见控制符（保留换行\t）
+    import re as _re
+    t = _re.sub(r"[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]", "", t)
+    return t
+
+def _normalize_obj(x):
+    """递归归一化：dict/list/tuple/str 都处理；其他类型原样返回。"""
+    if x is None or isinstance(x, (int, float, bool)):
+        return x
+    if isinstance(x, str):
+        return _maybe_fix_encoding(x)
+    if isinstance(x, dict):
+        return { _normalize_obj(k): _normalize_obj(v) for k, v in x.items() }
+    if isinstance(x, (list, tuple, set)):
+        return [ _normalize_obj(v) for v in x ]
+    return x
+
+
+# 放在 app 初始化后
 @app.context_processor
 def inject_asset():
     import os
@@ -1159,10 +1202,14 @@ def _api_list_responses(site_name: str):
     items = []
     for rid, d, status, review, created in rows:
         data = d if isinstance(d, dict) else (json.loads(d) if d else {})
+        # 统一 UTF-8 归一化（关键！）
+        data = _normalize_obj(data)
+        status = _maybe_fix_encoding(status or "待审核")
+        review = _maybe_fix_encoding(review or "")
         items.append({
             "id": rid,
-            "status": status or "待审核",
-            "review_comment": review or "",
+            "status": status,
+            "review_comment": review,
             "created_at": str(created) if created else "",
             "data": data,
         })
@@ -1177,6 +1224,10 @@ def _api_list_responses(site_name: str):
 
     schema_json = row[0] if (row and isinstance(row[0], dict)) else (json.loads(row[0]) if row and row[0] else {})
     columns = _extract_columns_from_schema(schema_json)
+    # 可选：把列名也做一次归一化，防“列头”乱码
+    for c in columns:
+        if "label" in c:
+            c["label"] = _maybe_fix_encoding(c["label"])
     title_map = {c["key"]: c["label"] for c in columns if c.get("key")}
 
     return jsonify({"ok": True, "items": items, "columns": columns, "titleMap": title_map})
@@ -1224,10 +1275,14 @@ def _api_list_responses(site_name: str):
     items = []
     for rid, d, status, review, created in rows:
         data = d if isinstance(d, dict) else (json.loads(d) if d else {})
+        # 统一 UTF-8 归一化（关键！）
+        data = _normalize_obj(data)
+        status = _maybe_fix_encoding(status or "待审核")
+        review = _maybe_fix_encoding(review or "")
         items.append({
             "id": rid,
-            "status": (status or "待审核"),
-            "review_comment": (review or ""),
+            "status": status,
+            "review_comment": review,
             "created_at": str(created) if created else "",
             "data": data,
         })
@@ -1994,9 +2049,12 @@ def export_word(site_name, sub_id):
     data = row[0] if isinstance(row[0], dict) else (json.loads(row[0]) if row[0] else {})
     doc = Document(); doc.add_heading(f"提交 #{sub_id}", level=1)
     for k, v in data.items():
-        safe_k = str(k)
-        safe_v = str(v) if v is not None else ""
-        doc.add_paragraph(f"{safe_k}: {safe_v}")
+        safe_k = _maybe_fix_encoding(str(k))
+        safe_v = _maybe_fix_encoding("" if v is None else str(v))
+        p = doc.add_paragraph()
+        p.add_run(f"{safe_k}: ").bold = True
+        p.add_run(safe_v)
+
     buffer = io.BytesIO(); doc.save(buffer); buffer.seek(0)
     return send_file(buffer, as_attachment=True,
                      download_name=f"submission_{sub_id}.docx",
@@ -2020,8 +2078,10 @@ def export_excel(site_name, sub_id):
     row = c.fetchone(); conn.close()
     if not row: return "❌ 记录不存在", 404
     data = row[0] if isinstance(row[0], dict) else (json.loads(row[0]) if row[0] else {})
-    rows = [(k,v) for k,v in data.items()]
-    df = pd.DataFrame(rows, columns=["字段","内容"])
+    rows = [(_maybe_fix_encoding(str(k)),
+             _maybe_fix_encoding("" if v is None else str(v)))
+            for k, v in data.items()]
+    df = pd.DataFrame(rows, columns=["字段", "内容"])
 
     try:
         buffer = io.BytesIO()
@@ -2069,8 +2129,8 @@ def export_all_excel(site_name):
             "created_at": str(r[4]) if r[4] else ""
         }
         for k, v in (d or {}).items():
-            k = str(k)
-            rec[k] = v
+            k = _maybe_fix_encoding(str(k))  # 列头也修复
+            rec[k] = _maybe_fix_encoding("" if v is None else str(v))
             cols.add(k)
         records.append(rec)
 
