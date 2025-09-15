@@ -1323,25 +1323,25 @@
             </div>
 
             <!-- Tab 4：图表 -->
-            <!-- 图表设置（移到图表页顶部，就地配置 + 刷新） -->
-            <div class="card" style="grid-column:1/-1">
-                <div class="hd"><h2>图表设置</h2></div>
-                <div class="bd">
-                    <div class="hint" style="margin-bottom:8px">
-                        只需输入<strong>题目标题</strong>并选择<strong>类型</strong>，点“保存图表配置”；点右侧“刷新图表”即可更新下方图表。
-                    </div>
-                    <div id="chart-settings-list"></div>
-                    <div class="row" style="margin-top:8px;gap:8px">
-                        <button type="button" class="btn" id="btnAddChart">+ 增加图表</button>
-                        <button type="button" class="btn primary" id="btnSaveCharts">保存图表配置</button>
-                        <button type="button" class="btn gray" id="btnRefreshCharts">🔄 刷新图表</button>
-                    </div>
-                    <!-- 题目标题自动补全 -->
-                    <datalist id="chart-title-list"></datalist>
-                </div>
-            </div>
             <div class="tab" id="tab-charts">
                 <div class="dash-grid">
+                    <!-- ① 图表设置（只在第4层出现） -->
+                    <div class="card" style="grid-column:1/-1">
+                        <div class="hd"><h2>图表设置</h2></div>
+                        <div class="bd">
+                            <div class="hint" style="margin-bottom:8px">
+                                只需输入<strong>题目标题</strong>并选择<strong>类型</strong>，点“保存图表配置”；点右侧“刷新图表”即可更新下方图表。
+                            </div>
+                            <div id="chart-settings-list"></div>
+                            <div class="row" style="margin-top:8px;gap:8px">
+                                <button type="button" class="btn" id="btnAddChart">+ 增加图表</button>
+                                <button type="button" class="btn primary" id="btnSaveCharts">保存图表配置</button>
+                                <button type="button" class="btn gray" id="btnRefreshCharts">🔄 刷新图表</button>
+                            </div>
+                            <!-- 题目标题自动补全 -->
+                            <datalist id="chart-title-list"></datalist>
+                        </div>
+                    </div>
                     <div class="card" style="grid-column:1/-1">
                         <div class="hd"><h2>表单数据图表</h2></div>
                         <div class="bd">
@@ -2730,7 +2730,8 @@ document.addEventListener('DOMContentLoaded', function () {
   let inited = false;
 
   function $(id){ return document.getElementById(id); }
-  function esc(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&nbsp;&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+  function esc(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[m])); }
+
 
   // 一行设置：题目标题 + 类型 + 删除
   function row(title = '', type = 'pie') {
@@ -2774,10 +2775,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/charts_config`, {credentials:'same-origin'});
       const j = await r.json();
       const charts = j && j.ok && j.config && Array.isArray(j.config.charts) ? j.config.charts : [];
-      (charts.length ? charts : [{}]).forEach(ch => {
-        // 后端允许按标题匹配；优先 field，其次 label
-        list.appendChild(row(ch.field || ch.label || '', ch.type || 'pie'));
-      });
+        (charts.length ? charts : [{}, {}]).forEach(ch => {
+            list.appendChild(row(ch.field || ch.label || '', ch.type || 'pie'));
+        });
     }catch(_){ list.appendChild(row()); }
   }
 
