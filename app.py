@@ -29,6 +29,7 @@ from flask import render_template, request, abort
 from time import time
 import unicodedata
 import time
+
 # ========== Flask 应用 ==========
 app = Flask(__name__)
 try:
@@ -803,6 +804,7 @@ def create_form():
         site_name=site_name, schema_json=schema_json,
         submissions=submissions,
     )
+
 TEMPLATES = {
     "blank":   {"form_name":"空白表单","form_desc":"进入后可自由添加/删除题目。","schema":{"fields":[]}},
     "contact": {"form_name":"联系信息","form_desc":"请留下您的联系方式，我们会尽快回复。","schema":{"fields":[
@@ -1125,8 +1127,8 @@ def _extract_columns_from_schema(schema: dict):
             (f.get("ui") or {}).get("label"), (f.get("ui") or {}).get("title"),
             (f.get("props") or {}).get("label"), (f.get("props") or {}).get("title"),
             (f.get("meta") or {}).get("label"), (f.get("meta") or {}).get("title"),
-        ):
-            t = _to_text(cand) if cand else ""
+        ) as cnd:
+            t = _to_text(cnd) if cnd else ""
             if t:
                 return t
         # i18n / 富文本兜底
@@ -1177,6 +1179,7 @@ def _extract_columns_from_schema(schema: dict):
 @app.route("/site/<site_name>/admin/api/responses")
 @admin_required
 def api_responses(site_name):
+    # ✅ 修复：直接复用统一实现，避免初始加载失败
     return _api_list_responses(site_name)
 
 @app.route("/site/<site_name>/admin/api/submissions")  # 兼容旧别名
@@ -1203,7 +1206,7 @@ def _api_list_responses(site_name: str):
         else:
             c.execute("""
                 SELECT id, data, status, review_comment, created_at
-                  FROM submissions
+                 FROM submissions
                  ORDER BY id DESC
                  LIMIT 500
             """)
@@ -1227,7 +1230,7 @@ def _api_list_responses(site_name: str):
             "data": data,
         })
 
-    # 读 schema，生成“中文列头”（不再做“只保留中文字符”的过滤）
+    # 读 schema，生成“中文列头”
     conn2 = get_conn(); c2 = conn2.cursor()
     try:
         c2.execute(f'SET search_path TO "{schema}", public')
@@ -1597,7 +1600,7 @@ def public_submit(site_name):
                 # 不在白名单就跳过（也可以收集错误并返回给前端）
                 continue
             # --- 白名单校验 END ---
-            uniq = f"{int(time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
+            uniq = f"{int(time.time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
             abs_path = os.path.join(site_folder, uniq)
             f.save(abs_path)
             saved_urls.append(f"/site/{site_name}/uploads/{uniq}")
@@ -1759,7 +1762,7 @@ def preview_form(site_name):
     else:
         # 和 /f/<site_name> 一致：从数据库读
         conn = get_conn(); c = conn.cursor()
-        c.execute("SELECT name, schema_json, COALESCE(description,'') FROM form_defs WHERE site_name=%s", (site_name,))
+        c.execute("SELECT name, schema_json, COALESCE(description,'') FROM form_defs WHERE site_name=%s", (site_name,)))
         row = c.fetchone(); conn.close()
         if not row:
             abort(404)
@@ -1950,7 +1953,7 @@ def save_public_draft(site_name):
             if allowed and ext not in allowed:
                 continue
             # --- 白名单校验 END ---
-            uniq = f"{int(time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
+            uniq = f"{int(time.time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
             abs_path = os.path.join(site_folder, uniq)
             f.save(abs_path)
             urls.append(f"/site/{site_name}/uploads/{uniq}")
@@ -1988,27 +1991,60 @@ def _extract_email(data: dict) -> str:
 @app.route("/site/<site_name>/admin/export_word/<int:sub_id>")
 @admin_required
 def export_word(site_name, sub_id):
+    # 读数据
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
     c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
-    if not row: return "❌ 记录不存在", 404
+    if not row:
+        return "❌ 记录不存在", 404
 
     data = row[0] if isinstance(row[0], dict) else (json.loads(row[0]) if row[0] else {})
     data = _normalize_obj(data)
 
-    doc = Document(); doc.add_heading(f"提交 #{sub_id}", level=1)
-    for k, v in (data or {}).items():
-        safe_k = _maybe_fix_encoding(str(k))
-        safe_v = _maybe_fix_encoding("" if v is None else str(v))
-        p = doc.add_paragraph()
-        p.add_run(f"{safe_k}: ").bold = True
-        p.add_run(safe_v)
+    # 读表单 schema（为了拿中文列头）
+    conn2 = get_conn(); c2 = conn2.cursor()
+    c2.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
+    r = c2.fetchone(); conn2.close()
+    schema_json = r[0] if (r and isinstance(r[0], dict)) else (json.loads(r[0]) if r and r[0] else {})
+    fields = (schema_json or {}).get("fields") or []
 
-    buffer = io.BytesIO(); doc.save(buffer); buffer.seek(0)
+    # 生成 Word
+    doc = Document()
+    doc.add_heading(f"提交 #{sub_id}", level=1)
+
+    used = set()
+    for f in fields:
+        key = f.get("key") or f.get("id") or f.get("name")
+        if not key:
+            continue
+        label = f.get("label") or key
+        val = data.get(key)
+        if val is None:
+            continue
+        if isinstance(val, list):
+            val = ", ".join(map(str, val))
+        p = doc.add_paragraph()
+        p.add_run(_maybe_fix_encoding(str(label)) + ": ").bold = True
+        p.add_run(_maybe_fix_encoding(str(val)))
+        used.add(key)
+
+    # 写入 schema 外的其他字段
+    for k, v in (data or {}).items():
+        if k in used:
+            continue
+        if isinstance(v, list):
+            v = ", ".join(map(str, v))
+        p = doc.add_paragraph()
+        p.add_run(_maybe_fix_encoding(str(k)) + ": ").bold = True
+        p.add_run(_maybe_fix_encoding("" if v is None else str(v)))
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    buf.seek(0)
     return send_file(
-        buffer, as_attachment=True,
+        buf, as_attachment=True,
         download_name=f"submission_{sub_id}.docx",
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
@@ -2016,37 +2052,76 @@ def export_word(site_name, sub_id):
 @app.route("/site/<site_name>/admin/export_excel/<int:sub_id>")
 @admin_required
 def export_excel(site_name, sub_id):
+    # 读数据
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
     c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
-    if not row: return "❌ 记录不存在", 404
+    if not row:
+        return "❌ 记录不存在", 404
+
     data = row[0] if isinstance(row[0], dict) else (json.loads(row[0]) if row[0] else {})
-    rows = [(_maybe_fix_encoding(str(k)),
-             _maybe_fix_encoding("" if v is None else str(v)))
-            for k, v in data.items()]
+    data = _normalize_obj(data)
+
+    # 读表单 schema 取中文列头
+    conn2 = get_conn(); c2 = conn2.cursor()
+    c2.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
+    r = c2.fetchone(); conn2.close()
+    schema_json = r[0] if (r and isinstance(r[0], dict)) else (json.loads(r[0]) if r and r[0] else {})
+    fields = (schema_json or {}).get("fields") or []
+
+    label_map = {}
+    for f in fields:
+        key = f.get("key") or f.get("id") or f.get("name")
+        label = f.get("label") or key
+        if key:
+            label_map[str(key)] = _maybe_fix_encoding(str(label))
+
+    rows = []
+    used = set()
+    # 先用 schema 顺序
+    for f in fields:
+        key = f.get("key") or f.get("id") or f.get("name")
+        if not key:
+            continue
+        label = label_map.get(str(key), str(key))
+        val = data.get(key)
+        if isinstance(val, list):
+            val = ", ".join(map(str, val))
+        rows.append([label, _maybe_fix_encoding("" if val is None else str(val))])
+        used.add(key)
+    # 再把多出来的字段补上
+    for k, v in (data or {}).items():
+        if k in used:
+            continue
+        if isinstance(v, list):
+            v = ", ".join(map(str, v))
+        rows.append([_maybe_fix_encoding(str(k)), _maybe_fix_encoding("" if v is None else str(v))])
+
     df = pd.DataFrame(rows, columns=["字段", "内容"])
 
-    try:
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False)
-        buffer.seek(0)
-        return send_file(
-            buffer, as_attachment=True,
-            download_name=f"submission_{sub_id}.xlsx",
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    except Exception:
-        csv_io = io.StringIO()
-        df.to_csv(csv_io, index=False)
-        mem = io.BytesIO(csv_io.getvalue().encode("utf-8-sig"))
-        return send_file(
-            mem, as_attachment=True,
-            download_name=f"submission_{sub_id}.csv",
-            mimetype="text/csv; charset=utf-8"
-        )
+    # 写 Excel（自动列宽）
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="submission")
+        ws = writer.sheets["submission"]
+        for col in ws.columns:
+            max_len = 10
+            col_letter = col[0].column_letter
+            for cell in col:
+                try:
+                    max_len = max(max_len, len(str(cell.value)))
+                except Exception:
+                    pass
+            ws.column_dimensions[col_letter].width = min(max_len + 2, 60)
+    buf.seek(0)
+    return send_file(
+        buf, as_attachment=True,
+        download_name=f"submission_{sub_id}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
 def try_fix(s):
     if not isinstance(s, str):
         return s
@@ -2142,6 +2217,7 @@ def drop_bg_notify_from_all():
            )
     """)
     conn.commit(); conn.close()
+
 @app.route("/site/<site_name>/admin/api/charts", methods=["GET"])
 @admin_required
 def api_charts(site_name):
@@ -2231,9 +2307,6 @@ def api_charts(site_name):
         "status": status_arr,
         "field": {"label": (field_label or "字段"), "data": field_data}  # ✅ data/value
     })
-
-
-
 
 @app.route("/site/<site_name>/create_success")
 @admin_required
