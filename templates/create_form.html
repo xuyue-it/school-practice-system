@@ -1316,21 +1316,6 @@
                                     <input class="tiny" placeholder="隐私条款链接（可留空）"
                                            data-skey="privacy.consent_url" style="margin-top:8px">
                                 </div>
-                                <!-- ★★★ 新增：图表设置（第三层设置区） ★★★ -->
-                                <div class="gcard" id="chart-settings-card">
-                                    <h3>图表设置</h3>
-                                    <div class="hint">
-                                        先增加图表数量，再为每个图表选择“字段”和“类型”。保存后到“图表”页查看。
-                                    </div>
-                                    <div id="chart-settings-list"></div>
-                                    <div class="row" style="margin-top:8px;gap:8px">
-                                        <button type="button" class="btn" id="btnAddChart">+ 增加图表</button>
-                                        <button type="button" class="btn primary" id="btnSaveCharts">保存图表配置
-                                        </button>
-                                    </div>
-                                    <!-- 字段自动补全候选 -->
-                                    <datalist id="chart-field-list"></datalist>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -1338,6 +1323,23 @@
             </div>
 
             <!-- Tab 4：图表 -->
+            <!-- 图表设置（移到图表页顶部，就地配置 + 刷新） -->
+            <div class="card" style="grid-column:1/-1">
+                <div class="hd"><h2>图表设置</h2></div>
+                <div class="bd">
+                    <div class="hint" style="margin-bottom:8px">
+                        只需输入<strong>题目标题</strong>并选择<strong>类型</strong>，点“保存图表配置”；点右侧“刷新图表”即可更新下方图表。
+                    </div>
+                    <div id="chart-settings-list"></div>
+                    <div class="row" style="margin-top:8px;gap:8px">
+                        <button type="button" class="btn" id="btnAddChart">+ 增加图表</button>
+                        <button type="button" class="btn primary" id="btnSaveCharts">保存图表配置</button>
+                        <button type="button" class="btn gray" id="btnRefreshCharts">🔄 刷新图表</button>
+                    </div>
+                    <!-- 题目标题自动补全 -->
+                    <datalist id="chart-title-list"></datalist>
+                </div>
+            </div>
             <div class="tab" id="tab-charts">
                 <div class="dash-grid">
                     <div class="card" style="grid-column:1/-1">
@@ -2722,148 +2724,109 @@ document.addEventListener('DOMContentLoaded', function () {
     })();
 </script>
 
-<script>
-(function(){
+<script id="charts-settings-inline">
+(function () {
   const SITE = document.body.dataset.site || '';
-  const warp = document.getElementById('chart-settings-card');
-  if (!warp || !SITE) return; // 新建未生成站点时，先不显示
+  let inited = false;
 
-  const list   = document.getElementById('chart-settings-list');
-  const btnAdd = document.getElementById('btnAddChart');
-  const btnSave= document.getElementById('btnSaveCharts');
-  const dl     = document.getElementById('chart-field-list');
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&nbsp;&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
 
-  // ====== 字段候选（含 key 与中文标题）======
-  let CANDS = []; // [{key, label}]
+  // 一行设置：题目标题 + 类型 + 删除
+  function row(title = '', type = 'pie') {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;gap:8px;align-items:center;margin:6px 0';
+    wrap.innerHTML = `
+      <input class="chart-title tiny" placeholder="题目标题(必填)" value="${esc(title)}"
+             list="chart-title-list" style="max-width:260px">
+      <select class="chart-type tiny" style="max-width:140px">
+        <option value="pie"  ${type==='pie' ? 'selected':''}>圆形表</option>
+        <option value="line" ${type==='line'? 'selected':''}>线表</option>
+        <option value="flow" ${type==='flow'? 'selected':''}>流程表</option>
+      </select>
+      <button type="button" class="btn gray" data-del>删除</button>
+    `;
+    wrap.querySelector('[data-del]').onclick = () => wrap.remove();
+    return wrap;
+  }
 
-  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
-
-  async function loadCandidateFields(){
-    CANDS = [];
-    // 1) 优先 /admin/api/submissions
+  // 自动补全：从后端 columns 取“标题/标签/名称”
+  async function loadCandidateTitles(){
+    const dl = $('chart-title-list'); if (!dl) return;
+    dl.innerHTML = '';
+    if (!SITE) return;
     try{
       const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/submissions`, {credentials:'same-origin'});
       const j = await r.json();
       const cols = Array.isArray(j.columns) ? j.columns : [];
-      CANDS = cols.map(c => ({
-        key:   c.key   || c.name || c.id || '',
-        label: c.title || c.label|| c.text|| (c.key||'')
-      })).filter(x => x.key);
+      const names = cols.map(c => c.title || c.label || c.text || c.name || c.key).filter(Boolean);
+      const uniq = [...new Set(names)];
+      dl.innerHTML = uniq.map(t => `<option value="${esc(t)}"></option>`).join('');
     }catch(_){}
-
-    // 2) 兜底 /admin/api/responses（取 columns 或 titleMap）
-    if (!CANDS.length) {
-      try{
-        const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/responses?q=`, {credentials:'same-origin'});
-        const j = await r.json();
-        if (Array.isArray(j.columns) && j.columns.length) {
-          CANDS = j.columns.map(c => ({
-            key: c.key||c.name||c.id||'',
-            label: c.title||c.label||c.text||c.key||''
-          })).filter(x=>x.key);
-        } else if (j.titleMap && typeof j.titleMap === 'object') {
-          CANDS = Object.keys(j.titleMap).map(k => ({key:k, label:String(j.titleMap[k]||k)}));
-        }
-      }catch(_){}
-    }
-
-    // 写入 datalist（放标题和 key 两种值）
-    const opts = [];
-    CANDS.forEach(c=>{
-      if (c.label && c.label !== c.key) opts.push(`<option value="${esc(c.label)}"></option>`);
-      opts.push(`<option value="${esc(c.key)}"></option>`);
-    });
-    dl.innerHTML = opts.join('');
   }
 
-  // 把用户输入匹配成真实 key（允许填中文标题）
-  function matchField(input){
-    const txt = String(input||'').trim();
-    if (!txt) return {key:'', label:''};
-
-    // 先精确 key
-    let hit = CANDS.find(c => c.key === txt);
-    if (hit) return {key: hit.key, label: hit.label};
-
-    // 再精确 label
-    hit = CANDS.find(c => (c.label||'').trim() === txt);
-    if (hit) return {key: hit.key, label: hit.label};
-
-    // 最后模糊比对（去空格、小写）
-    const norm = s => String(s||'').replace(/\s/g,'').toLowerCase();
-    const n = norm(txt);
-    hit = CANDS.find(c => norm(c.label) === n || norm(c.key) === n);
-    if (hit) return {key: hit.key, label: hit.label};
-
-    // 找不到就原样返回（后端可能也能识别）
-    return {key: txt, label: txt};
-  }
-
-  // ====== UI：一行配置 ======
-  function row(field='', type='pie', label=''){
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex;gap:8px;align-items:center;margin:6px 0';
-    wrap.innerHTML = `
-      <input class="chart-label tiny" placeholder="显示名(可空)" value="${esc(label||'')}" style="max-width:160px">
-      <input class="chart-field tiny" placeholder="字段/标题(可填中文题目)" value="${esc(field||'')}" list="chart-field-list" style="max-width:240px">
-      <select class="chart-type tiny" style="max-width:140px">
-        <option value="pie"  ${type==='pie'?'selected':''}>圆形表</option>
-        <option value="line" ${type==='line'?'selected':''}>线表</option>
-        <option value="flow" ${type==='flow'?'selected':''}>流程表</option>
-      </select>
-      <button type="button" class="btn gray" data-del>删除</button>
-    `;
-    wrap.querySelector('[data-del]').onclick = ()=> wrap.remove();
-    return wrap;
-  }
-
-  // 读取已保存配置
+  // 读取已存配置（后端仍用 charts[].field 保存；这里把“题目标题”写进 field）
   async function loadConfig(){
+    const list = $('chart-settings-list'); if (!list) return;
+    list.innerHTML = '';
+    if (!SITE) { list.appendChild(row()); return; }
     try{
       const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/charts_config`, {credentials:'same-origin'});
       const j = await r.json();
       const charts = j && j.ok && j.config && Array.isArray(j.config.charts) ? j.config.charts : [];
-      list.innerHTML = '';
-      (charts.length ? charts : [{}]).forEach(ch=>{
-        list.appendChild(row(ch.field||'', ch.type||'pie', ch.label||''));
+      (charts.length ? charts : [{}]).forEach(ch => {
+        // 后端允许按标题匹配；优先 field，其次 label
+        list.appendChild(row(ch.field || ch.label || '', ch.type || 'pie'));
       });
-    }catch(_){
-      list.innerHTML = '';
-      list.appendChild(row()); // 失败也给一行空的
-    }
+    }catch(_){ list.appendChild(row()); }
   }
 
-  // 事件
-  btnAdd && (btnAdd.onclick = ()=> list.appendChild(row()));
-
-  btnSave && (btnSave.onclick = async ()=>{
+  // 保存配置：只发 [{ field: 标题, type, label: 标题 }]
+  async function save(){
+    const list = $('chart-settings-list');
+    if (!SITE) return alert('请先保存表单生成站点');
     const payload = [];
     list.querySelectorAll(':scope > div').forEach(w=>{
-      const raw = (w.querySelector('.chart-field')||{}).value || '';
-      const resolved = matchField(raw);      // ← 关键：把中文标题匹配成 key
-      if (!resolved.key) return;
-      const show = (w.querySelector('.chart-label')||{}).value || '';
-      payload.push({
-        field: resolved.key,
-        type:  (w.querySelector('.chart-type')||{}).value || 'pie',
-        label: show.trim() || resolved.label   // 没填显示名就用题目中文
-      });
+      const title = w.querySelector('.chart-title')?.value.trim();
+      if (!title) return;
+      payload.push({ field: title, type: w.querySelector('.chart-type')?.value || 'pie', label: title });
     });
+
     try{
       const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/charts_config`, {
         method:'POST', credentials:'same-origin',
         headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({charts: payload})
+        body: JSON.stringify({ charts: payload })
       });
       const j = await r.json();
-      if (j && j.ok) alert('已保存图表配置'); else alert('保存失败：'+(j.error||''));
-    }catch(e){ alert('保存失败'); }
-  });
+      if (j && j.ok) {
+        alert('已保存图表配置');
+        // 立刻刷新下方图表
+        if (typeof window.refreshCharts === 'function') window.refreshCharts(true);
+      } else {
+        alert('保存失败：' + (j.error || ''));
+      }
+    }catch(e){ alert('保存失败：' + e.message); }
+  }
 
-  loadCandidateFields();
-  loadConfig();
+  // 初始化（只在进入“图表”页时执行一次）
+  function wire(){
+    if (inited) return; inited = true;
+    $('btnAddChart')?.addEventListener('click', () => $('chart-settings-list').appendChild(row()));
+    $('btnSaveCharts')?.addEventListener('click', save);
+    $('btnRefreshCharts')?.addEventListener('click', () => window.refreshCharts && window.refreshCharts(true));
+    loadCandidateTitles();
+    loadConfig();
+  }
+
+  // 进入“图表”页时触发；如果默认就在图表页，立刻初始化
+  document.querySelectorAll('.tabs button').forEach(b=>{
+    b.addEventListener('click', () => { if (b.dataset.tab === 'charts') wire(); });
+  });
+  if (document.querySelector('.tabs button.active')?.dataset.tab === 'charts') wire();
 })();
 </script>
+
 
 
 <script>

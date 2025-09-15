@@ -884,7 +884,7 @@ TEMPLATES = {
 def create_form_new():
     tpl = request.args.get("tpl")
     if tpl:
-        t = TEMPLATES.get(t)
+        t = TEMPLATES.get(tpl)
         if t:
             return render_template(
                 "create_form.html",
@@ -2185,6 +2185,31 @@ def drop_bg_notify_from_all():
     """)
     conn.commit(); conn.close()
 
+def _norm(s: str) -> str:
+    """把字符串做宽松匹配：去空白/标点并小写。"""
+    import re as _re
+    return _re.sub(r'[\s\-\_\.\|：:（）\(\)]+', '', str(s or '')).lower()
+
+def _extract_label(f: dict) -> str:
+    """从字段定义里取用户看到的标题/标签。"""
+    if not isinstance(f, dict):
+        return ''
+    for k in ('label','title','text','name','placeholder','question','desc','description'):
+        v = f.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    # 兼容常见嵌套
+    for path in (('ui','label'),('ui','title'),('props','label'),('props','title'),
+                 ('meta','label'),('meta','title')):
+        cur = f
+        for p in path:
+            if not isinstance(cur, dict):
+                cur = None; break
+            cur = cur.get(p)
+        if isinstance(cur, str) and cur.strip():
+            return cur.strip()
+    return ''
+
 # === 变更点 ④：图表配置读写 + 按配置返回图表数据 ===
 
 @app.route("/site/<site_name>/admin/api/charts_config", methods=["GET", "POST"])
@@ -2239,7 +2264,7 @@ def api_charts_config(site_name):
 @app.route("/site/<site_name>/admin/api/charts", methods=["GET"])
 @admin_required
 def api_charts(site_name):
-    from collections import Counter
+    from collections import Counter, defaultdict
     from datetime import datetime, timedelta
 
     schema_name = _safe_schema(site_name)
@@ -2247,7 +2272,7 @@ def api_charts(site_name):
     # 最近提交
     conn = get_conn(); c = conn.cursor()
     try:
-        c.execute(f'SET search_path TO "{schema_name}", public')  # 引号更稳
+        c.execute(f'SET search_path TO "{schema_name}", public')
         c.execute("""
             SELECT data, status, created_at
             FROM submissions
@@ -2271,34 +2296,50 @@ def api_charts(site_name):
     schema_json = r[0] if (r and isinstance(r[0], dict)) else (json.loads(r[0]) if r and r[0] else {})
     charts_cfg = (schema_json.get("charts_config") or {}).get("charts") or []
 
-    # 查询参数覆盖（单图临时查看）
-    q_field = (request.args.get("field") or "").strip()
+    # === 新增：构建「标题 -> 字段key」映射，支持用题目标题查图 ===
+    fields = (schema_json or {}).get("fields", []) or []
+    key_set = set()
+    label_to_key = {}
+    for f in fields:
+        k = f.get("key") or f.get("id") or f.get("name")
+        if not k:
+            continue
+        key_set.add(str(k))
+        lab = _extract_label(f)
+        if lab:
+            label_to_key[_norm(lab)] = str(k)
+
+    def resolve_field(user_input: str) -> str | None:
+        """支持：直接传 key；或传中文标题/英文标题"""
+        if not user_input:
+            return None
+        if user_input in key_set:
+            return user_input
+        return label_to_key.get(_norm(user_input))
+
+    # 查询参数（单图临时查看）
+    q_field_raw = (request.args.get("field") or "").strip()
     q_type  = (request.args.get("type") or "").strip().lower()
     if q_type not in ("pie","line","flow",""):
         q_type = "pie"
+    q_field = resolve_field(q_field_raw) if q_field_raw else ""
 
-    # 聚合通用
-    from collections import defaultdict
+    # 聚合容器
     def to_dict(obj):
         try:
             return obj if isinstance(obj, dict) else (json.loads(obj) if obj else {})
         except Exception:
             return {}
 
-    # 时间维度（日）
-    from datetime import datetime, timedelta
     now = datetime.utcnow()
     start_day = (now - timedelta(days=13)).date()
     daily = Counter()
     status_counter = Counter()
+    field_counters = defaultdict(Counter)   # field_key -> Counter()
 
-    # 字段计数器容器：field_key -> Counter()
-    field_counters = defaultdict(Counter)
-
-    # 先扫一遍，把常用统计都做了
+    # 扫描数据
     for data, status, created_at in rows:
         d = to_dict(data)
-        # 时间
         try:
             dt = created_at if isinstance(created_at, datetime) else datetime.fromisoformat(str(created_at))
         except Exception:
@@ -2306,19 +2347,19 @@ def api_charts(site_name):
         day = dt.date()
         if day >= start_day:
             daily[day.isoformat()] += 1
-        # 状态
+
         s = (status or "").strip() or "待审核"
         status_counter[s] += 1
-        # 各字段值分布（只在有 charts 需要时用）
-        if charts_cfg or q_field:
-            for k, v in (d or {}).items():
-                if isinstance(v, list):
-                    for each in v:
-                        field_counters[str(k)][str(each)] += 1
-                else:
-                    field_counters[str(k)][str(v)] += 1
 
-    # 底部公共返回
+        for k, v in (d or {}).items():
+            k = str(k)
+            if isinstance(v, list):
+                for each in v:
+                    field_counters[k][str(each)] += 1
+            else:
+                field_counters[k][str(v)] += 1
+
+    # 通用结果
     dates = [(now - timedelta(days=i)).date() for i in range(13, -1, -1)]
     daily_arr = [{"date": d.isoformat(), "count": int(daily.get(d.isoformat(), 0))} for d in dates]
     status_arr = [{"name": k, "count": int(v)} for k, v in status_counter.items()]
@@ -2326,45 +2367,50 @@ def api_charts(site_name):
     def chart_payload(field_key: str, ctype: str, label: str = None):
         label = label or field_key or "字段"
         dist = field_counters.get(field_key, Counter())
-        cat = [{"value": k, "count": int(v)} for k, v in dist.items()]  # 类别分布
+        cat = [{"value": k, "count": int(v)} for k, v in dist.items()]
         payload = {"field": field_key, "label": label, "type": ctype or "pie", "data": cat}
         if ctype == "line":
-            # 线图：给出全站最近14天趋势（前端可自行按需映射）
             payload["daily"] = daily_arr
         if ctype == "flow":
-            # 流程/漏斗：按 count 降序给出同一字段的分布
             payload["funnel"] = sorted(cat, key=lambda x: x["count"], reverse=True)
         return payload
 
-    # 若管理员保存了多图配置，则按配置返回
+    # 先按已保存配置返回
     charts = []
     if charts_cfg and not q_field:
         for ch in charts_cfg:
-            charts.append(chart_payload(ch.get("field",""), ch.get("type","pie").lower(), ch.get("label","")))
+            want = (ch.get("field") or ch.get("label") or "").strip()
+            fld  = resolve_field(want)
+            if not fld:
+                continue
+            # 没给 label 时，用 schema 里的标题
+            show_label = (ch.get("label") or
+                          _extract_label(next((f for f in fields if (f.get("key") or f.get("id") or f.get("name")) == fld), {})) or
+                          fld)
+            charts.append(chart_payload(fld, (ch.get("type") or "pie").lower(), show_label))
 
     # 临时查看（query 覆盖）
     if q_field:
-        charts = [chart_payload(q_field, q_type or "pie")]
+        charts = [chart_payload(q_field, q_type or "pie",
+                                _extract_label(next((f for f in fields if (f.get("key") or f.get("id") or f.get("name")) == q_field), {})) or q_field)]
 
-    # 兼容旧结构：若没有任何配置，则自动挑一个字段（原有逻辑）
-    field_key, field_label = None, None
+    # 兼容：没配置时自动挑一个字段
     if not charts:
-        for f in (schema_json or {}).get("fields", []):
+        field_key, field_label = None, None
+        for f in fields:
             t = (f.get("type") or "").lower()
             if t in ("select", "radio", "checkbox"):
                 field_key = f.get("key") or f.get("id") or f.get("name")
-                field_label = f.get("label") or field_key
+                field_label = _extract_label(f) or field_key
                 break
-        # 如果连 schema 都没合适字段，就从一条记录里随便拿一个 key 当示例
         if not field_key and rows:
             sample = to_dict(rows[0][0])
             if isinstance(sample, dict) and sample:
                 field_key = next(iter(sample.keys()), None)
                 field_label = field_key or "字段"
         if field_key:
-            charts = [chart_payload(field_key, "pie", field_label)]
+            charts = [chart_payload(str(field_key), "pie", str(field_label))]
 
-    # 仍保持老字段：daily/status/field
     resp = {
         "ok": True,
         "daily": daily_arr,
@@ -2372,13 +2418,13 @@ def api_charts(site_name):
     }
     if charts:
         resp["charts"] = charts
-        # 旧前端期望的结构（取第一张图）
         resp["field"] = {"label": charts[0].get("label") or "字段", "data": charts[0].get("data", [])}
     else:
         resp["charts"] = []
         resp["field"] = {"label": "字段", "data": []}
 
     return jsonify(resp)
+
 
 # === 变更点 ④ 结束 ===
 
