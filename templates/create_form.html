@@ -4,135 +4,6 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
     <title>创建新表单</title>
-    <script>
-/* ==== responses nuclear guard: block ALL network paths when not in "数据" tab ==== */
-(function () {
-  const PATH = /\/admin\/api\/responses(?:\?|$)/i;
-  const inResponsesTab = () =>
-    !!document.getElementById('tab-responses')?.classList.contains('active');
-
-  const urlOf = (input) => {
-    try { return typeof input === 'string' ? input : (input && input.url) || ''; } catch { return ''; }
-  };
-
-  // fetch
-  const _fetch = window.fetch;
-  window.fetch = function (input, init) {
-    const u = urlOf(input);
-    if (PATH.test(u) && !inResponsesTab()) {
-      try { console.debug('[responses-guard] fetch blocked', u); } catch {}
-      return Promise.resolve(new Response(
-        JSON.stringify({ ok: true, items: [] }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      ));
-    }
-    return _fetch.apply(this, arguments);
-  };
-
-  // XHR
-  const _open = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function (method, url) {
-    this.__rg_block = PATH.test(String(url)) && !inResponsesTab();
-    return _open.apply(this, arguments);
-  };
-  const _send = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function (body) {
-    if (this.__rg_block) { try { this.abort(); } catch {} return; }
-    return _send.apply(this, arguments);
-  };
-
-  // sendBeacon
-  if (navigator.sendBeacon) {
-    const _beacon = navigator.sendBeacon.bind(navigator);
-    navigator.sendBeacon = function (url, data) {
-      if (PATH.test(String(url)) && !inResponsesTab()) {
-        try { console.debug('[responses-guard] beacon blocked', url); } catch {}
-        return true;
-      }
-      return _beacon(url, data);
-    };
-  }
-
-  // EventSource (SSE)
-  if (window.EventSource) {
-    const _ES = window.EventSource;
-    window.EventSource = function (url, conf) {
-      if (PATH.test(String(url)) && !inResponsesTab()) {
-        try { console.debug('[responses-guard] EventSource blocked', url); } catch {}
-        const dummy = new EventTarget(); dummy.readyState = 2; dummy.close = function () { };
-        return dummy;
-      }
-      return new _ES(url, conf);
-    };
-    window.EventSource.prototype = _ES.prototype;
-  }
-
-  // WebSocket
-  if (window.WebSocket) {
-    const _WS = window.WebSocket;
-    window.WebSocket = new Proxy(_WS, {
-      construct(target, args) {
-        const u = String(args?.[0] || '');
-        if (PATH.test(u) && !inResponsesTab()) {
-          try { console.debug('[responses-guard] WebSocket blocked', u); } catch {}
-          return { readyState: 3, close() {}, send() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } };
-        }
-        return new target(...args);
-      }
-    });
-  }
-
-  // 元素 src/href（img/script/link/iframe/audio/video/source/embed/object）
-  function guardURLSetter(Ctor, prop) {
-    const desc = Object.getOwnPropertyDescriptor(Ctor.prototype, prop);
-    if (!desc || !desc.set) return;
-    Object.defineProperty(Ctor.prototype, prop, {
-      set(v) {
-        if (PATH.test(String(v)) && !inResponsesTab()) { try { this.setAttribute('data-blocked-'+prop, v); } catch {} return; }
-        return desc.set.call(this, v);
-      },
-      get: desc.get
-    });
-    const _setAttr = Ctor.prototype.setAttribute;
-    Ctor.prototype.setAttribute = function (name, value) {
-      if (String(name).toLowerCase() === prop && PATH.test(String(value)) && !inResponsesTab()) {
-        try { this.setAttribute('data-blocked-'+prop, value); } catch {}
-        return;
-      }
-      return _setAttr.call(this, name, value);
-    };
-  }
-  [HTMLImageElement, HTMLScriptElement, HTMLIFrameElement, HTMLAudioElement, HTMLVideoElement,
-   HTMLEmbedElement, HTMLObjectElement, HTMLSourceElement].forEach(C => guardURLSetter(C, 'src'));
-
-  // link.href 也挡一下
-  if (window.HTMLLinkElement) {
-    const d = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href');
-    if (d && d.set) {
-      Object.defineProperty(HTMLLinkElement.prototype, 'href', {
-        set(v) { if (PATH.test(String(v)) && !inResponsesTab()) { try { this.setAttribute('data-blocked-href', v); } catch {} return; } return d.set.call(this, v); },
-        get: d.get
-      });
-    }
-  }
-
-  // Workers（防在 worker 里绕过拦截）
-  ['Worker', 'SharedWorker'].forEach(k => {
-    const C = window[k];
-    if (!C) return;
-    window[k] = new Proxy(C, {
-      construct(target, args) {
-        const url = String(args?.[0] || '');
-        if (PATH.test(url) && !inResponsesTab()) {
-          try { console.debug('[responses-guard] worker blocked', url); } catch {}
-          return { postMessage() {}, terminate() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } };
-        }
-        return new target(...args);
-      }
-    });
-  });
-})();
-</script>
 
     <!-- 早期开关：首帧决定是否启用 perf-mode -->
     <script>
@@ -992,7 +863,7 @@
         body[data-appearance="dark"] .switch span,
         body[data-appearance="dark"] .status-pill,
         body[data-appearance="dark"] .chip {
-            color: var(--text-dark) !important; /* #F2F5F7 */
+            color: #F2F5F7 !important; /* #F2F5F7 */
         }
 
         .btn.primary {
@@ -1105,75 +976,156 @@
         }
     </style>
 
-    <!-- ★★★ 只在“数据”Tab激活时才允许请求 /admin/api/responses ★★★ -->
-<script id="responses-guard">
-(function () {
-  // 当前是否正处在“数据”页
-  const inResponsesTab = () =>
-    !!document.getElementById('tab-responses')?.classList.contains('active');
+    <!-- ★★★ 合并后的 responses-guard：仅在“数据”Tab时放行 /admin/api/responses ★★★ -->
+    <script id="responses-guard">
+    (function () {
+      if (window.__RESPONSES_GUARD_INSTALLED__) return;
+      window.__RESPONSES_GUARD_INSTALLED__ = true;
 
-  // 识别 /admin/api/responses 接口
-  const isResponsesApi = (input) => {
-    try {
-      const url = typeof input === 'string' ? input : (input && input.url) || '';
-      return /\/admin\/api\/responses(?:\?|$)/.test(url);
-    } catch { return false; }
-  };
+      const PATH = /\/admin\/api\/responses(?:[/?]|$)/i;
+      const inResponsesTab = () => !!document.getElementById('tab-responses')?.classList.contains('active');
+      const urlOf = (input) => {
+        try { return typeof input === 'string' ? input : (input && input.url) || ''; } catch { return ''; }
+      };
+      const isBlocked = (u) => PATH.test(String(u)) && !inResponsesTab();
 
-  // 拦截 fetch
-  const _fetch = window.fetch;
-  window.fetch = function(input, init) {
-    if (isResponsesApi(input) && !inResponsesTab()) {
-      try { console.debug('[responses-guard] blocked', typeof input==='string'?input:input.url); } catch {}
-      return Promise.resolve(new Response(
-        JSON.stringify({ ok: true, items: [] }),
-        { status: 200, headers: { 'Content-Type': 'application/json' } }
-      ));
-    }
-    return _fetch.apply(this, arguments);
-  };
+      // fetch
+      const _fetch = window.fetch;
+      window.fetch = function (input, init) {
+        const u = urlOf(input);
+        if (isBlocked(u)) {
+          try { console.debug('[responses-guard] fetch blocked', u); } catch {}
+          return Promise.resolve(new Response(
+            JSON.stringify({ ok: true, items: [] }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          ));
+        }
+        return _fetch.apply(this, arguments);
+      };
 
-  // 拦截 XHR（兜底）
-  const _open = XMLHttpRequest.prototype.open;
-  XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-    this.__rg_block = /\/admin\/api\/responses(?:\?|$)/.test(String(url)) && !inResponsesTab();
-    return _open.call(this, method, url, ...rest);
-  };
-  const _send = XMLHttpRequest.prototype.send;
-  XMLHttpRequest.prototype.send = function(body) {
-    if (this.__rg_block) { try { this.abort(); } catch {} return; }
-    return _send.call(this, body);
-  };
+      // XHR
+      const _open = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function (method, url) {
+        this.__rg_block = isBlocked(url);
+        return _open.apply(this, arguments);
+      };
+      const _send = XMLHttpRequest.prototype.send;
+      XMLHttpRequest.prototype.send = function (body) {
+        if (this.__rg_block) {
+          try {
+            this.abort();
+            // 触发常见回调，避免上层“挂住”
+            this.onabort && this.onabort(new ProgressEvent('abort'));
+            this.onerror && this.onerror(new ProgressEvent('error'));
+          } catch {}
+          return;
+        }
+        return _send.apply(this, arguments);
+      };
 
-  // 防 sendBeacon（几乎用不到，但顺手挡上）
-  if (navigator.sendBeacon) {
-    const _beacon = navigator.sendBeacon.bind(navigator);
-    navigator.sendBeacon = function(url, data) {
-      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && !inResponsesTab()) {
-        try { console.debug('[responses-guard] beacon blocked', url); } catch {}
-        return true;
+      // sendBeacon
+      if (navigator.sendBeacon) {
+        const _beacon = navigator.sendBeacon.bind(navigator);
+        navigator.sendBeacon = function (url, data) {
+          if (isBlocked(url)) {
+            try { console.debug('[responses-guard] beacon blocked', url); } catch {}
+            return true;
+          }
+          return _beacon(url, data);
+        };
       }
-      return _beacon(url, data);
-    };
-  }
 
-  // 防 EventSource（万一有人用 SSE）
-  if (window.EventSource) {
-    const _ES = window.EventSource;
-    window.EventSource = function(url, conf) {
-      if (typeof url === 'string' && /\/admin\/api\/responses(?:\?|$)/.test(url) && !inResponsesTab()) {
-        try { console.debug('[responses-guard] EventSource blocked', url); } catch {}
-        const dummy = new EventTarget();
-        dummy.readyState = 2; // CLOSED
-        dummy.close = function(){};
-        return dummy;
+      // EventSource (SSE) —— 原型正确的哑实例
+      if (window.EventSource) {
+        const _ES = window.EventSource;
+        window.EventSource = function (url, conf) {
+          if (isBlocked(url)) {
+            try { console.debug('[responses-guard] EventSource blocked', url); } catch {}
+            const dummy = Object.create(_ES.prototype);
+            dummy.readyState = 2; // CLOSED
+            dummy.close = function () {};
+            return dummy;
+          }
+          return new _ES(url, conf);
+        };
+        window.EventSource.prototype = _ES.prototype;
       }
-      return new _ES(url, conf);
-    };
-    window.EventSource.prototype = _ES.prototype;
-  }
-})();
-</script>
+
+      // WebSocket —— 原型正确的哑实例
+      if (window.WebSocket) {
+        const _WS = window.WebSocket;
+        window.WebSocket = new Proxy(_WS, {
+          construct(target, args) {
+            const u = String(args?.[0] || '');
+            if (isBlocked(u)) {
+              try { console.debug('[responses-guard] WebSocket blocked', u); } catch {}
+              const dummy = Object.create(_WS.prototype);
+              dummy.readyState = 3; // CLOSED
+              dummy.close = function () {};
+              dummy.send  = function () {};
+              dummy.addEventListener = function () {};
+              dummy.removeEventListener = function () {};
+              dummy.dispatchEvent = function () { return false; };
+              return dummy;
+            }
+            return new target(...args);
+          }
+        });
+      }
+
+      // 元素 src/href（img/script/link/iframe/audio/video/source/embed/object）
+      function guardURLSetter(Ctor, prop) {
+        const desc = Object.getOwnPropertyDescriptor(Ctor.prototype, prop);
+        if (!desc || !desc.set) return;
+        Object.defineProperty(Ctor.prototype, prop, {
+          set(v) {
+            if (isBlocked(v)) { try { this.setAttribute('data-blocked-'+prop, v); } catch {} return; }
+            return desc.set.call(this, v);
+          },
+          get: desc.get
+        });
+        const _setAttr = Ctor.prototype.setAttribute;
+        Ctor.prototype.setAttribute = function (name, value) {
+          if (String(name).toLowerCase() === prop && isBlocked(value)) {
+            try { this.setAttribute('data-blocked-'+prop, value); } catch {}
+            return;
+          }
+          return _setAttr.call(this, name, value);
+        };
+      }
+      [HTMLImageElement, HTMLScriptElement, HTMLIFrameElement, HTMLAudioElement, HTMLVideoElement,
+       HTMLEmbedElement, HTMLObjectElement, HTMLSourceElement].forEach(C => guardURLSetter(C, 'src'));
+
+      // link.href 也挡一下
+      if (window.HTMLLinkElement) {
+        const d = Object.getOwnPropertyDescriptor(HTMLLinkElement.prototype, 'href');
+        if (d && d.set) {
+          Object.defineProperty(HTMLLinkElement.prototype, 'href', {
+            set(v) { if (isBlocked(v)) { try { this.setAttribute('data-blocked-href', v); } catch {} return; } return d.set.call(this, v); },
+            get: d.get
+          });
+        }
+      }
+
+      // Workers（防在 worker 里绕过拦截）
+      ['Worker', 'SharedWorker'].forEach(k => {
+        const C = window[k];
+        if (!C) return;
+        window[k] = new Proxy(C, {
+          construct(target, args) {
+            const url = String(args?.[0] || '');
+            if (isBlocked(url)) {
+              try { console.debug('[responses-guard] worker blocked', url); } catch {}
+              // 简单哑实例
+              const dummy = { postMessage() {}, terminate() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } };
+              return dummy;
+            }
+            return new target(...args);
+          }
+        });
+      });
+    })();
+    </script>
 </head>
 
 <body data-appearance="light" data-site="{{ site_name or '' }}" data-tpl="{{ tpl or '' }}">
@@ -1184,7 +1136,7 @@
         <div class="title">📝 创建新表单</div>
         <div class="grow"></div>
         <button class="btn icon" id="btnPreview" type="button" title="预览">👁️</button>
-        <button type="button" class="btn gray" id="clearDraftBtn">🧹 清空草稿</button>
+        <button class="btn gray" id="clearDraftBtn">🧹 清空草稿</button>
         <script>
             document.getElementById('clearDraftBtn')?.addEventListener('click', () => {
                 const k = localStorage.getItem('builder:currentKey');
@@ -1363,6 +1315,21 @@
                                                                  data-skey="privacy.require_consent"><span>提交前需同意隐私条款</span></label>
                                     <input class="tiny" placeholder="隐私条款链接（可留空）"
                                            data-skey="privacy.consent_url" style="margin-top:8px">
+                                </div>
+                                <!-- ★★★ 新增：图表设置（第三层设置区） ★★★ -->
+                                <div class="gcard" id="chart-settings-card">
+                                    <h3>图表设置</h3>
+                                    <div class="hint">
+                                        先增加图表数量，再为每个图表选择“字段”和“类型”。保存后到“图表”页查看。
+                                    </div>
+                                    <div id="chart-settings-list"></div>
+                                    <div class="row" style="margin-top:8px;gap:8px">
+                                        <button type="button" class="btn" id="btnAddChart">+ 增加图表</button>
+                                        <button type="button" class="btn primary" id="btnSaveCharts">保存图表配置
+                                        </button>
+                                    </div>
+                                    <!-- 字段自动补全候选 -->
+                                    <datalist id="chart-field-list"></datalist>
                                 </div>
                             </div>
                         </div>
@@ -2111,18 +2078,36 @@ document.addEventListener('DOMContentLoaded', function () {
             return /^(https?:|blob:|data:)/i.test(u) ? u : '';
         };
         const safe = clean(url);
+
+        // 解析 data: 的 MIME（用于允许 img/video/audio，拒绝 iframe）
+        const isData = /^data:/i.test(safe);
+        const dataMime = isData ? ((safe.match(/^data:([^;,]+)/i) || [,''])[1] || '').toLowerCase() : '';
+
         const ext = (safe.split('?')[0].split('#')[0].match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase() || '';
 
         body.innerHTML = '';
-        if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) {
+
+        // 允许：图片
+        if ((['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext)) || (isData && dataMime.startsWith('image/'))) {
             body.innerHTML = `<img src="${safe}" style="max-width:100%;height:auto;border-radius:12px">`;
-        } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+        }
+        // 允许：视频
+        else if ((['mp4','webm','ogg'].includes(ext)) || (isData && dataMime.startsWith('video/'))) {
             body.innerHTML = `<video src="${safe}" controls style="width:100%;max-height:70vh;border-radius:12px"></video>`;
-        } else if (['mp3', 'wav', 'aac', 'flac', 'm4a', 'oga'].includes(ext)) {
+        }
+        // 允许：音频
+        else if ((['mp3','wav','aac','flac','m4a','oga'].includes(ext)) || (isData && dataMime.startsWith('audio/'))) {
             body.innerHTML = `<audio src="${safe}" controls style="width:100%"></audio>`;
-        } else {
+        }
+        // 禁止：其它 data: 在 iframe 中打开（防 XSS）
+        else if (isData) {
+            body.innerHTML = `<div style="padding:12px;color:#6b7f99">不支持预览此类型的 data: 链接</div>`;
+        }
+        // 其它：iframe 预览
+        else {
             body.innerHTML = `<iframe src="${safe}" style="width:100%;height:70vh;border:0;border-radius:12px;background:#fff"></iframe>`;
         }
+
         modal.classList.add('show');
         modal.style.display = 'flex';
     };
@@ -2229,6 +2214,91 @@ document.addEventListener('DOMContentLoaded', function () {
                     }));
                 } else {
                     c3.canvas.closest('.chart-card').style.display = 'none';
+                }
+                // ★★★ 新增：按“图表设置”渲染自定义多图 ★★★
+                if (Array.isArray(j.charts) && j.charts.length) {
+                    j.charts.forEach((ch, idx) => {
+                        // ch: { field, label, type: 'pie'|'line'|'flow', data?:[{value,count}], daily?:[{date,count}] }
+                        const nice = (s) => (s || '').trim() || (ch.field || '');
+                        const title = `${nice(ch.label)} ${ch.type === 'pie' ? '（饼图）' : ch.type === 'line' ? '（折线）' : '（流程）'}`;
+
+                        const ctx = addCard(root, title, `custChart_${idx}`);
+
+                        // 组装数据
+                        let cfg = null;
+                        if (ch.type === 'line') {
+                            // 优先用时间序列 daily；没有就把各值当作离散点
+                            if (Array.isArray(ch.daily) && ch.daily.length) {
+                                cfg = {
+                                    type: 'line',
+                                    data: {
+                                        labels: ch.daily.map(x => x.date),
+                                        datasets: [{
+                                            label: nice(ch.label) || ch.field,
+                                            data: ch.daily.map(x => x.count),
+                                            tension: .3
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        plugins: {legend: {display: false}},
+                                        scales: {y: {beginAtZero: true, ticks: {precision: 0}}}
+                                    }
+                                };
+                            } else if (Array.isArray(ch.data) && ch.data.length) {
+                                cfg = {
+                                    type: 'line',
+                                    data: {
+                                        labels: ch.data.map(x => x.value),
+                                        datasets: [{
+                                            label: nice(ch.label) || ch.field,
+                                            data: ch.data.map(x => x.count),
+                                            tension: .3
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        plugins: {legend: {display: false}},
+                                        scales: {y: {beginAtZero: true, ticks: {precision: 0}}}
+                                    }
+                                };
+                            }
+                        } else if (ch.type === 'pie') {
+                            if (Array.isArray(ch.data) && ch.data.length) {
+                                cfg = {
+                                    type: 'doughnut',
+                                    data: {
+                                        labels: ch.data.map(x => x.value),
+                                        datasets: [{data: ch.data.map(x => x.count)}]
+                                    },
+                                    options: {responsive: true}
+                                };
+                            }
+                        } else { // flow → 用横向条形图模拟漏斗
+                            const rows = Array.isArray(ch.data) ? [...ch.data] : [];
+                            rows.sort((a, b) => (b.count || 0) - (a.count || 0));
+                            if (rows.length) {
+                                cfg = {
+                                    type: 'bar',
+                                    data: {
+                                        labels: rows.map(x => x.value),
+                                        datasets: [{label: nice(ch.label) || ch.field, data: rows.map(x => x.count)}]
+                                    },
+                                    options: {
+                                        indexAxis: 'y',
+                                        plugins: {legend: {display: false}},
+                                        scales: {x: {beginAtZero: true, ticks: {precision: 0}}}
+                                    }
+                                };
+                            }
+                        }
+
+                        if (cfg) {
+                            chartObjs.push(new Chart(ctx, cfg));
+                        } else {
+                            showEmpty(ctx, '暂无数据');
+                        }
+                    });
                 }
             } catch (e) {
                 root.innerHTML = `<div style="grid-column:1/-1;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:14px;padding:12px">
@@ -2653,6 +2723,91 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
+(function(){
+  const SITE = document.body.dataset.site || '';
+  const warp = document.getElementById('chart-settings-card');
+  if (!warp || !SITE) return; // 新建未生成站点时，先不显示
+
+  const list = document.getElementById('chart-settings-list');
+  const btnAdd = document.getElementById('btnAddChart');
+  const btnSave = document.getElementById('btnSaveCharts');
+  const dl = document.getElementById('chart-field-list');
+
+  // 拉候选字段：从提交数据接口的 columns 里取 key
+  async function loadCandidateFields(){
+    try{
+      const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/submissions`, {credentials:'same-origin'});
+      const j = await r.json();
+      const fields = Array.isArray(j.columns) ? j.columns.map(c=>c.key||c.name||c.id).filter(Boolean) : [];
+      dl.innerHTML = fields.map(k=>`<option value="${k}"></option>`).join('');
+    }catch(_){}
+  }
+
+  // UI：一行配置
+  function row(field='', type='pie', label=''){
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;gap:8px;align-items:center;margin:6px 0';
+    wrap.innerHTML = `
+      <input class="chart-label tiny" placeholder="显示名(可空)" value="${label||''}" style="max-width:160px">
+      <input class="chart-field tiny" placeholder="字段key(必填)" value="${field||''}" list="chart-field-list" style="max-width:240px">
+      <select class="chart-type tiny" style="max-width:140px">
+        <option value="pie"  ${type==='pie'?'selected':''}>圆形表</option>
+        <option value="line" ${type==='line'?'selected':''}>线表</option>
+        <option value="flow" ${type==='flow'?'selected':''}>流程表</option>
+      </select>
+      <button type="button" class="btn gray" data-del>删除</button>
+    `;
+    wrap.querySelector('[data-del]').onclick = ()=> wrap.remove();
+    return wrap;
+  }
+
+  // 读取已保存配置
+  async function loadConfig(){
+    try{
+      const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/charts_config`, {credentials:'same-origin'});
+      const j = await r.json();
+      const charts = j && j.ok && j.config && Array.isArray(j.config.charts) ? j.config.charts : [];
+      list.innerHTML = '';
+      (charts.length ? charts : [{}]).forEach(ch=>{
+        list.appendChild(row(ch.field||'', ch.type||'pie', ch.label||''));
+      });
+    }catch(_){
+      list.innerHTML = '';
+      list.appendChild(row()); // 失败也给一行空的
+    }
+  }
+
+  btnAdd && (btnAdd.onclick = ()=> list.appendChild(row()));
+
+  btnSave && (btnSave.onclick = async ()=>{
+    const payload = [];
+    list.querySelectorAll(':scope > div').forEach(w=>{
+      const field = w.querySelector('.chart-field')?.value.trim();
+      if (!field) return;
+      payload.push({
+        field,
+        type:  w.querySelector('.chart-type')?.value || 'pie',
+        label: w.querySelector('.chart-label')?.value.trim() || ''
+      });
+    });
+    try{
+      const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/charts_config`, {
+        method:'POST', credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({charts: payload})
+      });
+      const j = await r.json();
+      if (j && j.ok) alert('已保存图表配置'); else alert('保存失败：'+(j.error||''));
+    }catch(e){ alert('保存失败'); }
+  });
+
+  loadCandidateFields();
+  loadConfig();
+})();
+</script>
+
+
+<script>
     (function () {
         const btn = document.getElementById('btnPreview');
         const modal = document.getElementById('previewModal');
@@ -2701,6 +2856,7 @@ document.addEventListener('DOMContentLoaded', function () {
         btn?.addEventListener('click', async () => {
             const formName = document.querySelector('[name="form_name"]')?.value?.trim() || '';
             const formDesc = document.querySelector('[name="form_desc"]')?.value || '';
+
             const schema = await getSchema();
 
             const fd = new FormData();

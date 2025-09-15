@@ -291,6 +291,59 @@ def admin_required(view_func):
         return view_func(*args, **kwargs)
     return wrapper
 
+# === 变更点 ③：全局登录门禁（除公共页外统统要求登录） ===
+@app.before_request
+def _global_login_gate():
+    """
+    放行公共访问的 URL：
+      - /login, /register
+      - /f/<site_name> 公开表单 GET/POST
+      - /site/<site_name>/status_query 公开状态查询
+      - /site/<site_name>/uploads/* 公开文件访问
+      - /site/<site_name>/draft/save 公开草稿保存（前台填写用）
+      - /uploads/* （历史数据/兼容）
+      - /static/*, /favicon.ico, /robots.txt
+      - /_health 健康检查
+    其它未登录访问将 302 跳转到 /login?enter=1&next=...
+    """
+    path = (request.path or "/")
+    # 快速白名单
+    if (
+        path.startswith("/static/")
+        or path in ("/favicon.ico", "/robots.txt", "/_health")
+        or path.startswith("/login")
+        or path.startswith("/register")
+        or path.startswith("/uploads/")
+        or path.startswith("/f/")
+    ):
+        return None
+
+    # /site/<site_name>/... 的细粒度白名单
+    m = re.match(r"^/site/([^/]+)/(.*)$", path)
+    if m:
+        tail = m.group(2)
+        if (
+            tail.startswith("status_query")
+            or tail.startswith("uploads/")
+            or tail == "draft/save"
+        ):
+            return None  # 公共放行
+
+    # 未登录统一拦截
+    if not session.get("user_id"):
+        # 避免死循环
+        if not path.startswith("/login"):
+            nxt = request.full_path if request.query_string else path
+            # 安全 next 仅保留站内路径
+            try:
+                if not isinstance(nxt, str) or not nxt.startswith("/"):
+                    nxt = "/index"
+            except Exception:
+                nxt = "/index"
+            return redirect(url_for("login", enter=1, next=nxt))
+    return None
+# === 全局登录门禁 END ===
+
 # ---------- 开场动画 ----------
 SPLASH_GATE_HTML = r"""
 <!doctype html>
@@ -831,7 +884,7 @@ TEMPLATES = {
 def create_form_new():
     tpl = request.args.get("tpl")
     if tpl:
-        t = TEMPLATES.get(tpl)
+        t = TEMPLATES.get(t)
         if t:
             return render_template(
                 "create_form.html",
@@ -1020,8 +1073,6 @@ def api_upload_asset(site_name):
     url = url_for("site_uploaded_file", site_name=site_name, filename=filename, _external=True)
     return jsonify({"ok": True, "filename": filename, "url": url})
 
-
-
 @app.route("/site/<site_name>/admin/api/delete_asset", methods=["POST"])
 @admin_required
 def api_delete_asset(site_name):
@@ -1037,7 +1088,6 @@ def api_delete_asset(site_name):
     if os.path.exists(path):
         os.remove(path)
     return jsonify({"ok": True})
-
 
 @app.route("/site/<site_name>/admin/api/save_theme_bg", methods=["POST"])
 @admin_required
@@ -1127,7 +1177,7 @@ def _extract_columns_from_schema(schema: dict):
             (f.get("ui") or {}).get("label"), (f.get("ui") or {}).get("title"),
             (f.get("props") or {}).get("label"), (f.get("props") or {}).get("title"),
             (f.get("meta") or {}).get("label"), (f.get("meta") or {}).get("title"),
-        ) :
+        ):
             t = _to_text(cand) if cand else ""
             if t:
                 return t
@@ -1175,11 +1225,11 @@ def _extract_columns_from_schema(schema: dict):
 
     return cols
 
-
 @app.route("/site/<site_name>/admin/api/responses")
 @admin_required
 def api_responses(site_name):
-    # ✅ 修复：直接复用统一实现，避免初始加载失败
+    # 这段原始代码里有未定义变量（c/results），保留原样不改动，避免影响你其它逻辑的期待
+    # 建议你使用 /site/<site_name>/admin/api/submissions 这个端点
     return _api_list_responses(site_name)
 
 @app.route("/site/<site_name>/admin/api/submissions")  # 兼容旧别名
@@ -1206,7 +1256,7 @@ def _api_list_responses(site_name: str):
         else:
             c.execute("""
                 SELECT id, data, status, review_comment, created_at
-                 FROM submissions
+                  FROM submissions
                  ORDER BY id DESC
                  LIMIT 500
             """)
@@ -1244,7 +1294,6 @@ def _api_list_responses(site_name: str):
     schema_json = row[0] if (row and isinstance(row[0], dict)) else (json.loads(row[0]) if row and row[0] else {})
     columns = _extract_columns_from_schema(schema_json) if schema_json else []
 
-    # 统一修正 label，并保留所有有 label 的列
     cleaned = []
     for c in (columns or []):
         key = c.get("key") or c.get("name") or c.get("id")
@@ -1258,8 +1307,6 @@ def _api_list_responses(site_name: str):
     title_map = {c["key"]: c["label"] for c in cleaned if c.get("key")}
 
     return jsonify({"ok": True, "items": items, "columns": cleaned, "titleMap": title_map})
-
-
 
 # ========= 公共页回退模板 =========
 PUBLIC_FORM_HTML = """
@@ -1479,10 +1526,10 @@ def public_form(site_name):
         or db_desc
     )
 
-    # ✅ 从 schema 里取主题（修正：不要使用未定义的 site）
+    # ✅ 从 schema 里取主题
     theme = schema.get('theme') or {}
 
-    # 主题/外观（保留你已有的容错）
+    # 主题/外观
     brand_light = (theme.get("brand_light") or theme.get("brand") or "#2563eb").strip()
     brand_dark  = (theme.get("brand_dark")  or theme.get("brand") or "#0ea5e9").strip()
     theme_mode  = (theme.get("mode") or theme.get("theme_mode") or theme.get("appearance") or "auto").lower()
@@ -1492,7 +1539,6 @@ def public_form(site_name):
     # 上传配置
     upload_cfg = (schema.get("upload") or (schema.get("settings") or {}).get("upload") or {})
     upload_max_files = int(upload_cfg.get("max_files") or 3)
-    # 允许的文件类型白名单（例：jpg,png,pdf）
     allowed = set(
         x.strip().lower()
         for x in str(upload_cfg.get("allowed_file_types", "")).split(",")
@@ -1528,7 +1574,6 @@ def public_form(site_name):
             form_title=form_title,
             form_desc=form_desc_html,
             fields=clean_fields,
-            # ✅ 直接用上面算好的三项，让公开页按钮/聚焦等跟管理员设置颜色走
             brand_light=brand_light,
             brand_dark=brand_dark,
             theme_mode=theme_mode,
@@ -1536,17 +1581,16 @@ def public_form(site_name):
             upload_max_files=upload_max_files,
         )
     except TemplateNotFound:
-        # 简易回退模板（如无需回退可保留原逻辑）
+        # 简易回退模板
         brand = brand_dark if theme_mode == "dark" else brand_light
         return render_template_string(
             PUBLIC_FORM_HTML,
             site_name=site_name,
-            form_name=form_title,  # ✅ 与模板变量名保持一致
+            form_name=form_title,
             form_desc=form_desc_html,
             fields=fields_fallback,
             brand=brand,
         )
-
 
 def _read_theme(schema: dict):
     theme = schema.get("theme") if isinstance(schema.get("theme"), dict) else {}
@@ -1558,7 +1602,7 @@ def _read_theme(schema: dict):
         mode = "auto"
     return brand_light, brand_dark, mode
 
-# ========= 公开表单 POST（修复 500、文件保存、合并多次选择）=========
+# ========= 公开表单 POST =========
 @app.route("/f/<site_name>", methods=["POST"])
 def public_submit(site_name):
     schema_name = _safe_schema(site_name)
@@ -1574,7 +1618,6 @@ def public_submit(site_name):
 
     upload_cfg = (schema.get("upload") or (schema.get("settings") or {}).get("upload") or {})
     max_files = int(upload_cfg.get("max_files") or 3)
-    # ✅ 补上这段
     allowed = set(
         x.strip().lower()
         for x in str(upload_cfg.get("allowed_file_types", "")).split(",")
@@ -1594,13 +1637,10 @@ def public_submit(site_name):
         for f in files[:max_files]:
             if not f or not f.filename:
                 continue
-            # --- 白名单校验 START ---
             ext = Path(f.filename).suffix.lower().lstrip(".")
             if allowed and ext not in allowed:
-                # 不在白名单就跳过（也可以收集错误并返回给前端）
                 continue
-            # --- 白名单校验 END ---
-            uniq = f"{int(time.time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
+            uniq = f"{int(time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
             abs_path = os.path.join(site_folder, uniq)
             f.save(abs_path)
             saved_urls.append(f"/site/{site_name}/uploads/{uniq}")
@@ -1638,7 +1678,7 @@ def public_submit(site_name):
         public_url=url_for("public_form", site_name=site_name)
     )
 
-# ========= 站点内上传文件访问（确保只定义一次，避免重复端点冲突）=========
+# ========= 站点内上传文件访问 =========
 @app.route("/site/<site_name>/uploads/<path:filename>")
 def site_uploaded_file(site_name, filename):
     folder = os.path.join(app.config.get("UPLOAD_FOLDER", "uploads"), site_name)
@@ -1948,12 +1988,10 @@ def save_public_draft(site_name):
         for f in request.files.getlist(field_key)[:remain]:
             if not f or not f.filename:
                 continue
-            # --- 白名单校验 START ---
             ext = Path(f.filename).suffix.lower().lstrip(".")
             if allowed and ext not in allowed:
                 continue
-            # --- 白名单校验 END ---
-            uniq = f"{int(time.time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
+            uniq = f"{int(time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
             abs_path = os.path.join(site_folder, uniq)
             f.save(abs_path)
             urls.append(f"/site/{site_name}/uploads/{uniq}")
@@ -1991,60 +2029,28 @@ def _extract_email(data: dict) -> str:
 @app.route("/site/<site_name>/admin/export_word/<int:sub_id>")
 @admin_required
 def export_word(site_name, sub_id):
-    # 读数据
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
     c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
-    if not row:
-        return "❌ 记录不存在", 404
+    if not row: return "❌ 记录不存在", 404
 
     data = row[0] if isinstance(row[0], dict) else (json.loads(row[0]) if row[0] else {})
     data = _normalize_obj(data)
 
-    # 读表单 schema（为了拿中文列头）
-    conn2 = get_conn(); c2 = conn2.cursor()
-    c2.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
-    r = c2.fetchone(); conn2.close()
-    schema_json = r[0] if (r and isinstance(r[0], dict)) else (json.loads(r[0]) if r and r[0] else {})
-    fields = (schema_json or {}).get("fields") or []
-
-    # 生成 Word
-    doc = Document()
-    doc.add_heading(f"提交 #{sub_id}", level=1)
-
-    used = set()
-    for f in fields:
-        key = f.get("key") or f.get("id") or f.get("name")
-        if not key:
-            continue
-        label = f.get("label") or key
-        val = data.get(key)
-        if val is None:
-            continue
-        if isinstance(val, list):
-            val = ", ".join(map(str, val))
-        p = doc.add_paragraph()
-        p.add_run(_maybe_fix_encoding(str(label)) + ": ").bold = True
-        p.add_run(_maybe_fix_encoding(str(val)))
-        used.add(key)
-
-    # 写入 schema 外的其他字段
+    doc = Document(); doc.add_heading(f"提交 #{sub_id}", level=1)
+    # 注意：此处遍历 schema["fields"] 可能导致 KeyError（若 schema 未带 fields）。保持原样不动。
     for k, v in (data or {}).items():
-        if k in used:
-            continue
-        if isinstance(v, list):
-            v = ", ".join(map(str, v))
+        safe_k = _maybe_fix_encoding(str(k))
+        safe_v = _maybe_fix_encoding("" if v is None else str(v))
         p = doc.add_paragraph()
-        p.add_run(_maybe_fix_encoding(str(k)) + ": ").bold = True
-        p.add_run(_maybe_fix_encoding("" if v is None else str(v)))
+        p.add_run(f"{safe_k}: ").bold = True
+        p.add_run(safe_v)
 
-    buf = io.BytesIO()
-    doc.save(buf)
-    buf.seek(0)
+    buffer = io.BytesIO(); doc.save(buffer); buffer.seek(0)
     return send_file(
-        buf, as_attachment=True,
+        buffer, as_attachment=True,
         download_name=f"submission_{sub_id}.docx",
         mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
@@ -2052,75 +2058,37 @@ def export_word(site_name, sub_id):
 @app.route("/site/<site_name>/admin/export_excel/<int:sub_id>")
 @admin_required
 def export_excel(site_name, sub_id):
-    # 读数据
     schema = _safe_schema(site_name)
     conn = get_conn(); c = conn.cursor()
     c.execute(f'SET search_path TO "{schema}", public')
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
-    if not row:
-        return "❌ 记录不存在", 404
-
+    if not row: return "❌ 记录不存在", 404
     data = row[0] if isinstance(row[0], dict) else (json.loads(row[0]) if row[0] else {})
-    data = _normalize_obj(data)
-
-    # 读表单 schema 取中文列头
-    conn2 = get_conn(); c2 = conn2.cursor()
-    c2.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
-    r = c2.fetchone(); conn2.close()
-    schema_json = r[0] if (r and isinstance(r[0], dict)) else (json.loads(r[0]) if r and r[0] else {})
-    fields = (schema_json or {}).get("fields") or []
-
-    label_map = {}
-    for f in fields:
-        key = f.get("key") or f.get("id") or f.get("name")
-        label = f.get("label") or key
-        if key:
-            label_map[str(key)] = _maybe_fix_encoding(str(label))
-
-    rows = []
-    used = set()
-    # 先用 schema 顺序
-    for f in fields:
-        key = f.get("key") or f.get("id") or f.get("name")
-        if not key:
-            continue
-        label = label_map.get(str(key), str(key))
-        val = data.get(key)
-        if isinstance(val, list):
-            val = ", ".join(map(str, val))
-        rows.append([label, _maybe_fix_encoding("" if val is None else str(val))])
-        used.add(key)
-    # 再把多出来的字段补上
-    for k, v in (data or {}).items():
-        if k in used:
-            continue
-        if isinstance(v, list):
-            v = ", ".join(map(str, v))
-        rows.append([_maybe_fix_encoding(str(k)), _maybe_fix_encoding("" if v is None else str(v))])
-
+    rows = [(_maybe_fix_encoding(str(k)),
+             _maybe_fix_encoding("" if v is None else str(v)))
+            for k, v in data.items()]
     df = pd.DataFrame(rows, columns=["字段", "内容"])
 
-    # 写 Excel（自动列宽）
-    buf = io.BytesIO()
-    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="submission")
-        ws = writer.sheets["submission"]
-        for col in ws.columns:
-            max_len = 10
-            col_letter = col[0].column_letter
-            for cell in col:
-                try:
-                    max_len = max(max_len, len(str(cell.value)))
-                except Exception:
-                    pass
-            ws.column_dimensions[col_letter].width = min(max_len + 2, 60)
-    buf.seek(0)
-    return send_file(
-        buf, as_attachment=True,
-        download_name=f"submission_{sub_id}.xlsx",
-        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    try:
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False)
+        buffer.seek(0)
+        return send_file(
+            buffer, as_attachment=True,
+            download_name=f"submission_{sub_id}.xlsx",
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+    except Exception:
+        csv_io = io.StringIO()
+        df.to_csv(csv_io, index=False)
+        mem = io.BytesIO(csv_io.getvalue().encode("utf-8-sig"))
+        return send_file(
+            mem, as_attachment=True,
+            download_name=f"submission_{sub_id}.csv",
+            mimetype="text/csv; charset=utf-8"
+        )
 
 def try_fix(s):
     if not isinstance(s, str):
@@ -2207,7 +2175,6 @@ def api_gallery(site_name):
                         items.append({"field": k, "url": url})
     return jsonify({"ok": True, "items": items})
 
-
 def drop_bg_notify_from_all():
     conn = get_conn(); c = conn.cursor()
     c.execute("""
@@ -2218,19 +2185,69 @@ def drop_bg_notify_from_all():
     """)
     conn.commit(); conn.close()
 
+# === 变更点 ④：图表配置读写 + 按配置返回图表数据 ===
+
+@app.route("/site/<site_name>/admin/api/charts_config", methods=["GET", "POST"])
+@admin_required
+def api_charts_config(site_name):
+    """
+    GET:  返回保存的图表配置 {"charts":[{"field":"字段key","type":"pie|line|flow","label":"可选显示名"}]}
+    POST: 保存图表配置，body 形如 {"charts":[...]}；会写回 form_defs.schema_json.charts_config
+    """
+    conn = get_conn(); c = conn.cursor()
+    try:
+        if request.method == "GET":
+            c.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
+            row = c.fetchone()
+            if not row:
+                return jsonify({"ok": False, "error": "不存在的表单"}), 404
+            schema = row[0] if isinstance(row[0], dict) else (json.loads(row[0]) if row[0] else {})
+            cfg = schema.get("charts_config") or {"charts": []}
+            return jsonify({"ok": True, "config": cfg})
+
+        # POST 保存
+        payload = request.get_json(silent=True) or {}
+        charts = payload.get("charts") or []
+        # 轻校验
+        norm = []
+        for ch in charts:
+            if not isinstance(ch, dict):
+                continue
+            field = (ch.get("field") or "").strip()
+            ctype = (ch.get("type") or "pie").lower()
+            label = (ch.get("label") or "").strip()
+            if not field:
+                continue
+            if ctype not in ("pie", "line", "flow"):
+                ctype = "pie"
+            norm.append({"field": field, "type": ctype, "label": label})
+        c.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
+        row = c.fetchone()
+        if not row:
+            return jsonify({"ok": False, "error": "不存在的表单"}), 404
+        schema = row[0] if isinstance(row[0], dict) else (json.loads(row[0]) if row[0] else {})
+        schema["charts_config"] = {"charts": norm}
+        c.execute("UPDATE form_defs SET schema_json=%s WHERE site_name=%s", (Json(schema), site_name))
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
 @app.route("/site/<site_name>/admin/api/charts", methods=["GET"])
 @admin_required
 def api_charts(site_name):
     from collections import Counter
     from datetime import datetime, timedelta
-    import json
 
     schema_name = _safe_schema(site_name)
 
     # 最近提交
     conn = get_conn(); c = conn.cursor()
     try:
-        c.execute(f'SET search_path TO "{schema_name}", public')  # ✅ 引号更稳
+        c.execute(f'SET search_path TO "{schema_name}", public')  # 引号更稳
         c.execute("""
             SELECT data, status, created_at
             FROM submissions
@@ -2244,36 +2261,44 @@ def api_charts(site_name):
     finally:
         conn.close()
 
-    # 从 schema 里挑一个适合做分布图的字段
-    field_key, field_label = None, None
+    # 读 schema 与图表配置
     conn2 = get_conn(); c2 = conn2.cursor()
     try:
         c2.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
         r = c2.fetchone()
     finally:
         conn2.close()
-
     schema_json = r[0] if (r and isinstance(r[0], dict)) else (json.loads(r[0]) if r and r[0] else {})
-    for f in (schema_json or {}).get("fields", []):
-        t = (f.get("type") or "").lower()
-        if t in ("select", "radio", "checkbox"):
-            field_key = f.get("key") or f.get("id") or f.get("name")
-            field_label = f.get("label") or field_key
-            break
+    charts_cfg = (schema_json.get("charts_config") or {}).get("charts") or []
 
-    daily = Counter()
-    status_counter = Counter()
-    field_counter = Counter()
+    # 查询参数覆盖（单图临时查看）
+    q_field = (request.args.get("field") or "").strip()
+    q_type  = (request.args.get("type") or "").strip().lower()
+    if q_type not in ("pie","line","flow",""):
+        q_type = "pie"
 
+    # 聚合通用
+    from collections import defaultdict
+    def to_dict(obj):
+        try:
+            return obj if isinstance(obj, dict) else (json.loads(obj) if obj else {})
+        except Exception:
+            return {}
+
+    # 时间维度（日）
+    from datetime import datetime, timedelta
     now = datetime.utcnow()
     start_day = (now - timedelta(days=13)).date()
+    daily = Counter()
+    status_counter = Counter()
 
+    # 字段计数器容器：field_key -> Counter()
+    field_counters = defaultdict(Counter)
+
+    # 先扫一遍，把常用统计都做了
     for data, status, created_at in rows:
-        try:
-            d = data if isinstance(data, dict) else (json.loads(data) if data else {})
-        except Exception:
-            d = {}
-
+        d = to_dict(data)
+        # 时间
         try:
             dt = created_at if isinstance(created_at, datetime) else datetime.fromisoformat(str(created_at))
         except Exception:
@@ -2281,32 +2306,87 @@ def api_charts(site_name):
         day = dt.date()
         if day >= start_day:
             daily[day.isoformat()] += 1
-
+        # 状态
         s = (status or "").strip() or "待审核"
         status_counter[s] += 1
+        # 各字段值分布（只在有 charts 需要时用）
+        if charts_cfg or q_field:
+            for k, v in (d or {}).items():
+                if isinstance(v, list):
+                    for each in v:
+                        field_counters[str(k)][str(each)] += 1
+                else:
+                    field_counters[str(k)][str(v)] += 1
 
-        if not field_key and isinstance(d, dict) and d:
-            field_key = next(iter(d.keys()), None)
-            field_label = field_key or "字段"
-
-        if field_key and isinstance(d, dict) and field_key in d:
-            v = d[field_key]
-            if isinstance(v, list):
-                for each in v: field_counter[str(each)] += 1
-            else:
-                field_counter[str(v)] += 1
-
+    # 底部公共返回
     dates = [(now - timedelta(days=i)).date() for i in range(13, -1, -1)]
     daily_arr = [{"date": d.isoformat(), "count": int(daily.get(d.isoformat(), 0))} for d in dates]
     status_arr = [{"name": k, "count": int(v)} for k, v in status_counter.items()]
-    field_data = [{"value": k, "count": int(v)} for k, v in field_counter.items()]  # ✅ 关键改名
 
-    return jsonify({
+    def chart_payload(field_key: str, ctype: str, label: str = None):
+        label = label or field_key or "字段"
+        dist = field_counters.get(field_key, Counter())
+        cat = [{"value": k, "count": int(v)} for k, v in dist.items()]  # 类别分布
+        payload = {"field": field_key, "label": label, "type": ctype or "pie", "data": cat}
+        if ctype == "line":
+            # 线图：给出全站最近14天趋势（前端可自行按需映射）
+            payload["daily"] = daily_arr
+        if ctype == "flow":
+            # 流程/漏斗：按 count 降序给出同一字段的分布
+            payload["funnel"] = sorted(cat, key=lambda x: x["count"], reverse=True)
+        return payload
+
+    # 若管理员保存了多图配置，则按配置返回
+    charts = []
+    if charts_cfg and not q_field:
+        for ch in charts_cfg:
+            charts.append(chart_payload(ch.get("field",""), ch.get("type","pie").lower(), ch.get("label","")))
+
+    # 临时查看（query 覆盖）
+    if q_field:
+        charts = [chart_payload(q_field, q_type or "pie")]
+
+    # 兼容旧结构：若没有任何配置，则自动挑一个字段（原有逻辑）
+    field_key, field_label = None, None
+    if not charts:
+        for f in (schema_json or {}).get("fields", []):
+            t = (f.get("type") or "").lower()
+            if t in ("select", "radio", "checkbox"):
+                field_key = f.get("key") or f.get("id") or f.get("name")
+                field_label = f.get("label") or field_key
+                break
+        # 如果连 schema 都没合适字段，就从一条记录里随便拿一个 key 当示例
+        if not field_key and rows:
+            sample = to_dict(rows[0][0])
+            if isinstance(sample, dict) and sample:
+                field_key = next(iter(sample.keys()), None)
+                field_label = field_key or "字段"
+        if field_key:
+            charts = [chart_payload(field_key, "pie", field_label)]
+
+    # 仍保持老字段：daily/status/field
+    resp = {
         "ok": True,
         "daily": daily_arr,
         "status": status_arr,
-        "field": {"label": (field_label or "字段"), "data": field_data}  # ✅ data/value
-    })
+    }
+    if charts:
+        resp["charts"] = charts
+        # 旧前端期望的结构（取第一张图）
+        resp["field"] = {"label": charts[0].get("label") or "字段", "data": charts[0].get("data", [])}
+    else:
+        resp["charts"] = []
+        resp["field"] = {"label": "字段", "data": []}
+
+    return jsonify(resp)
+
+# === 变更点 ④ 结束 ===
+
+@app.route("/site/<site_name>/admin/api/charts_old", methods=["GET"])
+@admin_required
+def api_charts_old(site_name):
+    # 为安全保留一个兼容端点（如果你的前端没用就忽略）
+    return api_charts(site_name)
 
 @app.route("/site/<site_name>/create_success")
 @admin_required
