@@ -23,12 +23,12 @@ import time, uuid, os
 from werkzeug.utils import secure_filename
 from pathlib import Path
 from uuid import uuid4
-from time import time
 from psycopg2.pool import SimpleConnectionPool
 import os, psycopg2
 from flask import render_template, request, abort
 from time import time
 import unicodedata
+import time
 # ========== Flask 应用 ==========
 app = Flask(__name__)
 try:
@@ -42,6 +42,8 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=True,   # 仅 HTTPS 时安全发送
 )
+if os.getenv("FLASK_ENV") != "production":
+    app.config["SESSION_COOKIE_SECURE"] = False
 
 # —— 常见“中文→UTF-8→被按latin1读”的假字符标记
 _MOJIBAKE_MARKERS = ("Ã", "Â", "â€™", "â€œ", "â€", "å¼", "æ", "ç", "�")
@@ -1170,67 +1172,7 @@ def _extract_columns_from_schema(schema: dict):
         seen_keys.add(key)
 
     return cols
-def _api_list_responses(site_name: str):
-    q = (request.args.get("q") or "").strip()
-    schema = _safe_schema(site_name)
 
-    conn = get_conn(); c = conn.cursor()
-    try:
-        c.execute(f'SET search_path TO "{schema}", public')
-        if q:
-            c.execute("""
-                SELECT id, data, status, review_comment, created_at
-                  FROM submissions
-                 WHERE data::text ILIKE %s
-                 ORDER BY id DESC
-                 LIMIT 500
-            """, (f"%{q}%",))
-        else:
-            c.execute("""
-                SELECT id, data, status, review_comment, created_at
-                 FROM submissions
-                 ORDER BY id DESC
-                 LIMIT 500
-            """)
-        rows = c.fetchall()
-    except Exception as e:
-        conn.rollback()
-        return jsonify({"ok": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-    items = []
-    for rid, d, status, review, created in rows:
-        data = d if isinstance(d, dict) else (json.loads(d) if d else {})
-        # 统一 UTF-8 归一化（关键！）
-        data = _normalize_obj(data)
-        status = _maybe_fix_encoding(status or "待审核")
-        review = _maybe_fix_encoding(review or "")
-        items.append({
-            "id": rid,
-            "status": status,
-            "review_comment": review,
-            "created_at": str(created) if created else "",
-            "data": data,
-        })
-
-    # ✅ 修复：不要在关闭连接后再使用游标（移除了多余的 c2.execute）
-    conn2 = get_conn(); c2 = conn2.cursor()
-    try:
-        c2.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
-        row = c2.fetchone()
-    finally:
-        conn2.close()
-
-    schema_json = row[0] if (row and isinstance(row[0], dict)) else (json.loads(row[0]) if row and row[0] else {})
-    columns = _extract_columns_from_schema(schema_json)
-    # 可选：把列名也做一次归一化，防“列头”乱码
-    for c in columns:
-        if "label" in c:
-            c["label"] = _maybe_fix_encoding(c["label"])
-    title_map = {c["key"]: c["label"] for c in columns if c.get("key")}
-
-    return jsonify({"ok": True, "items": items, "columns": columns, "titleMap": title_map})
 
 @app.route("/site/<site_name>/admin/api/responses")
 @admin_required
@@ -1261,7 +1203,7 @@ def _api_list_responses(site_name: str):
         else:
             c.execute("""
                 SELECT id, data, status, review_comment, created_at
-                 FROM submissions
+                  FROM submissions
                  ORDER BY id DESC
                  LIMIT 500
             """)
@@ -1272,22 +1214,20 @@ def _api_list_responses(site_name: str):
     finally:
         conn.close()
 
+    # 数据项：统一做 UTF-8 归一化
     items = []
     for rid, d, status, review, created in rows:
         data = d if isinstance(d, dict) else (json.loads(d) if d else {})
-        # 统一 UTF-8 归一化（关键！）
         data = _normalize_obj(data)
-        status = _maybe_fix_encoding(status or "待审核")
-        review = _maybe_fix_encoding(review or "")
         items.append({
             "id": rid,
-            "status": status,
-            "review_comment": review,
+            "status": _maybe_fix_encoding(status or "待审核"),
+            "review_comment": _maybe_fix_encoding(review or ""),
             "created_at": str(created) if created else "",
             "data": data,
         })
 
-    # 读表单 schema，生成中文表头
+    # 读 schema，生成“中文列头”（不再做“只保留中文字符”的过滤）
     conn2 = get_conn(); c2 = conn2.cursor()
     try:
         c2.execute(f'SET search_path TO "{schema}", public')
@@ -1299,15 +1239,23 @@ def _api_list_responses(site_name: str):
         conn2.close()
 
     schema_json = row[0] if (row and isinstance(row[0], dict)) else (json.loads(row[0]) if row and row[0] else {})
-    columns = _extract_columns_from_schema(schema_json)
-    # 只保留中文列（再保险）
-    def _has_cjk(text: str) -> bool:
-        return bool(re.search(r"[\u4e00-\u9fff]", str(text or "")))
-    columns = [c for c in columns if _has_cjk(c.get("label"))]
+    columns = _extract_columns_from_schema(schema_json) if schema_json else []
 
-    title_map = {c["key"]: c["label"] for c in columns if c.get("key")}
+    # 统一修正 label，并保留所有有 label 的列
+    cleaned = []
+    for c in (columns or []):
+        key = c.get("key") or c.get("name") or c.get("id")
+        if not key: continue
+        label = c.get("label") or c.get("title") or c.get("text") or key
+        cleaned.append({
+            "key": str(key),
+            "label": _maybe_fix_encoding(str(label)),
+            "type": c.get("type", "")
+        })
+    title_map = {c["key"]: c["label"] for c in cleaned if c.get("key")}
 
-    return jsonify({"ok": True, "items": items, "columns": columns, "titleMap": title_map})
+    return jsonify({"ok": True, "items": items, "columns": cleaned, "titleMap": title_map})
+
 
 
 # ========= 公共页回退模板 =========
@@ -2046,9 +1994,12 @@ def export_word(site_name, sub_id):
     c.execute("SELECT data FROM submissions WHERE id=%s", (sub_id,))
     row = c.fetchone(); conn.close()
     if not row: return "❌ 记录不存在", 404
+
     data = row[0] if isinstance(row[0], dict) else (json.loads(row[0]) if row[0] else {})
+    data = _normalize_obj(data)
+
     doc = Document(); doc.add_heading(f"提交 #{sub_id}", level=1)
-    for k, v in data.items():
+    for k, v in (data or {}).items():
         safe_k = _maybe_fix_encoding(str(k))
         safe_v = _maybe_fix_encoding("" if v is None else str(v))
         p = doc.add_paragraph()
@@ -2056,17 +2007,11 @@ def export_word(site_name, sub_id):
         p.add_run(safe_v)
 
     buffer = io.BytesIO(); doc.save(buffer); buffer.seek(0)
-    return send_file(buffer, as_attachment=True,
-                     download_name=f"submission_{sub_id}.docx",
-                     mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-
-def try_fix(s):
-    if not isinstance(s, str):
-        return s
-    try:
-        return s.encode("latin1").decode("utf-8")
-    except Exception:
-        return s
+    return send_file(
+        buffer, as_attachment=True,
+        download_name=f"submission_{sub_id}.docx",
+        mimetype="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
 
 @app.route("/site/<site_name>/admin/export_excel/<int:sub_id>")
 @admin_required
@@ -2119,46 +2064,36 @@ def export_all_excel(site_name):
     c.execute("SELECT id, data, status, review_comment, created_at FROM submissions ORDER BY id")
     rows = c.fetchall(); conn.close()
 
-    records, cols = [], {"id","status","review_comment","created_at"}
+    records, cols = [], {"id", "status", "review_comment", "created_at"}
     for r in rows:
         d = r[1] if isinstance(r[1], dict) else (json.loads(r[1]) if r[1] else {})
+        d = _normalize_obj(d)
         rec = {
             "id": r[0],
-            "status": r[2] or "",
-            "review_comment": r[3] or "",
+            "status": _maybe_fix_encoding(r[2] or ""),
+            "review_comment": _maybe_fix_encoding(r[3] or ""),
             "created_at": str(r[4]) if r[4] else ""
         }
         for k, v in (d or {}).items():
-            k = _maybe_fix_encoding(str(k))  # 列头也修复
-            rec[k] = _maybe_fix_encoding("" if v is None else str(v))
-            cols.add(k)
+            kk = _maybe_fix_encoding(str(k))
+            rec[kk] = _maybe_fix_encoding("" if v is None else str(v))
+            cols.add(kk)
         records.append(rec)
 
-    df = pd.DataFrame(records, columns=list(cols))
-    try:
-        buffer = io.BytesIO()
-        with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="submissions")
-        buffer.seek(0)
-        return send_file(
-            buffer, as_attachment=True,
-            download_name=f"{site_name}_all.xlsx",
-            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
-    except Exception:
-        csv_io = io.StringIO()
-        df.to_csv(csv_io, index=False)
-        mem = io.BytesIO(csv_io.getvalue().encode("utf-8-sig"))
-        return send_file(mem, as_attachment=True,
-                         download_name=f"{site_name}_all.csv",
-                         mimetype="text/csv; charset=utf-8")
-def try_fix(s):
-    if not isinstance(s, str):
-        return s
-    try:
-        return s.encode("latin1").decode("utf-8")
-    except Exception:
-        return s
+    # 统一列顺序，保证固定列在前
+    fixed = ["id", "status", "review_comment", "created_at"]
+    dynamic = [col for col in cols if col not in fixed]
+    df = pd.DataFrame(records, columns=fixed + list(dynamic))
+
+    buf = io.BytesIO()
+    with pd.ExcelWriter(buf, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False)
+    buf.seek(0)
+    return send_file(
+        buf, as_attachment=True,
+        download_name=f"{site_name}_all_submissions.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 @app.route("/site/<site_name>/admin/api/gallery")
 @admin_required

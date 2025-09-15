@@ -1757,7 +1757,7 @@
         }
 
         const SCHEMA_CANDIDATES = loadSchemaCandidates();
-        let FIELDS = mergeSchemas(SCHEMA_CANDIDATES);
+        let FIELDS = []; // 等 /admin/api/responses 返回 columns/titleMap 再画表头
         // —— 仅当“还有非随机字段可用”时才过滤，否则保留所有字段（避免把内容全删空）
         const looksRandom = s => typeof s === 'string' && /^q[a-z0-9]{5,}$/i.test(s);
         const nonRandom = FIELDS.filter(f => !looksRandom(f.key));
