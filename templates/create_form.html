@@ -1896,7 +1896,9 @@
 
             buildHeader(); // 先/重新按 FIELDS 刷新表头
             renderRows(data.items || data.rows || []);
+            document.dispatchEvent(new CustomEvent('responses:updated'));
         }
+        window.loadResponses = load;
 
 
         // —— 点击事件：文件预览 / 审核 / 发信 / 删除
@@ -1928,6 +1930,7 @@
                 } catch (err) {
                     alert("保存失败：" + err.message);
                 }
+                document.dispatchEvent(new CustomEvent('responses:updated'));
             }
 
             if (e.target.matches("[data-del]")) {
@@ -1942,6 +1945,7 @@
                     alert("删除失败：" + err.message);
                 }
             }
+            document.dispatchEvent(new CustomEvent('responses:updated'));
         });
 
         window.rebuildRespHeader = buildHeader;
@@ -2136,25 +2140,65 @@ document.addEventListener('DOMContentLoaded', function () {
         const SITE = document.body.dataset.site || '';
         let chartsInited = false;
         let chartObjs = [];
+        let chartsTimer = null;
 
-        // 切到“图表”页时再加载
+        function isChartsTab() {
+            return document.getElementById('tab-charts')?.classList.contains('active');
+        }
+
+        function startChartsAuto() {
+            stopChartsAuto();
+            chartsTimer = setInterval(() => {
+                if (document.visibilityState === 'visible' && isChartsTab()) {
+                    window.refreshCharts && window.refreshCharts(true);
+                }
+            }, 30000);
+        }
+
+        function stopChartsAuto() {
+            if (chartsTimer) {
+                clearInterval(chartsTimer);
+                chartsTimer = null;
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && isChartsTab()) {
+                window.refreshCharts && window.refreshCharts(true);
+            }
+        });
+
+        // ✅ 数据变化 => 如果在图表页，立刻刷新
+        document.addEventListener('responses:updated', () => {
+            if (isChartsTab()) window.refreshCharts && window.refreshCharts(true);
+        });
+
+        // 切换 Tab 时控制自动刷新
         document.querySelectorAll('.tabs button').forEach(b => {
             b.addEventListener('click', () => {
-                if (b.dataset.tab === 'charts') ensureCharts();
+                if (b.dataset.tab === 'charts') {
+                    ensureCharts();
+                    window.refreshCharts && window.refreshCharts(true);
+                    startChartsAuto();
+                } else {
+                    stopChartsAuto();
+                }
             });
         });
-        // 如果默认就在图表页，也加载一次
-        if (document.querySelector('.tabs button.active')?.dataset.tab === 'charts') ensureCharts();
+
+        if (document.querySelector('.tabs button.active')?.dataset.tab === 'charts') {
+            ensureCharts();
+            startChartsAuto();
+        }
 
         async function ensureCharts() {
             if (chartsInited) return;
             const root = document.getElementById('chartsRoot');
             if (!root) return;
 
-            // 新建还没保存站点时的提示
             if (!SITE) {
-                root.innerHTML = `<div style="grid-column:1/-1;color:#6b7f99;background:#fff;border:1px solid #e8eef6;border-radius:14px;padding:16px;text-align:center">
-        保存表单并生成站点后，才能查看图表。</div>`;
+                root.innerHTML = `<div style="grid-column:1/-1;color:#6b7f99;background:#fff;border:1px solid #e8eef6;border-radius
+   保存表单并生成站点后，才能查看图表。</div>`;
                 return;
             }
 
