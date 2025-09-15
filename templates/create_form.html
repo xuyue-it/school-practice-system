@@ -2728,28 +2728,84 @@ document.addEventListener('DOMContentLoaded', function () {
   const warp = document.getElementById('chart-settings-card');
   if (!warp || !SITE) return; // 新建未生成站点时，先不显示
 
-  const list = document.getElementById('chart-settings-list');
+  const list   = document.getElementById('chart-settings-list');
   const btnAdd = document.getElementById('btnAddChart');
-  const btnSave = document.getElementById('btnSaveCharts');
-  const dl = document.getElementById('chart-field-list');
+  const btnSave= document.getElementById('btnSaveCharts');
+  const dl     = document.getElementById('chart-field-list');
 
-  // 拉候选字段：从提交数据接口的 columns 里取 key
+  // ====== 字段候选（含 key 与中文标题）======
+  let CANDS = []; // [{key, label}]
+
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
   async function loadCandidateFields(){
+    CANDS = [];
+    // 1) 优先 /admin/api/submissions
     try{
       const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/submissions`, {credentials:'same-origin'});
       const j = await r.json();
-      const fields = Array.isArray(j.columns) ? j.columns.map(c=>c.key||c.name||c.id).filter(Boolean) : [];
-      dl.innerHTML = fields.map(k=>`<option value="${k}"></option>`).join('');
+      const cols = Array.isArray(j.columns) ? j.columns : [];
+      CANDS = cols.map(c => ({
+        key:   c.key   || c.name || c.id || '',
+        label: c.title || c.label|| c.text|| (c.key||'')
+      })).filter(x => x.key);
     }catch(_){}
+
+    // 2) 兜底 /admin/api/responses（取 columns 或 titleMap）
+    if (!CANDS.length) {
+      try{
+        const r = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/responses?q=`, {credentials:'same-origin'});
+        const j = await r.json();
+        if (Array.isArray(j.columns) && j.columns.length) {
+          CANDS = j.columns.map(c => ({
+            key: c.key||c.name||c.id||'',
+            label: c.title||c.label||c.text||c.key||''
+          })).filter(x=>x.key);
+        } else if (j.titleMap && typeof j.titleMap === 'object') {
+          CANDS = Object.keys(j.titleMap).map(k => ({key:k, label:String(j.titleMap[k]||k)}));
+        }
+      }catch(_){}
+    }
+
+    // 写入 datalist（放标题和 key 两种值）
+    const opts = [];
+    CANDS.forEach(c=>{
+      if (c.label && c.label !== c.key) opts.push(`<option value="${esc(c.label)}"></option>`);
+      opts.push(`<option value="${esc(c.key)}"></option>`);
+    });
+    dl.innerHTML = opts.join('');
   }
 
-  // UI：一行配置
+  // 把用户输入匹配成真实 key（允许填中文标题）
+  function matchField(input){
+    const txt = String(input||'').trim();
+    if (!txt) return {key:'', label:''};
+
+    // 先精确 key
+    let hit = CANDS.find(c => c.key === txt);
+    if (hit) return {key: hit.key, label: hit.label};
+
+    // 再精确 label
+    hit = CANDS.find(c => (c.label||'').trim() === txt);
+    if (hit) return {key: hit.key, label: hit.label};
+
+    // 最后模糊比对（去空格、小写）
+    const norm = s => String(s||'').replace(/\s/g,'').toLowerCase();
+    const n = norm(txt);
+    hit = CANDS.find(c => norm(c.label) === n || norm(c.key) === n);
+    if (hit) return {key: hit.key, label: hit.label};
+
+    // 找不到就原样返回（后端可能也能识别）
+    return {key: txt, label: txt};
+  }
+
+  // ====== UI：一行配置 ======
   function row(field='', type='pie', label=''){
     const wrap = document.createElement('div');
     wrap.style.cssText = 'display:flex;gap:8px;align-items:center;margin:6px 0';
     wrap.innerHTML = `
-      <input class="chart-label tiny" placeholder="显示名(可空)" value="${label||''}" style="max-width:160px">
-      <input class="chart-field tiny" placeholder="字段key(必填)" value="${field||''}" list="chart-field-list" style="max-width:240px">
+      <input class="chart-label tiny" placeholder="显示名(可空)" value="${esc(label||'')}" style="max-width:160px">
+      <input class="chart-field tiny" placeholder="字段/标题(可填中文题目)" value="${esc(field||'')}" list="chart-field-list" style="max-width:240px">
       <select class="chart-type tiny" style="max-width:140px">
         <option value="pie"  ${type==='pie'?'selected':''}>圆形表</option>
         <option value="line" ${type==='line'?'selected':''}>线表</option>
@@ -2777,17 +2833,20 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // 事件
   btnAdd && (btnAdd.onclick = ()=> list.appendChild(row()));
 
   btnSave && (btnSave.onclick = async ()=>{
     const payload = [];
     list.querySelectorAll(':scope > div').forEach(w=>{
-      const field = w.querySelector('.chart-field')?.value.trim();
-      if (!field) return;
+      const raw = (w.querySelector('.chart-field')||{}).value || '';
+      const resolved = matchField(raw);      // ← 关键：把中文标题匹配成 key
+      if (!resolved.key) return;
+      const show = (w.querySelector('.chart-label')||{}).value || '';
       payload.push({
-        field,
-        type:  w.querySelector('.chart-type')?.value || 'pie',
-        label: w.querySelector('.chart-label')?.value.trim() || ''
+        field: resolved.key,
+        type:  (w.querySelector('.chart-type')||{}).value || 'pie',
+        label: show.trim() || resolved.label   // 没填显示名就用题目中文
       });
     });
     try{
