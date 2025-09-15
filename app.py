@@ -1127,8 +1127,8 @@ def _extract_columns_from_schema(schema: dict):
             (f.get("ui") or {}).get("label"), (f.get("ui") or {}).get("title"),
             (f.get("props") or {}).get("label"), (f.get("props") or {}).get("title"),
             (f.get("meta") or {}).get("label"), (f.get("meta") or {}).get("title"),
-        ) as cnd:
-            t = _to_text(cnd) if cnd else ""
+        ) :
+            t = _to_text(cand) if cand else ""
             if t:
                 return t
         # i18n / 富文本兜底
@@ -1762,7 +1762,7 @@ def preview_form(site_name):
     else:
         # 和 /f/<site_name> 一致：从数据库读
         conn = get_conn(); c = conn.cursor()
-        c.execute("SELECT name, schema_json, COALESCE(description,'') FROM form_defs WHERE site_name=%s", (site_name,)))
+        c.execute("SELECT name, schema_json, COALESCE(description,'') FROM form_defs WHERE site_name=%s", (site_name,))
         row = c.fetchone(); conn.close()
         if not row:
             abort(404)
