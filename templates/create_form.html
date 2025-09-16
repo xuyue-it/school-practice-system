@@ -767,6 +767,31 @@
         }
     </style>
 
+    <style id="basic-card-glass">
+        /* 创建页：让“表单基本信息”卡片有半透明玻璃感 */
+        .form-basic {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .form-basic.has-cover::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255, 255, 255, .68), rgba(255, 255, 255, .72));
+            pointer-events: none;
+        }
+
+        body[data-appearance="dark"] .form-basic.has-cover::after {
+            background: linear-gradient(180deg, rgba(17, 24, 39, .42), rgba(17, 24, 39, .56));
+        }
+
+        .form-basic > * {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+
     <!-- 只覆盖“问题”页为单列通栏的最小改动 -->
     <style id="layout-override">
         #tab-questions .dash-grid {
@@ -1200,18 +1225,18 @@
             <!-- Tab 1：问题 -->
             <div class="tab active" id="tab-questions">
                 <div class="dash-grid">
-                        <div class="card form-basic" style="background-size:cover;background-position:center;">
-                            <div class="hd"><h2>表单基本信息</h2></div>
-                            <!-- 标题封面图（可选） -->
-                            <div class="row" style="align-items:flex-start; gap:10px; margin-top:10px">
-                                <div style="flex:1; min-width:280px">
-                                    <input id="headerImageUrl" class="tiny"
-                                           placeholder="表单基本信息的背景图 URL（或用右侧上传）">
-                                </div>
-                                <label class="btn icon" style="height:42px">📷
-                                    <input id="headerImagePicker" type="file" accept="image/*">
-                                </label>
+                    <div class="card form-basic"
+                         style="background-size:cover;background-position:center;background-repeat:no-repeat; position:relative; overflow:hidden;">
+                        <div class="hd"><h2>表单基本信息</h2></div>
+                        <!-- 标题封面图（可选） -->
+                        <div class="row" style="align-items:flex-start; gap:10px; margin-top:10px">
+                            <div style="flex:1; min-width:280px">
+                                <input id="headerImageUrl" class="tiny"
+                                       placeholder="表单基本信息的背景图 URL（或用右侧上传）">
                             </div>
+                            <label class="btn icon" style="height:42px">📷
+                                <input id="headerImagePicker" type="file" accept="image/*">
+                            </label>
                         </div>
                         <!-- 预览（显示在问候卡标题下方） -->
                         <img id="greetCover" alt=""
@@ -1227,6 +1252,7 @@
                             <textarea name="form_desc" rows="3" placeholder="表单描述（可选）" class="tiny"
                                       style="margin-top:10px;">{{ form_desc or '' }}</textarea>
                         </div>
+                    </div>
 
                     <!-- 分隔 -->
                     <div style="height:20px;"></div>
@@ -1489,6 +1515,20 @@
 <!-- 你的逻辑脚本（不变） -->
 <script src="{{ asset('builder.js') }}" defer></script>
 
+<style>
+/* 让背景图有柔和的玻璃质感遮罩，并保证内容可读 */
+.form-basic::after{
+  content:"";
+  position:absolute; inset:0;
+  /* 你可以改这条渐变提高/降低透明度 */
+  background:linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,255,255,.72));
+  pointer-events:none;
+}
+body[data-appearance="dark"] .form-basic::after{
+  background:linear-gradient(180deg, rgba(17,24,39,.42), rgba(17,24,39,.56));
+}
+.form-basic > *{ position:relative; z-index:1; } /* 内容在遮罩之上 */
+</style>
 
 <style>
     .modal {
@@ -1520,101 +1560,53 @@
 
 <script>
 (function(){
-  const urlInp = document.getElementById('headerImageUrl');
-  const fileInp = document.getElementById('headerImagePicker');
+  const urlInp   = document.getElementById('headerImageUrl');
+  const picker   = document.getElementById('headerImagePicker');
+  const basicCard= document.querySelector('.form-basic');
+  const schemaInput = document.getElementById('schema_json');
+  const form = document.getElementById('builder');
 
-  async function compressDataURL(src, {maxW=1400, quality=0.7} = {}) {
-    const img = new Image();
-    img.decoding = 'async';
-    img.src = src;
-    await img.decode().catch(()=>{});
-    const scale = Math.min(1, maxW / (img.naturalWidth || img.width || maxW));
-    const w = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
-    const h = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
-    const c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    const ctx = c.getContext('2d');
-    ctx.drawImage(img, 0, 0, w, h);
-    // 尝试保持原类型，默认转 jpeg
-    const mime = /^data:(image\/[a-z0-9+.-]+);/i.test(src) ? RegExp.$1 : 'image/jpeg';
-    return c.toDataURL(mime, quality);
-  }
-
-  function writeSchema(mut){
-    const inp = document.getElementById('schema_json');
-    let j = {};
-    try{ j = JSON.parse(inp.value || '{}') || {}; }catch(_){}
-    mut(j);
-    inp.value = JSON.stringify(j);
-    // 触发草稿自动保存
-    inp.dispatchEvent(new Event('input',  {bubbles:true}));
-    inp.dispatchEvent(new Event('change', {bubbles:true}));
-  }
-
-  function applyBgToGreet(src){
-    const greet = document.querySelector('.greet-card');
-    if (!greet) return;
-    if (src){
-      greet.classList.add('has-cover');
-      greet.style.setProperty('--greet-cover-image', `url("${String(src).replace(/"/g,'\\"')}")`);
+  function applyBg(url){
+    if (!basicCard) return;
+    if (url) {
+      basicCard.style.backgroundImage = `url("${url.replace(/"/g,'\\"')}")`;
+      basicCard.classList.add('has-cover');
     }else{
-      greet.classList.remove('has-cover');
-      greet.style.removeProperty('--greet-cover-image');
+      basicCard.style.removeProperty('background-image');
+      basicCard.classList.remove('has-cover');
     }
   }
 
-    async function handleFile(f) {
-        if (!f) return;
-        const r = new FileReader();
-        r.onload = async () => {
-            try {
-                let small = await compressDataURL(String(r.result || ''), {maxW: 1400, quality: 0.72});
+  // 初始化：从 schema_json 恢复
+  try{
+    const j = JSON.parse(schemaInput.value || '{}') || {};
+    applyBg(j?.header?.title_image || '');
+    if (urlInp) urlInp.value = j?.header?.title_image || '';
+  }catch(_){}
 
-                // （可选）超大时再压一遍，进一步防 413
-                if (small.length > 1_500_000) {
-                    small = await compressDataURL(small, {maxW: 1200, quality: 0.62});
-                }
-
-                applyBgToGreet(small);
-                writeSchema(j => {
-                    j.header = j.header || {};
-                    j.header.title_image = small;
-                });
-
-                // ✅ 让预览读取到
-                const imgEl = document.getElementById('greetCover');
-                if (imgEl) imgEl.dataset.url = small;
-
-                if (urlInp) {
-                    urlInp.value = small;
-                    urlInp.dispatchEvent(new Event('input', {bubbles: true}));
-                    urlInp.dispatchEvent(new Event('change', {bubbles: true}));
-                }
-            } catch (e) {
-                alert('图片处理失败：' + e.message);
-            }
-        };
-        r.readAsDataURL(f);
-    }
-
-
-  fileInp?.addEventListener('change', e=>{
-    const f = e.target.files?.[0];
-    handleFile(f);
+  urlInp?.addEventListener('input', ()=>{
+    const v = urlInp.value.trim();
+    applyBg(v);
+    // 写回 schema（下面第②条会把它自动保存到后端）
+    try{
+      const j = JSON.parse(schemaInput.value||'{}')||{};
+      (j.header ||= {}).title_image = v;
+      schemaInput.value = JSON.stringify(j);
+      schemaInput.dispatchEvent(new Event('input',{bubbles:true}));
+      schemaInput.dispatchEvent(new Event('change',{bubbles:true}));
+    }catch(_){}
   });
 
-  // 粘贴/手输 URL 也立即作为背景并写入 schema
-  urlInp?.addEventListener('input', e=>{
-    const val = (e.target.value || '').trim();
-    applyBgToGreet(val);
-    writeSchema(j=>{
-      j.header = j.header || {};
-      if (val) j.header.title_image = val;
-      else if (j.header && 'title_image' in j.header) delete j.header.title_image;
-    });
+  // 选择文件时先用 blobURL 预览（真正 URL 由你已有的上传逻辑产生）
+  picker?.addEventListener('change', e=>{
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const blobURL = URL.createObjectURL(f);
+    applyBg(blobURL);
   });
 })();
 </script>
+
 
 
 
@@ -3316,6 +3308,109 @@ document.addEventListener('DOMContentLoaded', function () {
     j.header = j.header || {};
     j.header.title_image = (urlInp?.value || '').trim();
     schemaInput.value = JSON.stringify(j);
+  });
+})();
+</script>
+
+<script>
+(function(){
+  const form = document.getElementById('builder');
+  const schemaInput = document.getElementById('schema_json');
+  let timer = null;
+
+  async function doSave(){
+    if (!form) return;
+    const fd = new FormData(form);
+
+    // 注入：标题图片 + 题目颜色 + 审核开关（与你提交按钮的组装保持一致）
+    try{
+      const raw = fd.get('schema_json') || '{}';
+      const schema = JSON.parse(raw || '{}') || {};
+
+      const cover = document.getElementById('greetCover')?.dataset?.url
+                 || document.getElementById('headerImageUrl')?.value?.trim();
+      if (cover) (schema.header ||= {}).title_image = cover;
+      // 题目颜色
+      const colorMap = {};
+      document.querySelectorAll('#list .qcard').forEach(c=>{
+        const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+        const col = c.dataset.qColor;
+        if (key && col) colorMap[key]=col;
+      });
+      if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
+      else if (schema.display && schema.display.question_colors) delete schema.display.question_colors;
+
+      // 审核开关
+      const sw = document.querySelector('[data-skey="submission.require_review"]');
+      (schema.submission ||= {}).require_review = !!sw?.checked;
+
+      fd.set('schema_json', JSON.stringify(schema));
+    }catch(_){}
+
+    // 走 ajax 保存（与你“保存表单”按钮相同的接口）
+    const u = new URL(form.action, location.origin);
+    u.searchParams.set('ajax','1');
+    try{
+      const res = await fetch(u, { method:'POST', body: fd, headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} });
+      // 不弹窗、不跳成功页；只要成功即可
+      if (!res.ok) console.warn('autosave http', res.status);
+    }catch(e){
+      console.warn('autosave failed', e);
+    }
+  }
+
+  function schedule(){
+    clearTimeout(timer);
+    timer = setTimeout(doSave, 800); // 800ms 防抖
+  }
+
+  // 触发自动保存的时机：题目颜色变动 + 标题图地址变动
+  document.addEventListener('input', (e)=>{
+    if (e.target?.classList?.contains('q-color')) schedule();
+    if (e.target?.id === 'headerImageUrl')        schedule();
+  });
+})();
+</script>
+
+<script id="autosave">
+(function(){
+  const form = document.getElementById('builder');
+  const schemaInput = document.getElementById('schema_json');
+  let timer=null;
+
+  async function doSave(){
+    if(!form) return;
+    const fd = new FormData(form);
+
+    // 合并最新封面与题目颜色
+    try{
+      const raw = fd.get('schema_json')||'{}';
+      const schema = JSON.parse(raw||'{}')||{};
+      const cover = document.getElementById('headerImageUrl')?.value?.trim();
+      if (cover) (schema.header ||= {}).title_image = cover;
+
+      // 采集题目颜色（与你现有结构保持一致）
+      const colorMap = {};
+      document.querySelectorAll('#list .qcard').forEach(c=>{
+        const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+        const col = c.dataset.qColor;
+        if (key && col) colorMap[key]=col;
+      });
+      if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
+
+      fd.set('schema_json', JSON.stringify(schema));
+    }catch(_){}
+
+    const u = new URL(form.action, location.origin);
+    u.searchParams.set('ajax','1');
+    try{ await fetch(u, {method:'POST', body:fd, headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}}); }catch(_){}
+  }
+
+  function schedule(){ clearTimeout(timer); timer=setTimeout(doSave,800); }
+
+  document.addEventListener('input', e=>{
+    if (e.target?.classList?.contains('q-color')) schedule();
+    if (e.target?.id === 'headerImageUrl')        schedule();
   });
 })();
 </script>

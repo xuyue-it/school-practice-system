@@ -278,6 +278,31 @@
   </style>
 </head>
 
+<style>
+.form-intro{
+  position:relative; overflow:hidden;
+  border-radius:20px; padding:24px 24px 10px;
+  box-shadow: 0 10px 30px rgba(17,24,39,.08), 0 4px 14px rgba(17,24,39,.06);
+  background:#fff; /* 无封面时 */
+}
+.form-intro.has-cover::after{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(255,255,255,.74), rgba(255,255,255,.80));
+  pointer-events:none;
+}
+body[data-appearance="dark"] .form-intro{ background:rgba(17,24,39,.6); }
+body[data-appearance="dark"] .form-intro.has-cover::after{
+  background:linear-gradient(180deg, rgba(17,24,39,.42), rgba(17,24,39,.58));
+}
+.form-intro > *{ position:relative; z-index:1; }
+
+/* 标题/描述和第一个题目之间的细分割线 */
+.form-sep{ height:1px; background:rgba(0,0,0,.06); border-radius:999px; margin:16px 0; }
+body[data-appearance="dark"] .form-sep{ background:rgba(255,255,255,.08); }
+</style>
+
+</head>
+
 <body>
   <div class="shell">
     <header>
@@ -302,9 +327,7 @@
         {% if form_desc %}<p class="desc">{{ form_desc|safe }}</p>{% endif %}
       </section>
       <!-- 细分割线：仅做视觉分隔，不改变任何逻辑 -->
-        <div style="height:1px;background:linear-gradient(90deg,rgba(0,0,0,.06),rgba(0,0,0,.06));
-            border-radius:999px;margin:16px 0;"></div>
-
+        <div class="form-sep"></div>
         <!-- 仅保留“表单卡片”（③ 已删除原“第一张卡片：标题+描述”） -->
       <div class="card">
         <div class="hero">
@@ -906,6 +929,30 @@
       scroll-behavior: auto !important;
     }
   </style>
+
+<script>
+(function(){
+  // schema 优先从 window.__SCHEMA__ 或 #schemaJSON 取
+  let j = null;
+  try{
+    j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent||'null');
+  }catch(_){}
+  const cover = j?.header?.title_image || '';
+  const intro = document.querySelector('.form-intro');
+  if (intro){
+    if (cover){
+      intro.style.backgroundImage = `url("${cover.replace(/"/g,'\\"')}")`;
+      intro.style.backgroundSize = 'cover';
+      intro.style.backgroundPosition = 'center';
+      intro.style.backgroundRepeat = 'no-repeat';
+      intro.classList.add('has-cover');
+    }else{
+      intro.style.removeProperty('background-image');
+      intro.classList.remove('has-cover');
+    }
+  }
+})();
+</script>
 
 </body>
 </html>
