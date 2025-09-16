@@ -1200,15 +1200,13 @@
             <!-- Tab 1：问题 -->
             <div class="tab active" id="tab-questions">
                 <div class="dash-grid">
-                    <div class="card">
                         <div class="card form-basic" style="background-size:cover;background-position:center;">
                             <div class="hd"><h2>表单基本信息</h2></div>
                             <!-- 标题封面图（可选） -->
                             <div class="row" style="align-items:flex-start; gap:10px; margin-top:10px">
                                 <div style="flex:1; min-width:280px">
                                     <input id="headerImageUrl" class="tiny"
-                                           placeholder="表单标题后面的图片 URL（或用右侧上传）">
-                                    <div class="hint">可贴外链或上传；保存后会写入 schema.header.title_image</div>
+                                           placeholder="表单基本信息的背景图 URL（或用右侧上传）">
                                 </div>
                                 <label class="btn icon" style="height:42px">📷
                                     <input id="headerImagePicker" type="file" accept="image/*">
@@ -1229,7 +1227,6 @@
                             <textarea name="form_desc" rows="3" placeholder="表单描述（可选）" class="tiny"
                                       style="margin-top:10px;">{{ form_desc or '' }}</textarea>
                         </div>
-                    </div>
 
                     <!-- 分隔 -->
                     <div style="height:20px;"></div>
@@ -3275,5 +3272,53 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   #basicCard .bd{ position: relative; } /* 让内容在背景之上 */
 </style>
+
+<script>
+(function(){
+  // 1) 输入框/上传控件联动预览
+  const urlInp = document.getElementById('headerImageUrl');
+  const picker = document.getElementById('headerImagePicker');
+  const basicCard = document.querySelector('.form-basic');
+  const schemaInput = document.getElementById('schema_json');
+  const form = document.getElementById('builder');
+
+  function applyBg(url){
+    if (!basicCard) return;
+    if (url) basicCard.style.backgroundImage = `url("${url.replace(/"/g,'\\"')}")`;
+    else basicCard.style.removeProperty('background-image');
+  }
+
+  // 初始化：从 schema_json 还原 header.title_image
+  try{
+    const j = JSON.parse(schemaInput.value || '{}') || {};
+    const init = j?.header?.title_image || '';
+    if (init){
+      if (urlInp) urlInp.value = init;
+      applyBg(init);
+    }
+  }catch(_){}
+
+  // 输入框变化 → 立即预览（位置在“表单基本信息”卡片后面）
+  urlInp?.addEventListener('input', ()=> applyBg(urlInp.value.trim()));
+
+  // 选择文件（如果你已有后端直传，这里只负责把 blobURL 预览；真正的 URL 仍以你现有上传逻辑为准）
+  picker?.addEventListener('change', e=>{
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const blobURL = URL.createObjectURL(f);
+    applyBg(blobURL);
+  });
+
+  // 2) 提交前把值写入 schema.header.title_image（保证公共页/预览能同步）
+  form?.addEventListener('submit', ()=>{
+    let j={};
+    try{ j = JSON.parse(schemaInput.value || '{}') || {}; }catch(_){}
+    j.header = j.header || {};
+    j.header.title_image = (urlInp?.value || '').trim();
+    schemaInput.value = JSON.stringify(j);
+  });
+})();
+</script>
+
 </body>
 </html>

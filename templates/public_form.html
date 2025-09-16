@@ -301,8 +301,11 @@
         <h1>{{ form_title or site_name }}</h1>
         {% if form_desc %}<p class="desc">{{ form_desc|safe }}</p>{% endif %}
       </section>
+      <!-- 细分割线：仅做视觉分隔，不改变任何逻辑 -->
+        <div style="height:1px;background:linear-gradient(90deg,rgba(0,0,0,.06),rgba(0,0,0,.06));
+            border-radius:999px;margin:16px 0;"></div>
 
-      <!-- 仅保留“表单卡片”（③ 已删除原“第一张卡片：标题+描述”） -->
+        <!-- 仅保留“表单卡片”（③ 已删除原“第一张卡片：标题+描述”） -->
       <div class="card">
         <div class="hero">
           <div style="color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:10px;padding:10px 12px;margin:10px 2px 6px;font-size:13px">

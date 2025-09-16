@@ -281,6 +281,9 @@
         if(!j.ok) return alert(j.error || '上传失败');
         schema.bg = j.url;
         bgImg.src = j.url; bgImg.style.display='block';
+          schema.header = schema.header || {};
+          schema.header.title_image = j.url;              // 同步到 header.title_image（公共页/预览会用）
+          document.getElementById('saveTheme')?.click();  // 触发一次“保存外观”，实现自动保存
       }catch(err){ alert('上传失败'); console.error(err); }
     });
 
