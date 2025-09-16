@@ -3295,47 +3295,43 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script>
 (function(){
-  // 1) 输入框/上传控件联动预览
-  const urlInp = document.getElementById('headerImageUrl');
   const picker = document.getElementById('headerImagePicker');
-  const basicCard = document.querySelector('.form-basic');
-  const schemaInput = document.getElementById('schema_json');
-  const form = document.getElementById('builder');
+  const urlInp = document.getElementById('headerImageUrl');
 
-  function applyBg(url){
-    if (!basicCard) return;
-    if (url) basicCard.style.backgroundImage = `url("${url.replace(/"/g,'\\"')}")`;
-    else basicCard.style.removeProperty('background-image');
+  async function uploadAsset(file){
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch(location.pathname.replace(/\/create_form.*/,'') + '/admin/api/upload_asset', {
+      method:'POST', body: fd
+    });
+    const j = await res.json();
+    if(!j.ok) throw new Error(j.error||'上传失败');
+    return j.url; // <- 服务端返回的静态URL
   }
 
-  // 初始化：从 schema_json 还原 header.title_image
-  try{
-    const j = JSON.parse(schemaInput.value || '{}') || {};
-    const init = j?.header?.title_image || '';
-    if (init){
-      if (urlInp) urlInp.value = init;
-      applyBg(init);
-    }
-  }catch(_){}
-
-  // 输入框变化 → 立即预览（位置在“表单基本信息”卡片后面）
-  urlInp?.addEventListener('input', ()=> applyBg(urlInp.value.trim()));
-
-  // 选择文件（如果你已有后端直传，这里只负责把 blobURL 预览；真正的 URL 仍以你现有上传逻辑为准）
-  picker?.addEventListener('change', e=>{
+  picker?.addEventListener('change', async (e)=>{
     const f = e.target.files && e.target.files[0];
-    if (!f) return;
-    const blobURL = URL.createObjectURL(f);
-    applyBg(blobURL);
-  });
+    if(!f) return;
+    try{
+      // 1) 上传到服务器
+      const url = await uploadAsset(f);
 
-  // 2) 提交前把值写入 schema.header.title_image（保证公共页/预览能同步）
-  form?.addEventListener('submit', ()=>{
-    let j={};
-    try{ j = JSON.parse(schemaInput.value || '{}') || {}; }catch(_){}
-    j.header = j.header || {};
-    j.header.title_image = (urlInp?.value || '').trim();
-    schemaInput.value = JSON.stringify(j);
+      // 2) 把返回的 URL 写回输入框（而不是 data: 或 blob:）
+      urlInp.value = url;
+      urlInp.dispatchEvent(new Event('input', {bubbles:true}));
+
+      // 3) 立即预览（使用 URL）
+      const basicCard = document.querySelector('.form-basic');
+      if (basicCard){
+        basicCard.style.backgroundImage = `url("${url.replace(/"/g,'\\"')}")`;
+        basicCard.classList.add('has-cover');
+      }
+    }catch(err){
+      alert(err.message||'上传失败');
+      console.error(err);
+    }finally{
+      e.target.value = '';
+    }
   });
 })();
 </script>
@@ -3440,6 +3436,13 @@ document.addEventListener('DOMContentLoaded', function () {
     if (e.target?.classList?.contains('q-color')) schedule();
     if (e.target?.id === 'headerImageUrl')        schedule();
   });
+    const cover = document.getElementById('headerImageUrl')?.value?.trim();
+// 如果还是临时地址，就先别发，避免 413
+    if (cover && (cover.startsWith('data:') || cover.startsWith('blob:'))) {
+        console.warn('skip autosave: avoid posting data/blob URL');
+        return; // 等真正的上传得到 URL 再保存
+    }
+
 })();
 </script>
 

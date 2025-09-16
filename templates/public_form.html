@@ -243,41 +243,46 @@
       background-repeat: no-repeat !important;
     }
   </style>
-  <style id="intro-plain">
-      .form-intro {
-          padding: 16px 0 8px;
-          background: none !important;
-          box-shadow: none !important;
-          border-radius: 0 !important;
-      }
+    <style id="intro-card">
+        .form-intro {
+            position: relative;
+            margin: 0; /* 让它紧贴容器左侧 */
+            padding: 20px 24px 14px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(17, 24, 39, .08), 0 4px 14px rgba(17, 24, 39, .06);
+        }
 
-      .form-intro::before, .form-intro::after {
-          content: none !important;
-      }
+        body[data-appearance="dark"] .form-intro {
+            background: rgba(17, 24, 39, .65);
+        }
 
-      .form-title {
-          margin: 0 0 4px 0;
-          font-size: 28px;
-          line-height: 1.25;
-          font-weight: 800;
-      }
+        .form-title {
+            margin: 0 0 6px 0;
+            font-size: 28px;
+            line-height: 1.25;
+            font-weight: 800;
+            text-align: left;
+        }
 
-      .form-desc {
-          margin: 0;
-          color: #6b7280;
-      }
+        .form-desc {
+            margin: 0;
+            color: #6b7280;
+            text-align: left;
+        }
 
-      .form-sep {
-          height: 1px;
-          background: rgba(0, 0, 0, .06);
-          border-radius: 999px;
-          margin: 14px 0 18px;
-      }
+        .form-sep {
+            height: 1px;
+            background: rgba(0, 0, 0, .06);
+            border-radius: 999px;
+            margin: 14px 0 18px;
+        }
 
-      body[data-appearance="dark"] .form-sep {
-          background: rgba(255, 255, 255, .10);
-      }
-  </style>
+        body[data-appearance="dark"] .form-sep {
+            background: rgba(255, 255, 255, .10);
+        }
+    </style>
+
 </head>
 
 <body>
