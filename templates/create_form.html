@@ -77,6 +77,8 @@
             --radius-xl: 22px;
             --radius-lg: 18px;
             --radius-md: 14px;
+            --greet-cover-image: none;
+            --cover: none;
         }
 
         body[data-appearance="dark"] {
@@ -986,6 +988,7 @@
         }
     </style>
 
+
     <!-- ★★★ 合并后的 responses-guard：仅在“数据”Tab时放行 /admin/api/responses ★★★ -->
     <script id="responses-guard">
     (function () {
@@ -1493,74 +1496,163 @@
   }
 </style>
 
-<script>
+
+<script id="header-cover-bg">
 (function(){
   const urlInp = document.getElementById('headerImageUrl');
   const fileInp = document.getElementById('headerImagePicker');
-  const cover  = document.getElementById('greetCover');
+  const img     = document.getElementById('greetCover');
+  const greet   = document.querySelector('.greet-card');
+
+  // 给现有 img 动态包一层，加右上角 ×
+  (function wrapPreview(){
+    if (!img || document.getElementById('greetCoverWrap')) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'greetCoverWrap';
+    wrap.className = 'q-image-wrap';
+    img.parentNode.insertBefore(wrap, img);
+    wrap.appendChild(img);
+
+    const del = document.createElement('button');
+    del.id = 'greetCoverDel';
+    del.type = 'button';
+    del.className = 'q-image-del';
+    del.textContent = '×';
+    del.addEventListener('click', () => { urlInp && (urlInp.value=''); setCover(''); });
+    wrap.appendChild(del);
+  })();
+
+  function writeSchema(mut){
+    const inp = document.getElementById('schema_json');
+    let j = {};
+    try{ j = JSON.parse(inp.value || '{}') || {}; }catch(_){}
+    mut(j);
+    inp.value = JSON.stringify(j);
+    // 触发草稿自动保存
+    inp.dispatchEvent(new Event('input',  {bubbles:true}));
+    inp.dispatchEvent(new Event('change', {bubbles:true}));
+  }
+
+  function applyBg(src){
+    if (!greet) return;
+    if (src){
+      greet.classList.add('has-cover');
+      greet.style.setProperty('--greet-cover-image', `url("${String(src).replace(/"/g,'\\"')}")`);
+    }else{
+      greet.classList.remove('has-cover');
+      greet.style.removeProperty('--greet-cover-image');
+    }
+  }
+
+  function showPreview(src){
+    const wrap = document.getElementById('greetCoverWrap');
+    if (img){
+      if (src){ img.src = src; img.style.display='block'; img.dataset.url=src; wrap && wrap.classList.add('show'); }
+      else    { img.removeAttribute('src'); img.style.display='none'; delete img.dataset.url; wrap && wrap.classList.remove('show'); }
+    }
+  }
 
   function setCover(src){
-    if (!cover) return;
-    if (src) { cover.src = src; cover.style.display = 'block'; cover.dataset.url = src; }
-    else { cover.removeAttribute('src'); cover.style.display = 'none'; delete cover.dataset.url; }
+    const ok = !!(src && String(src).trim());
+    showPreview(ok ? src : '');
+    applyBg(ok ? src : '');
+    writeSchema(j=>{
+      j.header = j.header || {};
+      if (ok) j.header.title_image = src;
+      else if (j.header && 'title_image' in j.header) delete j.header.title_image;
+    });
   }
 
   urlInp?.addEventListener('input', e => setCover(e.target.value.trim()));
   fileInp?.addEventListener('change', e=>{
     const f = e.target.files?.[0]; if (!f) return;
-    const r = new FileReader();
-    r.onload = () => setCover(String(r.result||''));
-    r.readAsDataURL(f);  // 直接用 dataURL 预览和保存
+    const r = new FileReader(); r.onload = () => setCover(String(r.result||'')); r.readAsDataURL(f);
   });
 
-  // 从 schema_json 恢复（有的话）
+  // 初次从 schema_json 恢复并应用到背景
   try{
     const raw = document.getElementById('schemaJSON')?.textContent || document.getElementById('schema_json')?.value || '';
     const j = JSON.parse(raw || 'null');
-    const img = j?.header?.title_image;
-    if (typeof img === 'string' && img.trim()) {
-      urlInp && (urlInp.value = img);
-      setCover(img);
+    const imgURL = j?.header?.title_image;
+    if (typeof imgURL === 'string' && imgURL.trim()) {
+      urlInp && (urlInp.value = imgURL);
+      setCover(imgURL); // 预览 + 背景 + 立即写回隐藏域，刷新也不丢
     }
   }catch(_){}
 })();
 </script>
 
+<style>
+  .hero.has-cover {
+      position: relative;
+      overflow: hidden;
+      border-radius: 20px;
+  }
+
+  .hero.has-cover::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 20px;
+      background-image: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .86)),
+      var(--cover, none); /* ✅ fallback：没有 cover 时用 none */
+      background-size: cover, cover; /* ✅ 两层都 cover，避免层数不匹配告警 */
+      background-position: center, center;
+      z-index: 0;
+      pointer-events: none; /* 建议：不挡交互 */
+  }
+
+  body[data-appearance="dark"] .hero.has-cover::before {
+      background-image: linear-gradient(180deg, rgba(11, 18, 32, .64), rgba(11, 18, 32, .64)),
+      var(--cover, none); /* ✅ 同样加 fallback */
+  }
+
+</style>
 
 <script>
-    window.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.modal').forEach(m => {
-            if (!m.classList.contains('show')) m.style.display = 'none';
-        });
-
-        const btns = document.querySelectorAll('.tabs button');
-        const tabs = document.querySelectorAll('.tab');
-
-        function show(tabKey) {
-            tabs.forEach(t => t.classList.remove('active'));
-            document.getElementById('tab-' + tabKey)?.classList.add('active');
-            btns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabKey));
-
-            if (tabKey === 'responses') {
-                try {
-                    if (typeof rebuildRespHeader === 'function') rebuildRespHeader();
-                    if (typeof loadResponses === 'function') loadResponses();
-                } catch (e) {
-                }
-            }
-
-            if (tabKey === 'charts') {
-                if (typeof window.refreshCharts === 'function') window.refreshCharts();
-            }
-        }
-
-
-        btns.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
-        show(document.querySelector('.tabs button.active')?.dataset.tab || 'questions');
-
-        const $ = s => document.querySelector(s);
-    });
+(function(){
+  try{
+    var raw = document.getElementById('schemaJSON')?.textContent
+           || document.getElementById('schema_json')?.value || '';
+    var j = JSON.parse(raw||'null');
+    var url = j?.header?.title_image;
+    var hero = document.querySelector('.hero') || document.querySelector('.greet-card');
+    if (url && hero){
+      hero.classList.add('has-cover');
+      hero.style.setProperty('--cover','url("'+String(url).replace(/"/g,'\\"')+'")');
+    }
+  }catch(_){}
+})();
 </script>
+
+<style id="greet-cover-style">
+  /* 问候卡背景图 */
+  .greet-card.has-cover{ position:relative; overflow:hidden; }
+  .greet-card.has-cover::before{
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius-xl);
+      background-image: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .86)),
+      var(--greet-cover-image, none); /* ✅ fallback */
+      background-size: cover, cover;
+      background-position: center, center; /* ✅ 两层都居中，消除“数量不匹配”告警 */
+      z-index: 0;
+      pointer-events: none;
+  }
+
+  body[data-appearance="dark"] .greet-card.has-cover::before {
+      background-image: linear-gradient(180deg, rgba(11, 18, 32, .64), rgba(11, 18, 32, .64)),
+      var(--greet-cover-image, none); /* ✅ fallback */
+  }
+  .greet-card.has-cover > * { position:relative; z-index:1; }
+
+  /* 预览区包装（只为放右上角 ×） */
+  #greetCoverWrap{ position:relative; display:none; margin:8px 0 0 0 }
+  #greetCoverWrap.show{ display:inline-block; }
+  #greetCoverWrap .q-image{ max-width:180px; border-radius:12px; display:block }
+</style>
+
 
 <style>
     .nav-rail::before {
@@ -1889,7 +1981,9 @@
                 if (url && (fileLike.test(type) || /\.(png|jpe?g|gif|webp|pdf|docx?|xlsx?|mp4|webm|ogg|bmp|svg)$/i.test(url))) {
                     return fileCell(url, name || url);
                 }
-                return Object.entries(v).map(([k, val]) => `<div><span class="muted">${k}：</span>${renderValueByType(val, type)}</div>`).join("");
+                return Object.entries(v).map(([k, val]) =>
+                    `<div><span class="muted">${escHtml(k)}：</span>${renderValueByType(val, type)}</div>`
+                ).join("");
             }
             const s = String(v);
             if (fileLike.test(type) || /\.(png|jpe?g|gif|webp|pdf|docx?|xlsx?|mp4|webm|ogg|bmp|svg)$/i.test(s)) return fileCell(s);
@@ -1912,8 +2006,8 @@
         <td><span class="pill ${pillCls(status)}">${status}</span></td>
         <td><input class="cmt" placeholder="审核说明" value="${cmt}" /></td>
         <td>
-          <a class="btn mini" href="/site/${encodeURIComponent(SITE)}/admin/export_word/${it.id}" target="_blank">Word</a>
-          <a class="btn mini" href="/site/${encodeURIComponent(SITE)}/admin/export_excel/${it.id}" target="_blank">Excel</a>
+          <a class="btn mini" href="/site/${encodeURIComponent(SITE)}/admin/export_word/${it.id}" target="_blank" rel="noopener">Word</a>
+          <a class="btn mini" href="/site/${encodeURIComponent(SITE)}/admin/export_excel/${it.id}" target="_blank" rel="noopener">Excel</a>
         </td>
         <td>
           <button class="btn mini good" data-approve>通过</button>
@@ -2163,13 +2257,16 @@ document.addEventListener('DOMContentLoaded', function () {
         // 解析 data: 的 MIME（用于允许 img/video/audio，拒绝 iframe）
         const isData = /^data:/i.test(safe);
         const dataMime = isData ? ((safe.match(/^data:([^;,]+)/i) || [,''])[1] || '').toLowerCase() : '';
-
+        const isSVGData = isData && dataMime === 'image/svg+xml';
         const ext = (safe.split('?')[0].split('#')[0].match(/\.([a-z0-9]+)$/i) || [])[1]?.toLowerCase() || '';
 
         body.innerHTML = '';
 
-        // 允许：图片
-        if ((['png','jpg','jpeg','gif','webp','bmp','svg'].includes(ext)) || (isData && dataMime.startsWith('image/'))) {
+        // 禁止：data:image/svg+xml（更安全）
+        if (isSVGData) {
+            body.innerHTML = `<div style="padding:12px;color:#6b7f99">不支持预览此类型的 data: 链接</div>`;
+        }
+        else if ((['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext)) || (isData && dataMime.startsWith('image/'))) {
             body.innerHTML = `<img src="${safe}" style="max-width:100%;height:auto;border-radius:12px">`;
         }
         // 允许：视频
@@ -3089,6 +3186,39 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
+<script id="qtitle-color-autosave">
+(function(){
+  function writeSchema(mut){
+    const inp = document.getElementById('schema_json');
+    let j = {};
+    try{ j = JSON.parse(inp.value || '{}') || {}; }catch(_){}
+    mut(j);
+    inp.value = JSON.stringify(j);
+    inp.dispatchEvent(new Event('input',  {bubbles:true}));
+    inp.dispatchEvent(new Event('change', {bubbles:true}));
+  }
+  function collectColors(){
+    const map = {};
+    document.querySelectorAll('#list .qcard').forEach(c=>{
+      const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+      const col = c.dataset.qColor;
+      if (key && col) map[key] = col;
+    });
+    return map;
+  }
+  // 监听颜色选择器变化，实时写入 schema_json
+  document.addEventListener('input', e=>{
+    if (!(e.target instanceof HTMLInputElement)) return;
+    if (!e.target.classList?.contains('q-color')) return;
+    const map = collectColors();
+    writeSchema(j=>{
+      j.display = j.display || {};
+      if (Object.keys(map).length) j.display.question_colors = map;
+      else if (j.display && j.display.question_colors) delete j.display.question_colors;
+    });
+  });
+})();
+</script>
 
 <script id="review-toggle">
 (function(){
@@ -3118,6 +3248,18 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
+<script id="charts-tab-hook">
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.tabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (b.dataset.tab === 'charts') {
+        window.initChartsUI && window.initChartsUI();
+        window.refreshCharts && window.refreshCharts(true);
+      }
+    });
+  });
+});
+</script>
 
 </body>
 </html>
