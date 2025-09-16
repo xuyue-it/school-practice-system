@@ -243,64 +243,41 @@
       background-repeat: no-repeat !important;
     }
   </style>
+  <style id="intro-plain">
+      .form-intro {
+          padding: 16px 0 8px;
+          background: none !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+      }
 
-  <!-- ① 新增：intro-cover-style -->
-  <style id="intro-cover-style">
-    .form-intro.has-cover{ position:relative; overflow:hidden; border-radius:20px; padding:20px; }
-    .form-intro.has-cover::before{
-      content:""; position:absolute; inset:0; z-index:0; border-radius:20px;
-      background-image:
-        linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86)),
-        var(--intro-cover-image, none);
-      background-size: cover, cover;
-      background-position: center, center;
-      pointer-events:none;
-    }
-    body[data-appearance="dark"] .form-intro.has-cover::before{
-      background-image:
-        linear-gradient(180deg, rgba(11,18,32,.64), rgba(11,18,32,.64)),
-        var(--intro-cover-image, none);
-    }
+      .form-intro::before, .form-intro::after {
+          content: none !important;
+      }
 
-    .form-intro.has-cover > * {
-        position: relative;
-        z-index: 1;
-    }
+      .form-title {
+          margin: 0 0 4px 0;
+          font-size: 28px;
+          line-height: 1.25;
+          font-weight: 800;
+      }
 
-    .form-intro {
-        background: #fff;
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
-    }
+      .form-desc {
+          margin: 0;
+          color: #6b7280;
+      }
 
+      .form-sep {
+          height: 1px;
+          background: rgba(0, 0, 0, .06);
+          border-radius: 999px;
+          margin: 14px 0 18px;
+      }
+
+      body[data-appearance="dark"] .form-sep {
+          background: rgba(255, 255, 255, .10);
+      }
   </style>
-</head>
-
-<style>
-.form-intro{
-  position:relative; overflow:hidden;
-  border-radius:20px; padding:24px 24px 10px;
-  box-shadow: 0 10px 30px rgba(17,24,39,.08), 0 4px 14px rgba(17,24,39,.06);
-  background:#fff; /* 无封面时 */
-}
-.form-intro.has-cover::after{
-  content:""; position:absolute; inset:0;
-  background:linear-gradient(180deg, rgba(255,255,255,.74), rgba(255,255,255,.80));
-  pointer-events:none;
-}
-body[data-appearance="dark"] .form-intro{ background:rgba(17,24,39,.6); }
-body[data-appearance="dark"] .form-intro.has-cover::after{
-  background:linear-gradient(180deg, rgba(17,24,39,.42), rgba(17,24,39,.58));
-}
-.form-intro > *{ position:relative; z-index:1; }
-
-/* 标题/描述和第一个题目之间的细分割线 */
-.form-sep{ height:1px; background:rgba(0,0,0,.06); border-radius:999px; margin:16px 0; }
-body[data-appearance="dark"] .form-sep{ background:rgba(255,255,255,.08); }
-</style>
-
 </head>
 
 <body>
@@ -322,10 +299,12 @@ body[data-appearance="dark"] .form-sep{ background:rgba(255,255,255,.08); }
 
     <!-- ② 新增：把 标题+描述 放进 <main>，并把表单卡片也放进来 -->
     <main>
-      <section class="form-intro">
-        <h1>{{ form_title or site_name }}</h1>
-        {% if form_desc %}<p class="desc">{{ form_desc|safe }}</p>{% endif %}
-      </section>
+        <section class="form-intro">
+            <h1 class="form-title">{{ form_title or site_name }}</h1>
+            {% if form_desc %}
+            <p class="form-desc">{{ form_desc|safe }}</p>
+            {% endif %}
+        </section>
       <!-- 细分割线：仅做视觉分隔，不改变任何逻辑 -->
         <div class="form-sep"></div>
         <!-- 仅保留“表单卡片”（③ 已删除原“第一张卡片：标题+描述”） -->
@@ -434,7 +413,6 @@ body[data-appearance="dark"] .form-sep{ background:rgba(255,255,255,.08); }
       <div id="statusResult" style="font-size:14px;color:#111"></div>
     </div>
   </div>
-
   <!-- 逻辑脚本（结构保持，补全花括号/try-catch） -->
   <script>
   // 打开/关闭状态弹窗
@@ -886,28 +864,6 @@ body[data-appearance="dark"] .form-sep{ background:rgba(255,255,255,.08); }
   })();
   </script>
 
-  <!-- ④ 新增：把 header.title_image 应用到 .form-intro 背景 -->
-  <script>
-  (function(){
-    function applyBgToIntro(src){
-      const el = document.querySelector('.form-intro'); if (!el) return;
-      if (src){
-        el.classList.add('has-cover');
-        el.style.setProperty('--intro-cover-image', `url("${String(src).replace(/"/g,'\\"')}")`);
-      }else{
-        el.classList.remove('has-cover');
-        el.style.removeProperty('--intro-cover-image');
-      }
-    }
-    try{
-      const raw = window.__SCHEMA__ || document.getElementById('schemaJSON')?.textContent || '';
-      const j = typeof raw === 'string' ? JSON.parse(raw||'null') : raw;
-      const url = j?.header?.title_image;
-      if (url) applyBgToIntro(url);
-    }catch(_){}
-  })();
-  </script>
-
   <!-- 杂项优化 -->
   <script>
   (function(){
@@ -953,6 +909,37 @@ body[data-appearance="dark"] .form-sep{ background:rgba(255,255,255,.08); }
   }
 })();
 </script>
+
+<style>
+/* 标题区 = 纯文本，不要中间那块“白色小卡” */
+.form-intro{
+  padding: 16px 0 8px;
+  background: none !important;             /* 不要背景图 */
+  box-shadow: none !important;             /* 不要阴影块 */
+  border-radius: 0 !important;
+}
+.form-intro::before,
+.form-intro::after{ content:none !important; }
+
+/* 左对齐的标题和描述 */
+.form-title{
+  margin: 0 0 4px 0;
+  font-size: 28px; line-height: 1.25; font-weight: 800;
+}
+.form-desc{
+  margin: 0; color: #6b7280;               /* 灰色描述 */
+}
+
+/* 细分割线 */
+.form-sep{
+  height:1px; background:rgba(0,0,0,.06);
+  border-radius:999px; margin: 14px 0 18px;
+}
+/* 暗色模式下的分割线微调，可选 */
+body[data-appearance="dark"] .form-sep{
+  background:rgba(255,255,255,.10);
+}
+</style>
 
 </body>
 </html>

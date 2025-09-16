@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
+    <style id="kill-greet-bg">
+        /* 不影响“表单基本信息”那张卡，只是把最上面的欢迎区禁止背景图 */
+        .greet-card {
+            background-image: none !important;
+        }
+
+        .greet-card::before,
+        .greet-card::after {
+            content: none !important;
+        }
+    </style>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
     <title>创建新表单</title>
@@ -1238,10 +1249,6 @@
                                 <input id="headerImagePicker" type="file" accept="image/*">
                             </label>
                         </div>
-                        <!-- 预览（显示在问候卡标题下方） -->
-                        <img id="greetCover" alt=""
-                             style="display:none;max-width:180px;border-radius:12px;margin:8px 0 0 0">
-
                         <div class="bd">
                             <div class="row2">
                                 <input name="form_name" placeholder="表单名称 *" required value="{{ form_name or '' }}"
@@ -1257,7 +1264,7 @@
                     <!-- 分隔 -->
                     <div style="height:20px;"></div>
 
-                    <div class="card">
+                    <div class="card form-basic">
                         <div class="hd"><h2>问题设置</h2></div>
                         <div class="bd">
                             <div id="list"></div>
@@ -1493,25 +1500,6 @@
 
 <!-- 顶部提示 -->
 <div id="toast" class="toast">操作成功</div>
-<!-- 仅用 greet-card 作为封面背景 -->
-<script id="init-greet-cover">
-(function () {
-  try {
-    var raw = document.getElementById('schemaJSON')?.textContent
-           || document.getElementById('schema_json')?.value || '';
-    var j = JSON.parse(raw || 'null');
-    var url = j?.header?.title_image;
-    if (!url) return;
-
-    var el = document.querySelector('.greet-card');
-    if (!el) return;
-
-    el.classList.add('has-cover');
-    var safe = 'url("' + String(url).replace(/"/g, '\\"') + '")';
-    el.style.setProperty('--greet-cover-image', safe);
-  } catch (_) {}
-})();
-</script>
 <!-- 你的逻辑脚本（不变） -->
 <script src="{{ asset('builder.js') }}" defer></script>
 
@@ -1759,6 +1747,46 @@ body[data-appearance="dark"] .form-basic::after{
         filter: brightness(1.05);
     }
 </style>
+<style id="intro-plain">
+    /* 标题区 = 纯文本，不要卡片、不要阴影、不要背景图 */
+    .form-intro {
+        padding: 16px 0 8px;
+        background: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+
+    .form-intro::before,
+    .form-intro::after {
+        content: none !important;
+    }
+
+    /* 左对齐的标题与描述（可按需微调字号） */
+    .form-title {
+        margin: 0 0 4px 0;
+        font-size: 28px;
+        line-height: 1.25;
+        font-weight: 800;
+    }
+
+    .form-desc {
+        margin: 0;
+        color: #6b7280;
+    }
+
+    /* 标题/描述 与 第一道题之间的细分割线（你已有 <div class="form-sep">） */
+    .form-sep {
+        height: 1px;
+        background: rgba(0, 0, 0, .06);
+        border-radius: 999px;
+        margin: 14px 0 18px;
+    }
+
+    body[data-appearance="dark"] .form-sep {
+        background: rgba(255, 255, 255, .10);
+    }
+</style>
+<head>
 
 <script id="schemaJSON" type="text/plain" data-mime="application/json">
     {{ (schema_json|default({}, true))|tojson }}
