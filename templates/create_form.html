@@ -1184,24 +1184,14 @@
             --form-width: 910px;
         }
 
-        /* 与 public_form.html 的保持一致 */
+        /* 与 public_form 保持一致 */
 
-        /* 预览弹窗外框与内部 iframe 对齐 */
-        .modal.preview .box {
+        /* 你的弹窗盒子目前是 .modal .box，默认 max-width:1000px，这里改成变量 */
+        .modal .box {
             max-width: var(--form-width) !important;
             width: 100%;
         }
-
-        #previewFrame {
-            width: 100%;
-            max-width: var(--form-width);
-            height: 80vh;
-            display: block;
-            margin: 0 auto;
-            border: 0;
-        }
     </style>
-
 </head>
 
 <body data-appearance="light" data-site="{{ site_name or '' }}" data-tpl="{{ tpl or '' }}">
@@ -1478,7 +1468,7 @@
             <strong>表单预览</strong>
             <button class="btn icon" id="closePreview">✖</button>
         </div>
-        <iframe id="previewFrame" title="预览" style="width:100%;height:80vh;border:0"></iframe>
+        <div id="previewRoot"></div>
     </div>
 </div>
 
@@ -3478,46 +3468,6 @@ document.addEventListener('DOMContentLoaded', function () {
     margin-right: auto;
   }
 </style>
-<script>
-(function(){
-  const form  = document.getElementById('builder');
-  const btn   = document.getElementById('btnPreview');
-  const frame = document.getElementById('previewFrame');
-  const site  = document.querySelector('[name="site_name"]');
-
-  async function autosaveNow(){
-    if (!form) return;
-    const fd = new FormData(form);
-    const u  = new URL(form.action, location.origin);
-    u.searchParams.set('ajax','1');
-    await fetch(u, { method:'POST', body:fd, headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} });
-  }
-
-  function openModal(){
-    document.getElementById('previewModal')?.setAttribute('aria-hidden','false');
-    document.getElementById('previewModal')?.classList.add('open');
-  }
-  function closeModal(){
-    document.getElementById('previewModal')?.setAttribute('aria-hidden','true');
-    document.getElementById('previewModal')?.classList.remove('open');
-  }
-  document.getElementById('closePreview')?.addEventListener('click', closeModal);
-
-  btn?.addEventListener('click', async (e)=>{
-    e.preventDefault();
-    try{ await autosaveNow(); }catch(_){}
-    const s = (site?.value || '').trim();
-    if (!s) return alert('请先填写 网站名');
-    const url = `/site/${encodeURIComponent(s)}?preview=1&ts=${Date.now()}`; // 防缓存
-    if (frame){
-      frame.src = url;    // 弹窗内 iframe 预览
-      openModal();
-    }else{
-      window.open(url,'_blank'); // 没有 iframe 就新开标签预览
-    }
-  });
-})();
-</script>
 
 </body>
 </html>
