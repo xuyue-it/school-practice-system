@@ -261,7 +261,20 @@
         linear-gradient(180deg, rgba(11,18,32,.64), rgba(11,18,32,.64)),
         var(--intro-cover-image, none);
     }
-    .form-intro.has-cover > *{ position:relative; z-index:1; }
+
+    .form-intro.has-cover > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    .form-intro {
+        background: #fff;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+    }
+
   </style>
 </head>
 

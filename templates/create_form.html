@@ -1201,17 +1201,19 @@
             <div class="tab active" id="tab-questions">
                 <div class="dash-grid">
                     <div class="card">
-                        <div class="hd"><h2>表单基本信息</h2></div>
-                        <!-- 标题封面图（可选） -->
-                        <div class="row" style="align-items:flex-start; gap:10px; margin-top:10px">
-                            <div style="flex:1; min-width:280px">
-                                <input id="headerImageUrl" class="tiny"
-                                       placeholder="表单标题后面的图片 URL（或用右侧上传）">
-                                <div class="hint">可贴外链或上传；保存后会写入 schema.header.title_image</div>
+                        <div class="card form-basic" style="background-size:cover;background-position:center;">
+                            <div class="hd"><h2>表单基本信息</h2></div>
+                            <!-- 标题封面图（可选） -->
+                            <div class="row" style="align-items:flex-start; gap:10px; margin-top:10px">
+                                <div style="flex:1; min-width:280px">
+                                    <input id="headerImageUrl" class="tiny"
+                                           placeholder="表单标题后面的图片 URL（或用右侧上传）">
+                                    <div class="hint">可贴外链或上传；保存后会写入 schema.header.title_image</div>
+                                </div>
+                                <label class="btn icon" style="height:42px">📷
+                                    <input id="headerImagePicker" type="file" accept="image/*">
+                                </label>
                             </div>
-                            <label class="btn icon" style="height:42px">📷
-                                <input id="headerImagePicker" type="file" accept="image/*">
-                            </label>
                         </div>
                         <!-- 预览（显示在问候卡标题下方） -->
                         <img id="greetCover" alt=""
@@ -3261,5 +3263,17 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+<style>
+  /* 背景图放在“表单基本信息”卡片后面 */
+  #basicCard.has-cover { position: relative; }
+  #basicCard.has-cover::before{
+    content:"";
+    position: absolute; inset: 0;
+    background: var(--greet-cover-image) center/cover no-repeat;
+    opacity: .18;              /* 透一点，文字清晰 */
+    pointer-events: none;
+  }
+  #basicCard .bd{ position: relative; } /* 让内容在背景之上 */
+</style>
 </body>
 </html>
