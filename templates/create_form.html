@@ -1465,6 +1465,25 @@
 
 <!-- 顶部提示 -->
 <div id="toast" class="toast">操作成功</div>
+<!-- 仅用 greet-card 作为封面背景 -->
+<script id="init-greet-cover">
+(function () {
+  try {
+    var raw = document.getElementById('schemaJSON')?.textContent
+           || document.getElementById('schema_json')?.value || '';
+    var j = JSON.parse(raw || 'null');
+    var url = j?.header?.title_image;
+    if (!url) return;
+
+    var el = document.querySelector('.greet-card');
+    if (!el) return;
+
+    el.classList.add('has-cover');
+    var safe = 'url("' + String(url).replace(/"/g, '\\"') + '")';
+    el.style.setProperty('--greet-cover-image', safe);
+  } catch (_) {}
+})();
+</script>
 <!-- 你的逻辑脚本（不变） -->
 <script src="{{ asset('builder.js') }}" defer></script>
 
@@ -1497,30 +1516,27 @@
 </style>
 
 
-<script id="header-cover-bg">
+<script>
 (function(){
   const urlInp = document.getElementById('headerImageUrl');
   const fileInp = document.getElementById('headerImagePicker');
-  const img     = document.getElementById('greetCover');
-  const greet   = document.querySelector('.greet-card');
 
-  // 给现有 img 动态包一层，加右上角 ×
-  (function wrapPreview(){
-    if (!img || document.getElementById('greetCoverWrap')) return;
-    const wrap = document.createElement('div');
-    wrap.id = 'greetCoverWrap';
-    wrap.className = 'q-image-wrap';
-    img.parentNode.insertBefore(wrap, img);
-    wrap.appendChild(img);
-
-    const del = document.createElement('button');
-    del.id = 'greetCoverDel';
-    del.type = 'button';
-    del.className = 'q-image-del';
-    del.textContent = '×';
-    del.addEventListener('click', () => { urlInp && (urlInp.value=''); setCover(''); });
-    wrap.appendChild(del);
-  })();
+  async function compressDataURL(src, {maxW=1400, quality=0.7} = {}) {
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = src;
+    await img.decode().catch(()=>{});
+    const scale = Math.min(1, maxW / (img.naturalWidth || img.width || maxW));
+    const w = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+    const h = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, w, h);
+    // 尝试保持原类型，默认转 jpeg
+    const mime = /^data:(image\/[a-z0-9+.-]+);/i.test(src) ? RegExp.$1 : 'image/jpeg';
+    return c.toDataURL(mime, quality);
+  }
 
   function writeSchema(mut){
     const inp = document.getElementById('schema_json');
@@ -1533,7 +1549,8 @@
     inp.dispatchEvent(new Event('change', {bubbles:true}));
   }
 
-  function applyBg(src){
+  function applyBgToGreet(src){
+    const greet = document.querySelector('.greet-card');
     if (!greet) return;
     if (src){
       greet.classList.add('has-cover');
@@ -1544,86 +1561,60 @@
     }
   }
 
-  function showPreview(src){
-    const wrap = document.getElementById('greetCoverWrap');
-    if (img){
-      if (src){ img.src = src; img.style.display='block'; img.dataset.url=src; wrap && wrap.classList.add('show'); }
-      else    { img.removeAttribute('src'); img.style.display='none'; delete img.dataset.url; wrap && wrap.classList.remove('show'); }
+    async function handleFile(f) {
+        if (!f) return;
+        const r = new FileReader();
+        r.onload = async () => {
+            try {
+                let small = await compressDataURL(String(r.result || ''), {maxW: 1400, quality: 0.72});
+
+                // （可选）超大时再压一遍，进一步防 413
+                if (small.length > 1_500_000) {
+                    small = await compressDataURL(small, {maxW: 1200, quality: 0.62});
+                }
+
+                applyBgToGreet(small);
+                writeSchema(j => {
+                    j.header = j.header || {};
+                    j.header.title_image = small;
+                });
+
+                // ✅ 让预览读取到
+                const imgEl = document.getElementById('greetCover');
+                if (imgEl) imgEl.dataset.url = small;
+
+                if (urlInp) {
+                    urlInp.value = small;
+                    urlInp.dispatchEvent(new Event('input', {bubbles: true}));
+                    urlInp.dispatchEvent(new Event('change', {bubbles: true}));
+                }
+            } catch (e) {
+                alert('图片处理失败：' + e.message);
+            }
+        };
+        r.readAsDataURL(f);
     }
-  }
 
-  function setCover(src){
-    const ok = !!(src && String(src).trim());
-    showPreview(ok ? src : '');
-    applyBg(ok ? src : '');
-    writeSchema(j=>{
-      j.header = j.header || {};
-      if (ok) j.header.title_image = src;
-      else if (j.header && 'title_image' in j.header) delete j.header.title_image;
-    });
-  }
 
-  urlInp?.addEventListener('input', e => setCover(e.target.value.trim()));
   fileInp?.addEventListener('change', e=>{
-    const f = e.target.files?.[0]; if (!f) return;
-    const r = new FileReader(); r.onload = () => setCover(String(r.result||'')); r.readAsDataURL(f);
+    const f = e.target.files?.[0];
+    handleFile(f);
   });
 
-  // 初次从 schema_json 恢复并应用到背景
-  try{
-    const raw = document.getElementById('schemaJSON')?.textContent || document.getElementById('schema_json')?.value || '';
-    const j = JSON.parse(raw || 'null');
-    const imgURL = j?.header?.title_image;
-    if (typeof imgURL === 'string' && imgURL.trim()) {
-      urlInp && (urlInp.value = imgURL);
-      setCover(imgURL); // 预览 + 背景 + 立即写回隐藏域，刷新也不丢
-    }
-  }catch(_){}
+  // 粘贴/手输 URL 也立即作为背景并写入 schema
+  urlInp?.addEventListener('input', e=>{
+    const val = (e.target.value || '').trim();
+    applyBgToGreet(val);
+    writeSchema(j=>{
+      j.header = j.header || {};
+      if (val) j.header.title_image = val;
+      else if (j.header && 'title_image' in j.header) delete j.header.title_image;
+    });
+  });
 })();
 </script>
 
-<style>
-  .hero.has-cover {
-      position: relative;
-      overflow: hidden;
-      border-radius: 20px;
-  }
 
-  .hero.has-cover::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-radius: 20px;
-      background-image: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .86)),
-      var(--cover, none); /* ✅ fallback：没有 cover 时用 none */
-      background-size: cover, cover; /* ✅ 两层都 cover，避免层数不匹配告警 */
-      background-position: center, center;
-      z-index: 0;
-      pointer-events: none; /* 建议：不挡交互 */
-  }
-
-  body[data-appearance="dark"] .hero.has-cover::before {
-      background-image: linear-gradient(180deg, rgba(11, 18, 32, .64), rgba(11, 18, 32, .64)),
-      var(--cover, none); /* ✅ 同样加 fallback */
-  }
-
-</style>
-
-<script>
-(function(){
-  try{
-    var raw = document.getElementById('schemaJSON')?.textContent
-           || document.getElementById('schema_json')?.value || '';
-    var j = JSON.parse(raw||'null');
-    var url = j?.header?.title_image;
-    var hero = document.querySelector('.hero') || document.querySelector('.greet-card');
-    if (url && hero){
-      hero.classList.add('has-cover');
-      hero.style.setProperty('--cover','url("'+String(url).replace(/"/g,'\\"')+'")');
-    }
-  }catch(_){}
-})();
-</script>
 
 <style id="greet-cover-style">
   /* 问候卡背景图 */
@@ -1651,6 +1642,12 @@
   #greetCoverWrap{ position:relative; display:none; margin:8px 0 0 0 }
   #greetCoverWrap.show{ display:inline-block; }
   #greetCoverWrap .q-image{ max-width:180px; border-radius:12px; display:block }
+</style>
+
+<style>
+  /* 不要缩略图，只用作背景 */
+  #greetCoverWrap,
+  #greetCover { display: none !important; }
 </style>
 
 
