@@ -282,6 +282,48 @@
             background: rgba(255, 255, 255, .10);
         }
     </style>
+    <style id="intro-card-override">
+        /* 让标题区回到“左对齐 + 白色卡片”样式，并且压过任何旧样式 */
+        main .form-intro {
+            display: block !important;
+            margin: 0 !important; /* 靠左 */
+            padding: 20px 24px 14px !important;
+            background: #fff !important; /* 白底卡片 */
+            border-radius: 16px !important;
+            box-shadow: 0 10px 30px rgba(17, 24, 39, .08), 0 4px 14px rgba(17, 24, 39, .06) !important;
+        }
+
+        body[data-appearance="dark"] main .form-intro {
+            background: rgba(17, 24, 39, .65) !important;
+        }
+
+        /* 标题与描述强制左对齐（有旧样式居中时用 !important 压过去） */
+        main .form-intro .form-title {
+            margin: 0 0 6px 0 !important;
+            font-size: 28px !important;
+            line-height: 1.25 !important;
+            font-weight: 800 !important;
+            text-align: left !important;
+        }
+
+        main .form-intro .form-desc {
+            margin: 0 !important;
+            color: #6b7280 !important;
+            text-align: left !important;
+        }
+
+        /* 标题区与第一题之间的分割线 */
+        main .form-sep {
+            height: 1px !important;
+            background: rgba(0, 0, 0, .06) !important;
+            border-radius: 999px !important;
+            margin: 14px 0 18px !important;
+        }
+
+        body[data-appearance="dark"] main .form-sep {
+            background: rgba(255, 255, 255, .10) !important;
+        }
+    </style>
 
 </head>
 
@@ -306,11 +348,8 @@
     <main>
         <section class="form-intro">
             <h1 class="form-title">{{ form_title or site_name }}</h1>
-            {% if form_desc %}
-            <p class="form-desc">{{ form_desc|safe }}</p>
-            {% endif %}
+            {% if form_desc %}<p class="form-desc">{{ form_desc|safe }}</p>{% endif %}
         </section>
-      <!-- 细分割线：仅做视觉分隔，不改变任何逻辑 -->
         <div class="form-sep"></div>
         <!-- 仅保留“表单卡片”（③ 已删除原“第一张卡片：标题+描述”） -->
       <div class="card">
