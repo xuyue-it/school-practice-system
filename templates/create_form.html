@@ -975,6 +975,16 @@
             -webkit-text-stroke-width: 0 !important;
         }
     </style>
+    <style id="qtitle-color-style">
+        /* 题目颜色选择器按钮外观 */
+        #tab-questions .q-tools .q-color {
+            width: 38px;
+            height: 32px;
+            padding: 0;
+            border-radius: 8px;
+            border: 1px solid #e8eef6;
+        }
+    </style>
 
     <!-- ★★★ 合并后的 responses-guard：仅在“数据”Tab时放行 /admin/api/responses ★★★ -->
     <script id="responses-guard">
@@ -1189,6 +1199,21 @@
                 <div class="dash-grid">
                     <div class="card">
                         <div class="hd"><h2>表单基本信息</h2></div>
+                        <!-- 标题封面图（可选） -->
+                        <div class="row" style="align-items:flex-start; gap:10px; margin-top:10px">
+                            <div style="flex:1; min-width:280px">
+                                <input id="headerImageUrl" class="tiny"
+                                       placeholder="表单标题后面的图片 URL（或用右侧上传）">
+                                <div class="hint">可贴外链或上传；保存后会写入 schema.header.title_image</div>
+                            </div>
+                            <label class="btn icon" style="height:42px">📷
+                                <input id="headerImagePicker" type="file" accept="image/*">
+                            </label>
+                        </div>
+                        <!-- 预览（显示在问候卡标题下方） -->
+                        <img id="greetCover" alt=""
+                             style="display:none;max-width:180px;border-radius:12px;margin:8px 0 0 0">
+
                         <div class="bd">
                             <div class="row2">
                                 <input name="form_name" placeholder="表单名称 *" required value="{{ form_name or '' }}"
@@ -1455,6 +1480,52 @@
   /* 永远隐藏数据页里的占位行，避免“乱码”闪一下 */
   #tab-responses .muted { display: none !important; }
 </style>
+
+<style id="no-review-columns">
+  /* 关闭审核流程时，隐藏：状态 / 审核说明 / 操作(通过/不通过) 三列 */
+  body.no-review #respTable th:nth-last-child(5),
+  body.no-review #respTable td:nth-last-child(5), /* 状态 */
+  body.no-review #respTable th:nth-last-child(4),
+  body.no-review #respTable td:nth-last-child(4), /* 审核说明 */
+  body.no-review #respTable th:nth-last-child(2),
+  body.no-review #respTable td:nth-last-child(2)  /* 操作(通过/不通过) */ {
+    display: none !important;
+  }
+</style>
+
+<script>
+(function(){
+  const urlInp = document.getElementById('headerImageUrl');
+  const fileInp = document.getElementById('headerImagePicker');
+  const cover  = document.getElementById('greetCover');
+
+  function setCover(src){
+    if (!cover) return;
+    if (src) { cover.src = src; cover.style.display = 'block'; cover.dataset.url = src; }
+    else { cover.removeAttribute('src'); cover.style.display = 'none'; delete cover.dataset.url; }
+  }
+
+  urlInp?.addEventListener('input', e => setCover(e.target.value.trim()));
+  fileInp?.addEventListener('change', e=>{
+    const f = e.target.files?.[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = () => setCover(String(r.result||''));
+    r.readAsDataURL(f);  // 直接用 dataURL 预览和保存
+  });
+
+  // 从 schema_json 恢复（有的话）
+  try{
+    const raw = document.getElementById('schemaJSON')?.textContent || document.getElementById('schema_json')?.value || '';
+    const j = JSON.parse(raw || 'null');
+    const img = j?.header?.title_image;
+    if (typeof img === 'string' && img.trim()) {
+      urlInp && (urlInp.value = img);
+      setCover(img);
+    }
+  }catch(_){}
+})();
+</script>
+
 
 <script>
     window.addEventListener('DOMContentLoaded', function () {
@@ -2423,6 +2494,48 @@ document.addEventListener('DOMContentLoaded', function () {
         form.addEventListener('submit', async (ev) => {
             ev.preventDefault();
             const fd = new FormData(form);
+            // —— 把 标题图片 / 题目颜色 / 审核开关 写入 schema_json —— //
+            try {
+                const rawSchema = fd.get('schema_json') || '{}';
+                const schema = JSON.parse(rawSchema || '{}') || {};
+
+                // 1) 标题图片（如果你有 #greetCover 或 #headerImageUrl，没的话这段不会报错）
+                const cover = document.getElementById('greetCover')?.dataset?.url
+                    || document.getElementById('headerImageUrl')?.value?.trim();
+                if (cover) {
+                    schema.header = schema.header || {};
+                    schema.header.title_image = cover; // 可是 dataURL 或外链
+                } else if (schema.header && 'title_image' in schema.header) {
+                    delete schema.header.title_image;
+                }
+
+                // 2) 题目颜色：以字段 key 为键（从 #list .qcard 的 data-qColor 里收集）
+                const cards = Array.from(document.querySelectorAll('#list .qcard'));
+                const colorMap = {};
+                cards.forEach(c => {
+                    const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+                    const col = c.dataset.qColor;
+                    if (key && col) colorMap[key] = col;
+                });
+                if (Object.keys(colorMap).length) {
+                    schema.display = schema.display || {};
+                    schema.display.question_colors = colorMap;
+                } else if (schema.display && schema.display.question_colors) {
+                    delete schema.display.question_colors;
+                }
+
+                // 3) 审核开关（设置 → 提交限制 → “开启审核流程”）
+                const sw = document.querySelector('[data-skey="submission.require_review"]');
+                const requireReview = !!sw?.checked;
+                schema.submission = schema.submission || {};
+                schema.submission.require_review = requireReview;
+
+                // 写回到要提交的表单字段
+                fd.set('schema_json', JSON.stringify(schema));
+            } catch (e) {
+                console.warn('注入 schema_json 失败：', e);
+            }
+
             const u = new URL(form.action, location.origin);
             u.searchParams.set('ajax', '1');
 
@@ -2874,6 +2987,31 @@ document.addEventListener('DOMContentLoaded', function () {
             const formDesc = document.querySelector('[name="form_desc"]')?.value || '';
 
             const schema = await getSchema();
+            try {
+                const cover = document.getElementById('greetCover')?.dataset?.url
+                    || document.getElementById('headerImageUrl')?.value?.trim();
+                if (cover) {
+                    (schema.header ||= {}).title_image = cover;
+                } else if (schema.header && 'title_image' in schema.header) {
+                    delete schema.header.title_image;
+                }
+
+                const colorMap = {};
+                document.querySelectorAll('#list .qcard').forEach(c => {
+                    const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+                    const col = c.dataset.qColor;
+                    if (key && col) colorMap[key] = col;
+                });
+                if (Object.keys(colorMap).length) {
+                    (schema.display ||= {}).question_colors = colorMap;
+                } else if (schema.display && schema.display.question_colors) {
+                    delete schema.display.question_colors;
+                }
+
+                const sw = document.querySelector('[data-skey="submission.require_review"]');
+                (schema.submission ||= {}).require_review = !!sw?.checked;
+            } catch {
+            }
 
             const fd = new FormData();
             fd.append('form_name', formName);
@@ -2890,6 +3028,96 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     })();
 </script>
+
+<script id="qtitle-color-tools">
+(function(){
+  const LIST = document.getElementById('list');
+
+  function getKey(card){
+    return card.dataset.key || card.getAttribute('data-key') || card.querySelector('[name]')?.name || '';
+  }
+  function setTitleColor(card, color){
+    const t = card.querySelector('.q-title');
+    if (t) t.style.setProperty('color', color, 'important'); // 抵消全局 !important
+  }
+  function ensureColorTool(card){
+    if (!card || card.querySelector('.q-color')) return;
+
+    const tools = card.querySelector('.q-tools') || card.querySelector('.q-footer') || card;
+    const inp = document.createElement('input');
+    inp.type = 'color';
+    inp.className = 'q-color';
+    inp.title = '题目文字颜色';
+    inp.value = card.dataset.qColor || '#0e1726';
+
+    // 从 schema_json 恢复该题颜色
+    try{
+      const raw = document.getElementById('schemaJSON')?.textContent
+               || document.getElementById('schema_json')?.value || '';
+      const j = JSON.parse(raw || 'null');
+      const map = j?.display?.question_colors || {};
+      const key = getKey(card);
+      if (key && map[key]) {
+        inp.value = map[key];
+        card.dataset.qColor = map[key];
+      }
+    }catch(_){}
+
+    setTitleColor(card, inp.value);
+
+    inp.addEventListener('input', ()=>{
+      setTitleColor(card, inp.value);
+      card.dataset.qColor = inp.value; // 保存时会被收集进 schema.display.question_colors
+    });
+
+    tools.prepend(inp);
+  }
+
+  // 现有题卡
+  LIST?.querySelectorAll('.qcard').forEach(ensureColorTool);
+
+  // 监听新加入的题卡
+  try{
+    new MutationObserver(muts=>{
+      muts.forEach(m=>{
+        m.addedNodes && m.addedNodes.forEach(n=>{
+          if (n.nodeType===1 && n.classList?.contains('qcard')) ensureColorTool(n);
+        });
+      });
+    }).observe(LIST, {childList:true});
+  }catch(_){}
+})();
+</script>
+
+
+<script id="review-toggle">
+(function(){
+  const sw = document.querySelector('[data-skey="submission.require_review"]');
+
+  function apply(){
+    const on = !!sw?.checked;
+    document.body.classList.toggle('no-review', !on);
+    // 刷新表头/列宽（存在则调用）
+    if (typeof window.rebuildRespHeader === 'function') window.rebuildRespHeader();
+  }
+
+  // 监听切换
+  sw?.addEventListener('change', apply);
+
+  // 初次从 schema_json 恢复到开关
+  try{
+    const raw = document.getElementById('schemaJSON')?.textContent
+             || document.getElementById('schema_json')?.value
+             || '';
+    const j = JSON.parse(raw || 'null');
+    const v = !!(j?.submission?.require_review);
+    if (sw) sw.checked = v; // 默认 false
+  }catch(_){}
+
+  apply();
+})();
+</script>
+
 
 </body>
 </html>
