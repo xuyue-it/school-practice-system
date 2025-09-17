@@ -1758,18 +1758,18 @@ body[data-appearance="dark"] .form-basic::after{
     }
 </style>
 <style id="intro-plain">
-    .form-intro:not(.has-cover) {
+    /* 标题区 = 纯文本，不要卡片、不要阴影、不要背景图 */
+    .form-intro {
         padding: 16px 0 8px;
         background: none !important;
         box-shadow: none !important;
         border-radius: 0 !important;
     }
 
-    /* 有封面时给卡片正常留白（可保留你现有的卡片风格） */
-    .form-intro.has-cover {
-        padding: 20px 24px 14px;
+    .form-intro::before,
+    .form-intro::after {
+        content: none !important;
     }
-
 
     /* 左对齐的标题与描述（可按需微调字号） */
     .form-title {
