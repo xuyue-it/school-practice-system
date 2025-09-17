@@ -3035,7 +3035,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const html = await res.text();
 
             // 仍然放到你原来的弹窗里显示
-            root.innerHTML = '<iframe id="previewFrame" title="预览" style="width:100vw;height:100vh;border:0;border-radius:0;display:block;"></iframe>';
+            root.innerHTML = '<iframe id="previewFrame" title="预览" style="width:100%;height:70vh;border:0;border-radius:12px;display:block;"></iframe>';
             root.querySelector('#previewFrame').srcdoc = html;
             modal.classList.add('show');
         });
@@ -3272,44 +3272,6 @@ async function readJSONSafely(res){
   });
 })();
 </script>
-
-<style id="preview-only-iframe">
-  /* 保留黑色半透明蒙层，但去掉内边距 */
-  #previewModal {
-      padding: 0 !important;
-      background: rgba(0, 0, 0, .45) !important;
-      z-index: 10000 !important; /* ← 关键：压过 header 的 z-index:999 */
-  }
-
-  /* 去掉白色卡片外观，让内容占满视口 */
-  #previewModal .box{
-    background: transparent !important;
-    max-width: none !important;
-    width: 100vw !important;
-    max-height: none !important;
-    height: 100vh !important;
-    padding: 0 !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    box-shadow: none !important;
-    overflow: hidden !important;
-  }
-  /* 把“上面那层”标题条彻底隐藏（它带 inline style，必须 !important）*/
-  #previewModal .box > *:not(#previewRoot){
-    display: none !important;
-  }
-  /* 只留 public 那一层：让 iframe 全屏铺满 */
-  #previewRoot,
-  #previewRoot iframe{
-    width: 100vw !important;
-    height: 100vh !important;
-    display: block !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-  }
-</style>
-
-
 
 <script>
 (function(){
