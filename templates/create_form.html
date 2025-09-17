@@ -1013,16 +1013,6 @@
             -webkit-text-stroke-width: 0 !important;
         }
     </style>
-    <style id="qtitle-color-style">
-        /* 题目颜色选择器按钮外观 */
-        #tab-questions .q-tools .q-color {
-            width: 38px;
-            height: 32px;
-            padding: 0;
-            border-radius: 8px;
-            border: 1px solid #e8eef6;
-        }
-    </style>
 
 
     <!-- ★★★ 合并后的 responses-guard：仅在“数据”Tab时放行 /admin/api/responses ★★★ -->
@@ -2547,19 +2537,6 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
-
-<!-- 创建成功弹窗（中间丝滑出现） -->
-<div class="modal" id="successModal" aria-hidden="true"
-     style="display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:120">
-    <div class="box" id="successBox" style="
-      width:min(920px,92vw); max-height:86vh; border-radius:20px; overflow:hidden;
-      background:var(--glass,#ffffffee); border:1px solid var(--glass-border,#e5e7eb);
-      backdrop-filter: blur(18px) saturate(160%); box-shadow: 0 18px 36px rgba(0,0,0,.22);
-      opacity:0; transform: scale(.92) translateY(8px);">
-        <iframe id="successFrame" title="创建成功" style="width:100%;height:70vh;border:0;background:#fff"></iframe>
-    </div>
-</div>
-
 <style>
     /* 丝滑出现动画 */
     #successModal.show #successBox {
@@ -2613,14 +2590,6 @@ document.addEventListener('DOMContentLoaded', function () {
             if (cover && !cover.startsWith('data:') && !cover.startsWith('blob:')) {
                 (schema.header ||= {}).title_image = cover;
             }
-            const colorMap = {};
-            document.querySelectorAll('#list .qcard').forEach(c => {
-                const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
-                const col = c.dataset.qColor;
-                if (key && col) colorMap[key] = col;
-            });
-            if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
-
             const sw = document.querySelector('[data-skey="submission.require_review"]');
             (schema.submission ||= {}).require_review = !!sw?.checked;
 
@@ -2642,7 +2611,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const successURL = j.success_url || (j.site_name ? ('/site/' + encodeURIComponent(j.site_name) + '/create_success') : null);
             if (!successURL) return alert('保存成功，但缺少成功页链接');
             // 这里沿用你原来的成功弹窗逻辑（如果你有 openModal 就用它）
-            (typeof openModal === 'function') ? openModal(successURL) : (location.href = successURL);
+            location.href = successURL;   // 直接跳成功页
         } catch (e) {
             alert('保存失败：' + e.message);
         }
@@ -3042,69 +3011,6 @@ document.addEventListener('DOMContentLoaded', function () {
     })();
 </script>
 
-
-
-
-<script id="qtitle-color-tools">
-(function(){
-  const LIST = document.getElementById('list');
-
-  function getKey(card){
-    return card.dataset.key || card.getAttribute('data-key') || card.querySelector('[name]')?.name || '';
-  }
-  function setTitleColor(card, color){
-    const t = card.querySelector('.q-title');
-    if (t) t.style.setProperty('color', color, 'important'); // 抵消全局 !important
-  }
-  function ensureColorTool(card){
-    if (!card || card.querySelector('.q-color')) return;
-
-    const tools = card.querySelector('.q-tools') || card.querySelector('.q-footer') || card;
-    const inp = document.createElement('input');
-    inp.type = 'color';
-    inp.className = 'q-color';
-    inp.title = '题目文字颜色';
-    inp.value = card.dataset.qColor || '#0e1726';
-
-    // 从 schema_json 恢复该题颜色
-    try{
-      const raw = document.getElementById('schemaJSON')?.textContent
-               || document.getElementById('schema_json')?.value || '';
-      const j = JSON.parse(raw || 'null');
-      const map = j?.display?.question_colors || {};
-      const key = getKey(card);
-      if (key && map[key]) {
-        inp.value = map[key];
-        card.dataset.qColor = map[key];
-      }
-    }catch(_){}
-
-    setTitleColor(card, inp.value);
-
-    inp.addEventListener('input', ()=>{
-      setTitleColor(card, inp.value);
-      card.dataset.qColor = inp.value; // 保存时会被收集进 schema.display.question_colors
-    });
-
-    tools.prepend(inp);
-  }
-
-  // 现有题卡
-  LIST?.querySelectorAll('.qcard').forEach(ensureColorTool);
-
-  // 监听新加入的题卡
-  try{
-    new MutationObserver(muts=>{
-      muts.forEach(m=>{
-        m.addedNodes && m.addedNodes.forEach(n=>{
-          if (n.nodeType===1 && n.classList?.contains('qcard')) ensureColorTool(n);
-        });
-      });
-    }).observe(LIST, {childList:true});
-  }catch(_){}
-})();
-</script>
-
 <script id="review-toggle">
 (function(){
   const sw = document.querySelector('[data-skey="submission.require_review"]');
@@ -3244,15 +3150,6 @@ async function readJSONSafely(res){
     try { schema = JSON.parse(schemaEl.value || '{}') || {}; } catch {}
     const cover = document.getElementById('headerImageUrl')?.value?.trim();
     if (cover && !/^data:|^blob:/i.test(cover)) (schema.header ||= {}).title_image = cover;
-
-    const colorMap = {};
-    document.querySelectorAll('#list .qcard').forEach(c=>{
-      const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
-      const col = c.dataset.qColor;
-      if (key && col) colorMap[key] = col;
-    });
-    if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
-
     const sw = document.querySelector('[data-skey="submission.require_review"]');
     (schema.submission ||= {}).require_review = !!sw?.checked;
 
@@ -3266,8 +3163,7 @@ async function readJSONSafely(res){
   }
 
   // 触发自动保存
-  document.addEventListener('input', (e)=>{
-    if (e.target?.classList?.contains('q-color')) schedule();
+  document.addEventListener('input', (e)=>{ 
     if (e.target?.id === 'headerImageUrl') schedule();
   });
 })();
@@ -3295,29 +3191,8 @@ async function readJSONSafely(res){
 })();
 </script>
 
-<script id="success-modal-api">
-(function(){
-  if (window.openModal) return;
-  function close(){
-    const m = document.getElementById('successModal');
-    const f = document.getElementById('successFrame');
-    if (m){ m.classList.remove('show'); m.style.display='none'; }
-    if (f){ f.src='about:blank'; }
-  }
-  window.openModal = function(url){
-    const m = document.getElementById('successModal');
-    const f = document.getElementById('successFrame');
-    if (!m || !f) { location.href = url; return; }
-    f.src = url;
-    m.classList.add('show');
-    m.style.display = 'flex';
-  };
-  document.getElementById('successModal')?.addEventListener('click', e => {
-    if (e.target.id === 'successModal') close();
-  });
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-})();
-</script>
+location.href = successURL;   // 直接跳成功页
+
 
 <style id="preview-centered-iframe">
   /* 保留黑色半透明蒙层与居中 */
