@@ -1975,7 +1975,7 @@ def preview_inline():
         title = form_name or schema.get("name") or "预览"
         desc  = form_desc or (schema.get("descHTML") or schema.get("desc") or schema.get("description"))
 
-        # 计算封面图（任取其一即可）
+        # ✅ 新增：从 schema 取封面图及位置（与 public_form 保持一致）
         header_image = (
                 (schema.get("header") or {}).get("title_image")
                 or (schema.get("display") or {}).get("title_image")
@@ -1984,24 +1984,28 @@ def preview_inline():
         )
         header_image_pos = (
                 (schema.get("header") or {}).get("title_image_pos")
+                or (schema.get("display") or {}).get("title_image_pos")
                 or "center"
         )
 
         return render_template(
             "public_form.html",
-            site_name=site_name,
-            form_title=form_title,
-            form_desc=form_desc_html,
+            site_name="__preview__",  # 占位
+            form_title=form_name or schema.get("name") or "预览",
+            form_desc=form_desc or (schema.get("descHTML") or schema.get("desc") or schema.get("description")),
             fields=clean_fields,
             brand_light=brand_light,
             brand_dark=brand_dark,
             theme_mode=theme_mode,
             has_file=any((f.get("type") or "").lower() == "file" for f in clean_fields),
             upload_max_files=upload_max_files,
-            schema_json=json.dumps(schema, ensure_ascii=False),
-            # ✅ 传给模板
+            schema_json=json.dumps(schema, ensure_ascii=False),  # 传给模板
+
+            # ✅ 新增：传给模板
             header_image=header_image,
             header_image_pos=header_image_pos,
+
+            preview_mode=True  # 注意：只保留一次，别重复传
         )
 
 
