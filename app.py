@@ -1584,6 +1584,7 @@ def public_form(site_name):
             theme_mode=theme_mode,
             has_file=any((f.get("type") or "").lower() == "file" for f in clean_fields),
             upload_max_files=upload_max_files,
+            schema_json=json.dumps(schema, ensure_ascii=False),  # ← 新增
         )
     except TemplateNotFound:
         # 简易回退模板
@@ -1853,6 +1854,7 @@ def preview_form(site_name):
             upload_max_files=upload_max_files,
             # 传个标记给前端，如有用可用它做定制
             preview_mode=True,
+            schema_json=json.dumps(schema, ensure_ascii=False),  # ← 新增
         )
     except TemplateNotFound:
         brand = brand_dark if theme_mode == "dark" else brand_light
@@ -1931,6 +1933,8 @@ def preview_inline():
             theme_mode=theme_mode,
             has_file=any((f.get("type") or "").lower() == "file" for f in clean_fields),
             upload_max_files=upload_max_files,
+            schema_json=json.dumps(schema, ensure_ascii=False),  # ← 新增
+
             preview_mode=True                              # 模板可选识别（如需禁用提交）
         )
     except TemplateNotFound:

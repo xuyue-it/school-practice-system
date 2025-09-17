@@ -356,6 +356,20 @@
             text-align: left !important;
         }
     </style>
+    <style id="equal-form-width">
+        :root {
+            --form-width: 910px;
+        }
+
+        /* 按你要的宽度改数字 */
+        .form-intro, .form-sep, .form-intro + .card, .form-sep + .card {
+            box-sizing: border-box;
+            max-width: var(--form-width) !important;
+            width: 100% !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+        }
+    </style>
     <style id="card-width-sync">
         /* 让真正装题目的卡片也使用统一宽度变量 */
         .card {
@@ -971,6 +985,13 @@
       scroll-behavior: auto !important;
     }
   </style>
+  {% if schema_json %}
+  <script id="schemaJSON" type="application/json">{{
+      schema_json
+      |
+      safe
+  }}</script>
+  {% endif %}
 
   <script>
       (function () {

@@ -1758,7 +1758,6 @@ body[data-appearance="dark"] .form-basic::after{
     }
 </style>
 <style id="intro-plain">
-    /* 标题区 = 纯文本，不要卡片、不要阴影、不要背景图 */
     .form-intro {
         padding: 16px 0 8px;
         background: none !important;
@@ -3061,27 +3060,38 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 
+    <script>
+        (function () {
+            const btn = document.getElementById('btnPreview');
+            const modal = document.getElementById('previewModal');
+            const root = document.getElementById('previewRoot');
+            const form = document.getElementById('builder');
+            const schemaInput = document.getElementById('schema_json');
 
-  <script>
-      (function () {
-          const btn = document.getElementById('btnPreview');
-          const frame = document.getElementById('previewFrame');
-          const modal = document.getElementById('previewModal');
-          const form = document.getElementById('builder');
-          const schemaInput = document.getElementById('schema_json');
-          if (!btn || !frame || !modal || !form) return;
+            if (!btn || !modal || !root || !form || !schemaInput) return;
 
-          btn.addEventListener('click', async () => {
-              const fd = new FormData(form);
-              fd.set('schema_json', schemaInput.value || '{}'); // 始终带上最新草稿
-              const site = (new URLSearchParams(location.search)).get('site') || (document.body.dataset.site || '');
-              const res = await fetch(`/site/${site}/preview`, {method: 'POST', body: fd});
-              const html = await res.text();
-              frame.srcdoc = html;
-              modal.classList.add('show');
-          });
-      })();
-  </script>
+            btn.addEventListener('click', async () => {
+                // 组装当前编辑中的内容（标题/描述/schema 等）
+                const fd = new FormData(form);
+                fd.set('schema_json', schemaInput.value || '{}');
+
+                // 你的站点名从 URL 或 data-site 获取
+                const site = (new URLSearchParams(location.search)).get('site') || (document.body.dataset.site || '');
+
+                // 向后端预览接口发 POST，拿到“公开页模板渲染后的完整 HTML”
+                const res = await fetch(`/site/${site}/preview`, {method: 'POST', body: fd});
+                const html = await res.text();
+
+                // 用 iframe 承载，避免当前页面样式干扰；UI 仍然是你原来的弹窗
+                root.innerHTML =
+                    '<iframe id="previewFrame" title="预览" style="width:100%;height:70vh;border:0;border-radius:16px;overflow:hidden;"></iframe>';
+                root.querySelector('#previewFrame').srcdoc = html;
+
+                modal.classList.add('show');
+            });
+        })();
+    </script>
+
 
 
 <script id="qtitle-color-tools">
