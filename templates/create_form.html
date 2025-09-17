@@ -2585,116 +2585,68 @@ document.addEventListener('DOMContentLoaded', function () {
 </style>
 
 
-<script>
-    (function () {
-        const form = document.getElementById('builder');
-        if (!form) return;
+<script id="submit-save">
+    document.getElementById('builder')?.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const form = ev.currentTarget;
 
-        const modal = document.getElementById('successModal');
-        const frame = document.getElementById('successFrame');
+        // 只发必要字段，避免把 file 带上
+        const fd = new FormData();
+        const nameEl = form.querySelector('[name="form_name"]');
+        const siteEl = form.querySelector('[name="site_name"]');
+        const descEl = form.querySelector('[name="form_desc"]');
+        const schemaEl = document.getElementById('schema_json');
 
-        function openModal(url) {
-            frame.removeAttribute('srcdoc');
-            frame.src = url + (url.includes('?') ? '&' : '?') + 'embed=1';
-            modal.style.display = 'flex';
-            requestAnimationFrame(() => modal.classList.add('show'));
-            document.body.style.overflow = 'hidden';
+        fd.append('form_name', nameEl?.value || '');
+        fd.append('site_name', siteEl?.value || '');
+        fd.append('form_desc', descEl?.value || '');
+        fd.append('schema_json', schemaEl?.value || '{}');
+
+        try {
+            const raw = fd.get('schema_json') || '{}';
+            const schema = JSON.parse(raw);
+
+            // 按你现有逻辑把背景图/题目颜色/审核开关写回 schema
+            const cover = document.getElementById('headerImageUrl')?.value?.trim();
+            if (cover && !cover.startsWith('data:') && !cover.startsWith('blob:')) {
+                (schema.header ||= {}).title_image = cover;
+            }
+            const colorMap = {};
+            document.querySelectorAll('#list .qcard').forEach(c => {
+                const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+                const col = c.dataset.qColor;
+                if (key && col) colorMap[key] = col;
+            });
+            if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
+
+            const sw = document.querySelector('[data-skey="submission.require_review"]');
+            (schema.submission ||= {}).require_review = !!sw?.checked;
+
+            fd.set('schema_json', JSON.stringify(schema));
+        } catch (e) {
+            console.warn(e);
         }
 
-        function closeModal() {
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-            frame.src = 'about:blank';
-            document.body.style.overflow = '';
+        const u = new URL(form.action, location.origin);
+        u.searchParams.set('ajax', '1');
+        try {
+            const res = await fetch(u, {
+                method: 'POST',
+                body: fd,
+                headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
+            });
+            const j = await res.json();
+            if (!res.ok || j.ok === false) return alert(j.error || ('保存失败：HTTP ' + res.status));
+            const successURL = j.success_url || (j.site_name ? ('/site/' + encodeURIComponent(j.site_name) + '/create_success') : null);
+            if (!successURL) return alert('保存成功，但缺少成功页链接');
+            // 这里沿用你原来的成功弹窗逻辑（如果你有 openModal 就用它）
+            openModal ? openModal(successURL) : (location.href = successURL);
+        } catch (e) {
+            alert('保存失败：' + e.message);
         }
-
-        modal.addEventListener('click', e => {
-            if (e.target === modal) closeModal();
-        });
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') closeModal();
-        });
-
-        // 用 fetch 发送表单（仅展示“卡片成功页”，无任何兜底 srcdoc）
-        form.addEventListener('submit', async (ev) => {
-            ev.preventDefault();
-            const fd = new FormData(form);
-            // —— 把 标题图片 / 题目颜色 / 审核开关 写入 schema_json —— //
-            try {
-                const rawSchema = fd.get('schema_json') || '{}';
-                const schema = JSON.parse(rawSchema || '{}') || {};
-
-                // 1) 标题图片（如果你有 #greetCover 或 #headerImageUrl，没的话这段不会报错）
-                const cover = document.getElementById('greetCover')?.dataset?.url
-                    || document.getElementById('headerImageUrl')?.value?.trim();
-                if (cover) {
-                    schema.header = schema.header || {};
-                    schema.header.title_image = cover; // 可是 dataURL 或外链
-                } else if (schema.header && 'title_image' in schema.header) {
-                    delete schema.header.title_image;
-                }
-
-                // 2) 题目颜色：以字段 key 为键（从 #list .qcard 的 data-qColor 里收集）
-                const cards = Array.from(document.querySelectorAll('#list .qcard'));
-                const colorMap = {};
-                cards.forEach(c => {
-                    const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
-                    const col = c.dataset.qColor;
-                    if (key && col) colorMap[key] = col;
-                });
-                if (Object.keys(colorMap).length) {
-                    schema.display = schema.display || {};
-                    schema.display.question_colors = colorMap;
-                } else if (schema.display && schema.display.question_colors) {
-                    delete schema.display.question_colors;
-                }
-
-                // 3) 审核开关（设置 → 提交限制 → “开启审核流程”）
-                const sw = document.querySelector('[data-skey="submission.require_review"]');
-                const requireReview = !!sw?.checked;
-                schema.submission = schema.submission || {};
-                schema.submission.require_review = requireReview;
-
-                // 写回到要提交的表单字段
-                fd.set('schema_json', JSON.stringify(schema));
-            } catch (e) {
-                console.warn('注入 schema_json 失败：', e);
-            }
-
-            const u = new URL(form.action, location.origin);
-            u.searchParams.set('ajax', '1');
-
-            try {
-                const res = await fetch(u, {
-                    method: 'POST',
-                    body: fd,
-                    headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
-                });
-                const j = await res.json();
-
-                if (!res.ok || j.ok === false) {
-                    alert(j.error || ('保存失败：HTTP ' + res.status));
-                    return;
-                }
-
-                // 优先用后端给的 success_url；没有就用 site_name 拼 /create_success
-                const successURL =
-                    j.success_url ||
-                    (j.site_name ? ('/site/' + encodeURIComponent(j.site_name) + '/create_success') : null);
-
-                if (!successURL) {
-                    alert('保存成功，但缺少成功页链接'); // 不再使用任何 srcdoc 兜底
-                    return;
-                }
-                openModal(successURL);
-
-            } catch (e) {
-                console.error(e);
-                alert('保存失败：' + e.message);
-            }
-        }, true);
-    })();
+    }, true);
 </script>
+
 
 <script id="live-theme-sync">
     (function () {
@@ -3060,37 +3012,34 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 
-    <script>
-        (function () {
-            const btn = document.getElementById('btnPreview');
-            const modal = document.getElementById('previewModal');
-            const root = document.getElementById('previewRoot');
-            const form = document.getElementById('builder');
-            const schemaInput = document.getElementById('schema_json');
+<script>
+    (function () {
+        const btn = document.getElementById('btnPreview');
+        const modal = document.getElementById('previewModal');
+        const root = document.getElementById('previewRoot');
+        const form = document.getElementById('builder');
+        const schemaInput = document.getElementById('schema_json');
+        if (!btn || !modal || !root || !form || !schemaInput) return;
 
-            if (!btn || !modal || !root || !form || !schemaInput) return;
+        btn.addEventListener('click', async () => {
+            // 只发必要字段：不使用 new FormData(form)，避免把 file 一起带上
+            const fd = new FormData();
+            fd.append('form_name', form.querySelector('[name="form_name"]')?.value || '');
+            fd.append('form_desc', form.querySelector('[name="form_desc"]')?.value || '');
+            fd.append('schema_json', schemaInput.value || '{}');
 
-            btn.addEventListener('click', async () => {
-                // 组装当前编辑中的内容（标题/描述/schema 等）
-                const fd = new FormData(form);
-                fd.set('schema_json', schemaInput.value || '{}');
+            // 你项目现有的预览路由是 /preview（app.py 里），用这个即可
+            const res = await fetch('/preview', {method: 'POST', body: fd});
+            const html = await res.text();
 
-                // 你的站点名从 URL 或 data-site 获取
-                const site = (new URLSearchParams(location.search)).get('site') || (document.body.dataset.site || '');
+            // 仍然放到你原来的弹窗里显示
+            root.innerHTML = '<iframe id="previewFrame" title="预览" style="width:100%;height:70vh;border:0;border-radius:16px;overflow:hidden;"></iframe>';
+            root.querySelector('#previewFrame').srcdoc = html;
+            modal.classList.add('show');
+        });
+    })();
+</script>
 
-                // 向后端预览接口发 POST，拿到“公开页模板渲染后的完整 HTML”
-                const res = await fetch(`/site/${site}/preview`, {method: 'POST', body: fd});
-                const html = await res.text();
-
-                // 用 iframe 承载，避免当前页面样式干扰；UI 仍然是你原来的弹窗
-                root.innerHTML =
-                    '<iframe id="previewFrame" title="预览" style="width:100%;height:70vh;border:0;border-radius:16px;overflow:hidden;"></iframe>';
-                root.querySelector('#previewFrame').srcdoc = html;
-
-                modal.classList.add('show');
-            });
-        })();
-    </script>
 
 
 
@@ -3346,54 +3295,70 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script id="autosave">
-(function(){
-  const form = document.getElementById('builder');
-  const schemaInput = document.getElementById('schema_json');
-  let timer=null;
+    (function () {
+        const form = document.getElementById('builder');
+        const schemaEl = document.getElementById('schema_json');
+        let timer = null;
 
-  async function doSave(){
-    if(!form) return;
-    const fd = new FormData(form);
+        function schedule() {
+            clearTimeout(timer);
+            timer = setTimeout(doSave, 800);
+        }
 
-    // 合并最新封面与题目颜色
-    try{
-      const raw = fd.get('schema_json')||'{}';
-      const schema = JSON.parse(raw||'{}')||{};
-      const cover = document.getElementById('headerImageUrl')?.value?.trim();
-      if (cover) (schema.header ||= {}).title_image = cover;
+        async function doSave() {
+            if (!form) return;
 
-      // 采集题目颜色（与你现有结构保持一致）
-      const colorMap = {};
-      document.querySelectorAll('#list .qcard').forEach(c=>{
-        const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
-        const col = c.dataset.qColor;
-        if (key && col) colorMap[key]=col;
-      });
-      if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
+            // 选了本地图片但还没上传时，不触发自动保存，避免 413
+            const coverNow = document.getElementById('headerImageUrl')?.value?.trim();
+            if (coverNow && (coverNow.startsWith('data:') || coverNow.startsWith('blob:'))) return;
 
-      fd.set('schema_json', JSON.stringify(schema));
-    }catch(_){}
+            // 只发必要字段
+            const fd = new FormData();
+            fd.append('form_name', form.querySelector('[name="form_name"]')?.value || '');
+            fd.append('site_name', form.querySelector('[name="site_name"]')?.value || '');
+            fd.append('form_desc', form.querySelector('[name="form_desc"]')?.value || '');
 
-    const u = new URL(form.action, location.origin);
-    u.searchParams.set('ajax','1');
-    try{ await fetch(u, {method:'POST', body:fd, headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}}); }catch(_){}
-  }
+            // 合并 schema：背景图/题目颜色/审核开关
+            let schema = {};
+            try {
+                schema = JSON.parse(schemaEl?.value || '{}') || {};
+            } catch {
+            }
+            if (coverNow && !coverNow.startsWith('data:') && !coverNow.startsWith('blob:')) {
+                (schema.header ||= {}).title_image = coverNow;
+            }
+            const colorMap = {};
+            document.querySelectorAll('#list .qcard').forEach(c => {
+                const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+                const col = c.dataset.qColor;
+                if (key && col) colorMap[key] = col;
+            });
+            if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
+            const sw = document.querySelector('[data-skey="submission.require_review"]');
+            (schema.submission ||= {}).require_review = !!sw?.checked;
 
-  function schedule(){ clearTimeout(timer); timer=setTimeout(doSave,800); }
+            fd.append('schema_json', JSON.stringify(schema));
 
-  document.addEventListener('input', e=>{
-    if (e.target?.classList?.contains('q-color')) schedule();
-    if (e.target?.id === 'headerImageUrl')        schedule();
-  });
-    const cover = document.getElementById('headerImageUrl')?.value?.trim();
-// 如果还是临时地址，就先别发，避免 413
-    if (cover && (cover.startsWith('data:') || cover.startsWith('blob:'))) {
-        console.warn('skip autosave: avoid posting data/blob URL');
-        return; // 等真正的上传得到 URL 再保存
-    }
+            const u = new URL(form.action, location.origin);
+            u.searchParams.set('ajax', '1');
+            try {
+                await fetch(u, {
+                    method: 'POST',
+                    body: fd,
+                    headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
+                });
+            } catch (e) { /* 自动保存失败忽略 */
+            }
+        }
 
-})();
+        // 题目颜色 & 背景图地址变化时触发自动保存
+        document.addEventListener('input', (e) => {
+            if (e.target?.classList?.contains('q-color')) schedule();
+            if (e.target?.id === 'headerImageUrl') schedule();
+        });
+    })();
 </script>
+
 
 </body>
 </html>

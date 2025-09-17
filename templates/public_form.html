@@ -986,46 +986,41 @@
     }
   </style>
   {% if schema_json %}
-  <script id="schemaJSON" type="application/json">{{
-      schema_json
-      |
-      safe
-  }}</script>
+  <script id="schemaJSON" type="application/json">{{ schema_json|safe }}</script>
   {% endif %}
 
-  <script>
-      (function () {
-          // schema 优先从 window.__SCHEMA__ 或 #schemaJSON 取
-          let j = null;
-          try {
-              j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent || 'null');
-          } catch (_) {
-          }
-          const cover = j?.header?.title_image || '';
-          const intro = document.querySelector('.form-intro');
-          if (intro) {
-              if (cover) {
-                  intro.style.backgroundImage = `url("${cover.replace(/"/g, '\\"')}")`;
-                  intro.style.backgroundSize = 'cover';
-                  intro.style.backgroundPosition = 'center';
-                  intro.style.backgroundRepeat = 'no-repeat';
-                  intro.classList.add('has-cover');
-              } else {
-                  intro.style.removeProperty('background-image');
-                  intro.classList.remove('has-cover');
-              }
-          }
-      })();
-  </script>
+<script>
+(function () {
+  let j = null;
+  try { j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent || 'null'); } catch(_) {}
+  const cover = j?.header?.title_image || '';
+  const pos   = j?.header?.title_image_pos || 'center';   // 新增：从 schema 取位置
+  const intro = document.querySelector('.form-intro');
+  if (!intro) return;
+  if (cover) {
+    intro.style.backgroundImage = `url("${cover.replace(/"/g, '\\"')}")`;
+    intro.style.backgroundSize = 'cover';
+    intro.style.backgroundPosition = pos;                  // 新增：应用位置
+    intro.style.backgroundRepeat = 'no-repeat';
+    intro.classList.add('has-cover');
+  } else {
+    intro.style.removeProperty('background-image');
+    intro.classList.remove('has-cover');
+  }
+})();
+</script>
+
 
   <style>
       /* 标题区 = 纯文本，不要中间那块“白色小卡” */
-      .form-intro {
+      /* 只有“没有封面”时才清掉背景/阴影 */
+      .form-intro:not(.has-cover) {
           padding: 16px 0 8px;
-          background: none !important; /* 不要背景图 */
-          box-shadow: none !important; /* 不要阴影块 */
-          border-radius: 0 !important;
+          background: none;
+          box-shadow: none;
+          border-radius: 0;
       }
+
 
       .form-intro::before,
       .form-intro::after {
