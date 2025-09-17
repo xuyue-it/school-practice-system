@@ -433,7 +433,7 @@
         </style>
 
         <section class="form-intro {% if header_image %}has-cover{% endif %}"
-         style="{% if header_image %}--intro-cover:url('{{ header_image|e }}');{% endif %}">
+         style="{% if header_image %}--intro-cover:url('{{ header_image }}'); --intro-pos: {{ header_image_pos or 'center' }};{% endif %}">
         <h1 class="form-title">{{ form_title or form_name }}</h1>
             {% if form_desc %}<p class="form-desc">{{ form_desc|safe }}</p>{% endif %}
             <div class="form-sep"></div>
@@ -1021,29 +1021,7 @@
   {% if schema_json %}
   <script id="schemaJSON" type="application/json+jinja">{{ schema_json|safe }}</script>
   {% endif %}
-
-<script>
-(function () {
-  let j = null;
-    try {
-        j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent || 'null');
-    } catch (_) {
-    }
-    const cover = j?.header?.title_image || '';
-    const pos = j?.header?.title_image_pos || 'center';
-    const intro = document.querySelector('.form-intro');
-    if (!intro) return;
-    if (cover) {
-        intro.style.setProperty('--intro-cover', `url("${cover.replace(/"/g, '\\"')}")`);
-        intro.style.setProperty('--intro-pos', pos);
-        intro.classList.add('has-cover');
-    } else {
-        intro.style.removeProperty('--intro-cover');
-        intro.classList.remove('has-cover');
-    }
-
-})();
-</script>
+  
 
 
   <style>
@@ -1096,22 +1074,19 @@
       }
 
       .form-intro.has-cover::before {
-          content: "";
-          position: absolute;
-          inset: 0;
-          z-index: 0;
-          /* 亮色覆盖层 + 背景图 */
-          background-image: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .86)),
+          background-image: linear-gradient(180deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .70)),
           var(--intro-cover, none);
           background-size: cover, cover;
           background-position: var(--intro-pos, center), var(--intro-pos, center);
       }
 
       body[data-appearance="dark"] .form-intro.has-cover::before {
-          /* 暗色覆盖层 + 背景图 */
-          background-image: linear-gradient(180deg, rgba(11, 18, 32, .64), rgba(11, 18, 32, .64)),
+          background-image: linear-gradient(180deg, rgba(11, 18, 32, .46), rgba(11, 18, 32, .46)),
           var(--intro-cover, none);
+          background-size: cover, cover;
+          background-position: var(--intro-pos, center), var(--intro-pos, center);
       }
+
 
       .form-intro.has-cover > * {
           position: relative;

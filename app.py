@@ -1881,6 +1881,10 @@ def preview_form(site_name):
             g.pop(k, None)
         return g
     clean_fields = [_strip_desc(f) for f in raw_fields]
+    # ✅ 取封面图与位置
+    _header = schema.get("header") or schema.get("display") or {}
+    header_image = (_header.get("title_image") or _header.get("cover_image") or "").strip()
+    header_image_pos = (_header.get("title_image_pos") or "center").strip()
 
     # 模板渲染
     try:
@@ -1898,6 +1902,9 @@ def preview_form(site_name):
             # 传个标记给前端，如有用可用它做定制
             preview_mode=True,
             schema_json=json.dumps(schema, ensure_ascii=False),  # ← 新增
+            header_image=header_image,
+            header_image_pos=header_image_pos,
+            preview_mode=True
         )
     except TemplateNotFound:
         brand = brand_dark if theme_mode == "dark" else brand_light
@@ -1975,13 +1982,16 @@ def preview_inline():
                 or (schema.get("display") or {}).get("cover_image")
                 or ""
         )
+        header_image_pos = (
+                (schema.get("header") or {}).get("title_image_pos")
+                or "center"
+        )
 
         return render_template(
             "public_form.html",
-            site_name="__preview__",
-            form_title=form_name or schema.get("name") or "预览",
-            form_name=form_name or schema.get("name") or "预览",  # 兼容某些模板写法
-            form_desc=form_desc or (schema.get("descHTML") or schema.get("desc") or schema.get("description")),
+            site_name=site_name,
+            form_title=form_title,
+            form_desc=form_desc_html,
             fields=clean_fields,
             brand_light=brand_light,
             brand_dark=brand_dark,
@@ -1989,9 +1999,11 @@ def preview_inline():
             has_file=any((f.get("type") or "").lower() == "file" for f in clean_fields),
             upload_max_files=upload_max_files,
             schema_json=json.dumps(schema, ensure_ascii=False),
-            header_image=header_image,  # ★ 新增
-            preview_mode=True
+            # ✅ 传给模板
+            header_image=header_image,
+            header_image_pos=header_image_pos,
         )
+
 
     except TemplateNotFound:
         brand = brand_dark if theme_mode == "dark" else brand_light
