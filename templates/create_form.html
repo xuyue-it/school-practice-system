@@ -1758,18 +1758,18 @@ body[data-appearance="dark"] .form-basic::after{
     }
 </style>
 <style id="intro-plain">
-    /* 标题区 = 纯文本，不要卡片、不要阴影、不要背景图 */
-    .form-intro {
+    .form-intro:not(.has-cover) {
         padding: 16px 0 8px;
         background: none !important;
         box-shadow: none !important;
         border-radius: 0 !important;
     }
 
-    .form-intro::before,
-    .form-intro::after {
-        content: none !important;
+    /* 有封面时给卡片正常留白（可保留你现有的卡片风格） */
+    .form-intro.has-cover {
+        padding: 20px 24px 14px;
     }
+
 
     /* 左对齐的标题与描述（可按需微调字号） */
     .form-title {
@@ -3062,98 +3062,27 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 
-<script>
-    (function () {
-        const btn = document.getElementById('btnPreview');
-        const modal = document.getElementById('previewModal');
-        const close = document.getElementById('closePreview');
-        const root = document.getElementById('previewRoot');
+  <script>
+      (function () {
+          const btn = document.getElementById('btnPreview');
+          const frame = document.getElementById('previewFrame');
+          const modal = document.getElementById('previewModal');
+          const form = document.getElementById('builder');
+          const schemaInput = document.getElementById('schema_json');
+          if (!btn || !frame || !modal || !form) return;
 
-        function show(html) {
-            if (!modal || !root) return;
-            root.innerHTML =
-                '<iframe title="表单预览" style="width:100%;height:70vh;border:0;background:#fff;border-radius:12px"></iframe>';
-            const ifr = root.querySelector('iframe');
-            ifr.srcdoc = html;
-            modal.style.display = 'flex';
-            modal.classList.add('show');
-        }
+          btn.addEventListener('click', async () => {
+              const fd = new FormData(form);
+              fd.set('schema_json', schemaInput.value || '{}'); // 始终带上最新草稿
+              const site = (new URLSearchParams(location.search)).get('site') || (document.body.dataset.site || '');
+              const res = await fetch(`/site/${site}/preview`, {method: 'POST', body: fd});
+              const html = await res.text();
+              frame.srcdoc = html;
+              modal.classList.add('show');
+          });
+      })();
+  </script>
 
-        function hide() {
-            if (!modal || !root) return;
-            modal.classList.remove('show');
-            modal.style.display = 'none';
-            root.innerHTML = '';
-        }
-
-        close?.addEventListener('click', hide);
-        modal?.addEventListener('click', (e) => {
-            if (e.target === modal) hide();
-        });
-
-        async function getSchema() {
-            // 优先取构建器实时 schema（如果 builder.js 暴露了）
-            if (window.builder && typeof window.builder.getSchema === 'function') {
-                try {
-                    return window.builder.getSchema() || {fields: []};
-                } catch (_) {
-                }
-            }
-            // 次选：隐藏域
-            try {
-                const raw = document.getElementById('schema_json')?.value || '{}';
-                return JSON.parse(raw);
-            } catch (_) {
-                return {fields: []};
-            }
-        }
-
-        btn?.addEventListener('click', async () => {
-            const formName = document.querySelector('[name="form_name"]')?.value?.trim() || '';
-            const formDesc = document.querySelector('[name="form_desc"]')?.value || '';
-
-            const schema = await getSchema();
-            try {
-                const cover = document.getElementById('greetCover')?.dataset?.url
-                    || document.getElementById('headerImageUrl')?.value?.trim();
-                if (cover) {
-                    (schema.header ||= {}).title_image = cover;
-                } else if (schema.header && 'title_image' in schema.header) {
-                    delete schema.header.title_image;
-                }
-
-                const colorMap = {};
-                document.querySelectorAll('#list .qcard').forEach(c => {
-                    const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
-                    const col = c.dataset.qColor;
-                    if (key && col) colorMap[key] = col;
-                });
-                if (Object.keys(colorMap).length) {
-                    (schema.display ||= {}).question_colors = colorMap;
-                } else if (schema.display && schema.display.question_colors) {
-                    delete schema.display.question_colors;
-                }
-
-                const sw = document.querySelector('[data-skey="submission.require_review"]');
-                (schema.submission ||= {}).require_review = !!sw?.checked;
-            } catch {
-            }
-
-            const fd = new FormData();
-            fd.append('form_name', formName);
-            fd.append('form_desc', formDesc);
-            fd.append('schema_json', JSON.stringify(schema));
-
-            try {
-                const res = await fetch('/preview', {method: 'POST', body: fd, headers: {'Accept': 'text/html'}});
-                const html = await res.text();
-                show(html);
-            } catch (e) {
-                alert('预览加载失败：' + (e?.message || e));
-            }
-        });
-    })();
-</script>
 
 <script id="qtitle-color-tools">
 (function(){
