@@ -54,6 +54,8 @@
       --radius:16px;
       --page-bg-light:#f6f7fb;
       --page-bg-dark:#0b1220;
+        --intro-cover: none; /* 封面默认无 */
+        --intro-pos: center; /* 位置默认居中 */
 
       /* 为 IDE 去告警：声明自定义变量 */
       --intro-cover-image: none;
@@ -402,16 +404,41 @@
 
     <!-- ② 新增：把 标题+描述 放进 <main>，并把表单卡片也放进来 -->
     <main>
-        <section class="form-intro {{ 'has-cover' if (schema.header and schema.header.title_image) else '' }}"
-                 {% if schema.header and schema.header.title_image %}
-                 style="--intro-cover: url('{{ schema.header.title_image|e }}')"
-                 {% endif %}>
-            <h1 class="form-title">{{ form_name }}</h1>
-            {% if form_desc %}
-            <p class="form-desc">{{ form_desc }}</p>
-            {% endif %}
+        <!-- 封面图样式（只对有封面时生效） -->
+        <style>
+            .form-intro.has-cover {
+                position: relative;
+                overflow: hidden;
+                border-radius: 18px;
+            }
+
+            .form-intro.has-cover::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background-image: var(--intro-cover);
+                background-size: cover;
+                background-position: center;
+                opacity: .22; /* 亮色下透明度，可按需微调 */
+            }
+
+            body[data-appearance="dark"] .form-intro.has-cover::before {
+                opacity: .28;
+            }
+
+            .form-intro.has-cover > * {
+                position: relative;
+                z-index: 1;
+            }
+        </style>
+
+        <section class="form-intro {% if header_image %}has-cover{% endif %}"
+         style="{% if header_image %}--intro-cover:url('{{ header_image|e }}');{% endif %}">
+        <h1 class="form-title">{{ form_title or form_name }}</h1>
+            {% if form_desc %}<p class="form-desc">{{ form_desc|safe }}</p>{% endif %}
             <div class="form-sep"></div>
         </section>
+
         <div class="form-sep"></div>
         <!-- 仅保留“表单卡片”（③ 已删除原“第一张卡片：标题+描述”） -->
       <div class="card">
@@ -992,27 +1019,29 @@
     }
   </style>
   {% if schema_json %}
-  <script id="schemaJSON" type="application/json">{{ schema_json|safe }}</script>
+  <script id="schemaJSON" type="application/json+jinja">{{ schema_json|safe }}</script>
   {% endif %}
 
 <script>
 (function () {
   let j = null;
-  try { j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent || 'null'); } catch(_) {}
-  const cover = j?.header?.title_image || '';
-  const pos   = j?.header?.title_image_pos || 'center';   // 新增：从 schema 取位置
-  const intro = document.querySelector('.form-intro');
-  if (!intro) return;
-  if (cover) {
-    intro.style.backgroundImage = `url("${cover.replace(/"/g, '\\"')}")`;
-    intro.style.backgroundSize = 'cover';
-    intro.style.backgroundPosition = pos;                  // 新增：应用位置
-    intro.style.backgroundRepeat = 'no-repeat';
-    intro.classList.add('has-cover');
-  } else {
-    intro.style.removeProperty('background-image');
-    intro.classList.remove('has-cover');
-  }
+    try {
+        j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent || 'null');
+    } catch (_) {
+    }
+    const cover = j?.header?.title_image || '';
+    const pos = j?.header?.title_image_pos || 'center';
+    const intro = document.querySelector('.form-intro');
+    if (!intro) return;
+    if (cover) {
+        intro.style.setProperty('--intro-cover', `url("${cover.replace(/"/g, '\\"')}")`);
+        intro.style.setProperty('--intro-pos', pos);
+        intro.classList.add('has-cover');
+    } else {
+        intro.style.removeProperty('--intro-cover');
+        intro.classList.remove('has-cover');
+    }
+
 })();
 </script>
 
@@ -1028,10 +1057,9 @@
       }
 
 
-      .form-intro::before,
-      .form-intro::after {
-          content: none !important;
-      }
+      .form-intro:not(.has-cover)::before,
+      .form-intro:not(.has-cover)::after { content: none !important; }
+
 
       /* 左对齐的标题和描述 */
       .form-title {
@@ -1076,7 +1104,7 @@
           background-image: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .86)),
           var(--intro-cover, none);
           background-size: cover, cover;
-          background-position: center, center;
+          background-position: var(--intro-pos, center), var(--intro-pos, center);
       }
 
       body[data-appearance="dark"] .form-intro.has-cover::before {

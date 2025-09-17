@@ -1603,6 +1603,13 @@ def public_form(site_name):
             "required": bool(f.get("required", False)),
         })
 
+    header_image = (
+            (schema.get("header") or {}).get("title_image")
+            or (schema.get("display") or {}).get("title_image")
+            or (schema.get("display") or {}).get("cover_image")
+            or ""
+    )
+
     try:
         return render_template(
             "public_form.html",
@@ -1615,7 +1622,8 @@ def public_form(site_name):
             theme_mode=theme_mode,
             has_file=any((f.get("type") or "").lower() == "file" for f in clean_fields),
             upload_max_files=upload_max_files,
-            schema_json=json.dumps(schema, ensure_ascii=False),  # ← 新增
+            schema_json=json.dumps(schema, ensure_ascii=False),  # ← 保留
+            header_image=header_image,
         )
     except TemplateNotFound:
         # 简易回退模板
@@ -1960,25 +1968,31 @@ def preview_inline():
         title = form_name or schema.get("name") or "预览"
         desc  = form_desc or (schema.get("descHTML") or schema.get("desc") or schema.get("description"))
 
+        # 计算封面图（任取其一即可）
+        header_image = (
+                (schema.get("header") or {}).get("title_image")
+                or (schema.get("display") or {}).get("title_image")
+                or (schema.get("display") or {}).get("cover_image")
+                or ""
+        )
+
         return render_template(
             "public_form.html",
-            site_name="__preview__",                 # 预览占位
-            form_title=title,                        # 你原来用的变量
-            form_name=title,                         # 兼容模板里 {{ form_name }}
-            form_desc=desc,
+            site_name="__preview__",
+            form_title=form_name or schema.get("name") or "预览",
+            form_name=form_name or schema.get("name") or "预览",  # 兼容某些模板写法
+            form_desc=form_desc or (schema.get("descHTML") or schema.get("desc") or schema.get("description")),
             fields=clean_fields,
-
             brand_light=brand_light,
             brand_dark=brand_dark,
             theme_mode=theme_mode,
             has_file=any((f.get("type") or "").lower() == "file" for f in clean_fields),
             upload_max_files=upload_max_files,
-
-            schema=schema,                           # ✅ 新增：传对象，模板可用 schema.header.title_image
             schema_json=json.dumps(schema, ensure_ascii=False),
-
+            header_image=header_image,  # ★ 新增
             preview_mode=True
         )
+
     except TemplateNotFound:
         brand = brand_dark if theme_mode == "dark" else brand_light
         return render_template_string(
