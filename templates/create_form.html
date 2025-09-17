@@ -2,16 +2,16 @@
 <html lang="zh">
 <head>
     <style id="kill-greet-bg">
-        /* 不影响“表单基本信息”那张卡，只是把最上面的欢迎区禁止背景图 */
-        .greet-card {
+        .greet-card:not(.has-cover) {
             background-image: none !important;
         }
 
-        .greet-card::before,
-        .greet-card::after {
+        .greet-card:not(.has-cover)::before,
+        .greet-card:not(.has-cover)::after {
             content: none !important;
         }
     </style>
+
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
     <title>创建新表单</title>
@@ -2642,7 +2642,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const successURL = j.success_url || (j.site_name ? ('/site/' + encodeURIComponent(j.site_name) + '/create_success') : null);
             if (!successURL) return alert('保存成功，但缺少成功页链接');
             // 这里沿用你原来的成功弹窗逻辑（如果你有 openModal 就用它）
-            openModal ? openModal(successURL) : (location.href = successURL);
+            (typeof openModal === 'function') ? openModal(successURL) : (location.href = successURL);
         } catch (e) {
             alert('保存失败：' + e.message);
         }
@@ -3274,12 +3274,14 @@ async function readJSONSafely(res){
 </script>
 
 <style id="preview-only-iframe">
-  /* 1) 去掉弹窗的全局内边距，保留半透明黑色蒙层 */
-  #previewModal{
-    padding: 0 !important;
-    background: rgba(0,0,0,.45) !important;
+  /* 保留黑色半透明蒙层，但去掉内边距 */
+  #previewModal {
+      padding: 0 !important;
+      background: rgba(0, 0, 0, .45) !important;
+      z-index: 10000 !important; /* ← 关键：压过 header 的 z-index:999 */
   }
-  /* 2) 彻底移除白卡片外观，撑满视口 */
+
+  /* 去掉白色卡片外观，让内容占满视口 */
   #previewModal .box{
     background: transparent !important;
     max-width: none !important;
@@ -3292,11 +3294,11 @@ async function readJSONSafely(res){
     box-shadow: none !important;
     overflow: hidden !important;
   }
-  /* 3) 把“上面那一层”标题条彻底隐藏（它有 inline style，必须 !important） */
+  /* 把“上面那层”标题条彻底隐藏（它带 inline style，必须 !important）*/
   #previewModal .box > *:not(#previewRoot){
     display: none !important;
   }
-  /* 4) 只保留 public 那一层：iframe 全屏铺满；覆盖掉 iframe 自己的内联样式 */
+  /* 只留 public 那一层：让 iframe 全屏铺满 */
   #previewRoot,
   #previewRoot iframe{
     width: 100vw !important;
@@ -3306,6 +3308,7 @@ async function readJSONSafely(res){
     border-radius: 0 !important;
   }
 </style>
+
 
 
 <script>
@@ -3330,20 +3333,30 @@ async function readJSONSafely(res){
 })();
 </script>
 
-<script>
+<script id="success-modal-api">
 (function(){
-  const modal = document.getElementById('previewModal');
-  if (!modal) return;
-  // 点黑色蒙层关闭
-  modal.addEventListener('click', function(e){
-    if (e.target === modal) modal.classList.remove('show');
+  if (window.openModal) return;
+  function close(){
+    const m = document.getElementById('successModal');
+    const f = document.getElementById('successFrame');
+    if (m){ m.classList.remove('show'); m.style.display='none'; }
+    if (f){ f.src='about:blank'; }
+  }
+  window.openModal = function(url){
+    const m = document.getElementById('successModal');
+    const f = document.getElementById('successFrame');
+    if (!m || !f) { location.href = url; return; }
+    f.src = url;
+    m.classList.add('show');
+    m.style.display = 'flex';
+  };
+  document.getElementById('successModal')?.addEventListener('click', e => {
+    if (e.target.id === 'successModal') close();
   });
-  // ESC 关闭
-  document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape') modal.classList.remove('show');
-  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
 })();
 </script>
+
 
 </body>
 </html>
