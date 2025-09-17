@@ -3319,6 +3319,42 @@ async function readJSONSafely(res){
 })();
 </script>
 
+<style id="preview-centered-iframe">
+  /* 保留黑色半透明蒙层与居中 */
+  #previewModal {
+    padding: 0 16px !important;
+    background: rgba(0, 0, 0, .45) !important;
+    z-index: 10000 !important;
+  }
+  /* 去掉外层白色卡片壳：无背景、无边框、无阴影、无内边距 */
+  #previewModal .box{
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+
+    /* 仍作为“中间弹窗”显示：固定尺寸+圆角裁切内容 */
+    width: min(980px, 92vw) !important;
+    height: 86vh !important;
+    max-width: none !important;
+    max-height: none !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+  }
+  /* 只保留 iframe 内容，隐藏标题那行等 */
+  #previewModal .box > *:not(#previewRoot){
+    display: none !important;
+  }
+  /* 让 iframe 正好铺满这个中间弹窗 */
+  #previewRoot,
+  #previewRoot iframe{
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    border: 0 !important;
+    border-radius: 0 !important; /* 需要的话也可保留圆角 */
+  }
+</style>
 
 </body>
 </html>
