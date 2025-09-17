@@ -3274,37 +3274,39 @@ async function readJSONSafely(res){
 </script>
 
 <style id="preview-only-iframe">
-  /* 预览弹窗本体：去掉全局 .modal 的 16px 内边距，让内容顶满 */
+  /* 1) 去掉弹窗的全局内边距，保留半透明黑色蒙层 */
   #previewModal{
-    padding: 0;
-    background: rgba(0,0,0,.45); /* 保留半透明蒙层 */
+    padding: 0 !important;
+    background: rgba(0,0,0,.45) !important;
   }
-  /* 去掉卡片外观，铺满视口 */
+  /* 2) 彻底移除白卡片外观，撑满视口 */
   #previewModal .box{
-    background: transparent;
-    max-width: none;
-    width: 100vw;
-    max-height: none;
-    height: 100vh;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-    overflow: hidden; /* 不要外层滚动条 */
+    background: transparent !important;
+    max-width: none !important;
+    width: 100vw !important;
+    max-height: none !important;
+    height: 100vh !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden !important;
   }
-  /* 隐藏你原来那行“表单预览/关闭”头部 */
-  #previewModal .box > div:first-child{
-    display: none;
+  /* 3) 把“上面那一层”标题条彻底隐藏（它有 inline style，必须 !important） */
+  #previewModal .box > *:not(#previewRoot){
+    display: none !important;
   }
-  /* 让 iframe 填满视口，只剩“下面那层” */
+  /* 4) 只保留 public 那一层：iframe 全屏铺满；覆盖掉 iframe 自己的内联样式 */
   #previewRoot,
   #previewRoot iframe{
-    width: 100vw;
-    height: 100vh;
-    display: block;
-    border: 0;
+    width: 100vw !important;
+    height: 100vh !important;
+    display: block !important;
+    border: 0 !important;
+    border-radius: 0 !important;
   }
 </style>
+
 
 <script>
 (function(){
@@ -3321,6 +3323,21 @@ async function readJSONSafely(res){
     modal.classList.remove('show');
   });
 
+  // ESC 关闭
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') modal.classList.remove('show');
+  });
+})();
+</script>
+
+<script>
+(function(){
+  const modal = document.getElementById('previewModal');
+  if (!modal) return;
+  // 点黑色蒙层关闭
+  modal.addEventListener('click', function(e){
+    if (e.target === modal) modal.classList.remove('show');
+  });
   // ESC 关闭
   document.addEventListener('keydown', function(e){
     if (e.key === 'Escape') modal.classList.remove('show');
