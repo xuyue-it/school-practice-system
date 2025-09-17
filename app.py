@@ -29,7 +29,7 @@ from flask import render_template, request, abort
 from time import time
 import unicodedata
 import time
-
+from werkzeug.exceptions import RequestEntityTooLarge
 # ========== Flask 应用 ==========
 app = Flask(__name__)
 try:
@@ -2479,6 +2479,17 @@ def _has_cjk(text: str) -> bool:
     import re as _re
     return bool(_re.search(r"[\u4e00-\u9fff]", str(text)))
 
+@app.errorhandler(413)
+@app.errorhandler(RequestEntityTooLarge)
+def handle_413(e):
+    wants_json = (
+        request.headers.get("X-Requested-With") == "XMLHttpRequest"
+        or "application/json" in (request.headers.get("Accept") or "").lower()
+    )
+    msg = "请求体太大（413）。请不要在 schema_json 中内嵌 Base64 图片/大块内容，改为上传文件并使用 URL。"
+    if wants_json:
+        return jsonify({"ok": False, "error": msg}), 413
+    return (msg, 413, {"Content-Type": "text/plain; charset=utf-8"})
 # ========== 健康检查 ==========
 @app.route("/_health")
 def _health(): return "ok", 200

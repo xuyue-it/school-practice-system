@@ -1795,8 +1795,6 @@ body[data-appearance="dark"] .form-basic::after{
         background: rgba(255, 255, 255, .10);
     }
 </style>
-<head>
-
 <script id="schemaJSON" type="text/plain" data-mime="application/json">
     {{ (schema_json|default({}, true))|tojson }}
 </script>
@@ -2311,8 +2309,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         // 其它：iframe 预览
         else {
-            body.innerHTML = `<iframe src="${safe}" style="width:100%;height:70vh;border:0;border-radius:12px;background:#fff"></iframe>`;
+            const sandbox = 'allow-forms allow-downloads allow-popups-to-escape-sandbox';
+            body.innerHTML = `<iframe src="${safe}" sandbox="${sandbox}" referrerpolicy="no-referrer"
+    style="width:100%;height:70vh;border:0;border-radius:12px;background:#fff"></iframe>`;
         }
+
 
         modal.classList.add('show');
         modal.style.display = 'flex';
@@ -2537,11 +2538,12 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
   // 数据更新 → 若当前在“图表”页，自动重绘（补齐缺失的收口）
-  document.addEventListener('responses:updated', ()=>{
-    if (document.getElementById('tab-charts')?.classList.contains('active')){
-      refreshCharts(true);
-    }
-  });
+    let __chartRaf;
+    document.addEventListener('responses:updated', () => {
+        if (!document.getElementById('tab-charts')?.classList.contains('active')) return;
+        cancelAnimationFrame(__chartRaf);
+        __chartRaf = requestAnimationFrame(() => refreshCharts(true));
+    });
 })();
 </script>
 
@@ -2635,7 +2637,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 body: fd,
                 headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
             });
-            const j = await res.json();
+            const j = await readJSONSafely(res);
             if (!res.ok || j.ok === false) return alert(j.error || ('保存失败：HTTP ' + res.status));
             const successURL = j.success_url || (j.site_name ? ('/site/' + encodeURIComponent(j.site_name) + '/create_success') : null);
             if (!successURL) return alert('保存成功，但缺少成功页链接');
@@ -3103,40 +3105,6 @@ document.addEventListener('DOMContentLoaded', function () {
 })();
 </script>
 
-<script id="qtitle-color-autosave">
-(function(){
-  function writeSchema(mut){
-    const inp = document.getElementById('schema_json');
-    let j = {};
-    try{ j = JSON.parse(inp.value || '{}') || {}; }catch(_){}
-    mut(j);
-    inp.value = JSON.stringify(j);
-    inp.dispatchEvent(new Event('input',  {bubbles:true}));
-    inp.dispatchEvent(new Event('change', {bubbles:true}));
-  }
-  function collectColors(){
-    const map = {};
-    document.querySelectorAll('#list .qcard').forEach(c=>{
-      const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
-      const col = c.dataset.qColor;
-      if (key && col) map[key] = col;
-    });
-    return map;
-  }
-  // 监听颜色选择器变化，实时写入 schema_json
-  document.addEventListener('input', e=>{
-    if (!(e.target instanceof HTMLInputElement)) return;
-    if (!e.target.classList?.contains('q-color')) return;
-    const map = collectColors();
-    writeSchema(j=>{
-      j.display = j.display || {};
-      if (Object.keys(map).length) j.display.question_colors = map;
-      else if (j.display && j.display.question_colors) delete j.display.question_colors;
-    });
-  });
-})();
-</script>
-
 <script id="review-toggle">
 (function(){
   const sw = document.querySelector('[data-skey="submission.require_review"]');
@@ -3178,18 +3146,27 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<style>
-  /* 背景图放在“表单基本信息”卡片后面 */
-  #basicCard.has-cover { position: relative; }
-  #basicCard.has-cover::before{
-    content:"";
-    position: absolute; inset: 0;
-    background: var(--greet-cover-image) center/cover no-repeat;
-    opacity: .18;              /* 透一点，文字清晰 */
-    pointer-events: none;
-  }
-  #basicCard .bd{ position: relative; } /* 让内容在背景之上 */
-</style>
+<script>
+document.addEventListener('DOMContentLoaded', ()=>{
+  const list = document.querySelector('.tabs.vertical');
+  if (!list) return;
+  list.setAttribute('role','tablist');
+  list.querySelectorAll('button').forEach(btn=>{
+    const key = btn.dataset.tab;
+    const panel = document.getElementById('tab-'+key);
+    btn.setAttribute('role','tab');
+    btn.setAttribute('aria-selected', btn.classList.contains('active')?'true':'false');
+    if (panel){
+      panel.setAttribute('role','tabpanel');
+      btn.setAttribute('aria-controls','tab-'+key);
+    }
+    btn.addEventListener('click', ()=>{
+      list.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected','false'));
+      btn.setAttribute('aria-selected','true');
+    });
+  });
+});
+</script>
 
 <script>
 (function(){
@@ -3199,10 +3176,9 @@ document.addEventListener('DOMContentLoaded', function () {
   async function uploadAsset(file){
     const fd = new FormData();
     fd.append('file', file);
-    const res = await fetch(location.pathname.replace(/\/create_form.*/,'') + '/admin/api/upload_asset', {
-      method:'POST', body: fd
-    });
-    const j = await res.json();
+    const base = new URL('{{ url_for("create_form") }}', location.origin).pathname.replace(/\/create_form.*/,'');
+    const res  = await fetch(base + '/admin/api/upload_asset', { method:'POST', body: fd });
+    const j = await readJSONSafely(res);
     if(!j.ok) throw new Error(j.error||'上传失败');
     return j.url; // <- 服务端返回的静态URL
   }
@@ -3235,130 +3211,67 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
+async function readJSONSafely(res){
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  const txt = await res.text(); // 先读文本，再决定
+  if (ct.includes('application/json')){
+    try { return JSON.parse(txt); } catch(_) {}
+  }
+  // 非 JSON（多半是 413 或代理/服务器的 HTML 报错页）
+  const brief = txt.replace(/\s+/g,' ').slice(0,300);
+  throw new Error(brief || ('HTTP ' + res.status));
+}
+</script>
+
+<script id="autosave-unified">
 (function(){
   const form = document.getElementById('builder');
-  const schemaInput = document.getElementById('schema_json');
-  let timer = null;
+  const schemaEl = document.getElementById('schema_json');
+  if (!form || !schemaEl) return;
 
-  async function doSave(){
-    if (!form) return;
-    const fd = new FormData(form);
+  let timer;
+  const schedule = ()=>{ clearTimeout(timer); timer = setTimeout(save, 800); };
 
-    // 注入：标题图片 + 题目颜色 + 审核开关（与你提交按钮的组装保持一致）
-    try{
-      const raw = fd.get('schema_json') || '{}';
-      const schema = JSON.parse(raw || '{}') || {};
+  async function save(){
+    // 只发必要字段
+    const fd = new FormData();
+    fd.append('form_name', form.querySelector('[name="form_name"]')?.value || '');
+    fd.append('site_name', form.querySelector('[name="site_name"]')?.value || '');
+    fd.append('form_desc', form.querySelector('[name="form_desc"]')?.value || '');
 
-      const cover = document.getElementById('greetCover')?.dataset?.url
-                 || document.getElementById('headerImageUrl')?.value?.trim();
-      if (cover) (schema.header ||= {}).title_image = cover;
-      // 题目颜色
-      const colorMap = {};
-      document.querySelectorAll('#list .qcard').forEach(c=>{
-        const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
-        const col = c.dataset.qColor;
-        if (key && col) colorMap[key]=col;
-      });
-      if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
-      else if (schema.display && schema.display.question_colors) delete schema.display.question_colors;
+    // 合并 schema：封面图/题目颜色/审核开关
+    let schema = {};
+    try { schema = JSON.parse(schemaEl.value || '{}') || {}; } catch {}
+    const cover = document.getElementById('headerImageUrl')?.value?.trim();
+    if (cover && !/^data:|^blob:/i.test(cover)) (schema.header ||= {}).title_image = cover;
 
-      // 审核开关
-      const sw = document.querySelector('[data-skey="submission.require_review"]');
-      (schema.submission ||= {}).require_review = !!sw?.checked;
+    const colorMap = {};
+    document.querySelectorAll('#list .qcard').forEach(c=>{
+      const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+      const col = c.dataset.qColor;
+      if (key && col) colorMap[key] = col;
+    });
+    if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
 
-      fd.set('schema_json', JSON.stringify(schema));
-    }catch(_){}
+    const sw = document.querySelector('[data-skey="submission.require_review"]');
+    (schema.submission ||= {}).require_review = !!sw?.checked;
 
-    // 走 ajax 保存（与你“保存表单”按钮相同的接口）
+    fd.append('schema_json', JSON.stringify(schema));
+
     const u = new URL(form.action, location.origin);
     u.searchParams.set('ajax','1');
-    try{
-      const res = await fetch(u, { method:'POST', body: fd, headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} });
-      // 不弹窗、不跳成功页；只要成功即可
-      if (!res.ok) console.warn('autosave http', res.status);
-    }catch(e){
-      console.warn('autosave failed', e);
-    }
+    try {
+      await fetch(u, { method:'POST', body:fd, headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} });
+    } catch {}
   }
 
-  function schedule(){
-    clearTimeout(timer);
-    timer = setTimeout(doSave, 800); // 800ms 防抖
-  }
-
-  // 触发自动保存的时机：题目颜色变动 + 标题图地址变动
+  // 触发自动保存
   document.addEventListener('input', (e)=>{
     if (e.target?.classList?.contains('q-color')) schedule();
-    if (e.target?.id === 'headerImageUrl')        schedule();
+    if (e.target?.id === 'headerImageUrl') schedule();
   });
 })();
 </script>
-
-<script id="autosave">
-    (function () {
-        const form = document.getElementById('builder');
-        const schemaEl = document.getElementById('schema_json');
-        let timer = null;
-
-        function schedule() {
-            clearTimeout(timer);
-            timer = setTimeout(doSave, 800);
-        }
-
-        async function doSave() {
-            if (!form) return;
-
-            // 选了本地图片但还没上传时，不触发自动保存，避免 413
-            const coverNow = document.getElementById('headerImageUrl')?.value?.trim();
-            if (coverNow && (coverNow.startsWith('data:') || coverNow.startsWith('blob:'))) return;
-
-            // 只发必要字段
-            const fd = new FormData();
-            fd.append('form_name', form.querySelector('[name="form_name"]')?.value || '');
-            fd.append('site_name', form.querySelector('[name="site_name"]')?.value || '');
-            fd.append('form_desc', form.querySelector('[name="form_desc"]')?.value || '');
-
-            // 合并 schema：背景图/题目颜色/审核开关
-            let schema = {};
-            try {
-                schema = JSON.parse(schemaEl?.value || '{}') || {};
-            } catch {
-            }
-            if (coverNow && !coverNow.startsWith('data:') && !coverNow.startsWith('blob:')) {
-                (schema.header ||= {}).title_image = coverNow;
-            }
-            const colorMap = {};
-            document.querySelectorAll('#list .qcard').forEach(c => {
-                const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
-                const col = c.dataset.qColor;
-                if (key && col) colorMap[key] = col;
-            });
-            if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
-            const sw = document.querySelector('[data-skey="submission.require_review"]');
-            (schema.submission ||= {}).require_review = !!sw?.checked;
-
-            fd.append('schema_json', JSON.stringify(schema));
-
-            const u = new URL(form.action, location.origin);
-            u.searchParams.set('ajax', '1');
-            try {
-                await fetch(u, {
-                    method: 'POST',
-                    body: fd,
-                    headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
-                });
-            } catch (e) { /* 自动保存失败忽略 */
-            }
-        }
-
-        // 题目颜色 & 背景图地址变化时触发自动保存
-        document.addEventListener('input', (e) => {
-            if (e.target?.classList?.contains('q-color')) schedule();
-            if (e.target?.id === 'headerImageUrl') schedule();
-        });
-    })();
-</script>
-
 
 </body>
 </html>
