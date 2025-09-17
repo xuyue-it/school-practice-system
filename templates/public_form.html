@@ -420,6 +420,7 @@
                 background-size: cover;
                 background-position: center;
                 opacity: .22; /* 亮色下透明度，可按需微调 */
+                background-position: var(--intro-pos, center), var(--intro-pos, center);
             }
 
             body[data-appearance="dark"] .form-intro.has-cover::before {
@@ -1093,6 +1094,38 @@
           z-index: 1;
       }
   </style>
+<script>
+(function () {
+  let j = null;
+  try {
+    j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent || 'null');
+  } catch(_) {}
+
+  // 更健壮的取图路径（多处兜底）
+  const cover =
+    j?.header?.title_image ||
+    j?.display?.title_image ||
+    j?.display?.cover_image ||
+    j?.title_image ||
+    j?.cover_image ||
+    '';
+
+  const pos = j?.header?.title_image_pos || j?.display?.title_image_pos || 'center';
+
+  const intro = document.querySelector('.form-intro');
+  if (!intro) return;
+
+  if (cover) {
+    // ✅ 关键：给 CSS 变量赋值，而不是 backgroundImage
+    intro.style.setProperty('--intro-cover', `url("${cover.replace(/"/g, '\\"')}")`);
+    intro.style.setProperty('--intro-pos', pos);
+    intro.classList.add('has-cover');
+  } else {
+    intro.style.removeProperty('--intro-cover');
+    intro.classList.remove('has-cover');
+  }
+})();
+</script>
 
 </body>
 </html>
