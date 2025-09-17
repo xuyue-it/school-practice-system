@@ -127,19 +127,37 @@ class _ConnProxy:
                 pass
 
 def get_conn():
-    conn = _POOL.getconn()
-    # 会话级安全优化（失败忽略）
+    raw = None
+    # 最多两次尝试拿“活的”连接
+    for _ in range(2):
+        conn = _POOL.getconn()
+        try:
+            with conn.cursor() as c:
+                c.execute("SELECT 1")  # 心跳
+            raw = conn
+            break
+        except Exception:
+            # 这条连接已经坏了，丢回去并关闭
+            try: _POOL.putconn(conn, close=True)
+            except Exception: pass
+            raw = None
+    if raw is None:
+        # 兜底再取一次（若仍坏，会在后续使用时报错并被上层捕获）
+        raw = _POOL.getconn()
+
+    # 会话参数
     try:
-        conn.set_client_encoding('UTF8')
+        raw.set_client_encoding('UTF8')
     except Exception:
         pass
     try:
-        with conn.cursor() as c:
-            c.execute("SET statement_timeout TO 60000")                     # 60s
-            c.execute("SET idle_in_transaction_session_timeout TO 30000")   # 30s
+        with raw.cursor() as c:
+            c.execute("SET statement_timeout TO 60000")
+            c.execute("SET idle_in_transaction_session_timeout TO 30000")
     except Exception:
         pass
-    return _ConnProxy(conn)
+    return _ConnProxy(raw)
+
 
 # Gzip 压缩与静态缓存（不改业务逻辑）
 try:
@@ -686,7 +704,13 @@ def create_form():
         site_name   = (request.form.get("site_name") or "").strip()
         form_desc   = (request.form.get("form_desc") or "").strip()
         schema_json = request.form.get("schema_json") or '{"fields": []}'
-
+        # —— 防止把 data:image 的超大 Base64 写进库
+        if isinstance(schema_json, str) and 'data:image' in schema_json:
+            schema_json = re.sub(
+                r'data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+\/=]+',
+                '',
+                schema_json
+            )
         if not name or not site_name:
             msg = "❌ 表单名称或网站名不能为空"
             return (jsonify({"ok": False, "error": msg}), 400) if is_ajax else (msg, 400)
@@ -1801,8 +1825,12 @@ def preview_form(site_name):
 
     if request.method == "POST":
         raw = request.form.get("schema_json")
-        if not raw and request.is_json:
-            raw = (request.get_json(silent=True) or {}).get("schema_json")
+        if isinstance(raw, str) and 'data:image' in raw:
+            raw = re.sub(
+                r'data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+\/=]+',
+                '',
+                raw
+            )
         try:
             schema = json.loads(raw) if isinstance(raw, str) else (raw or {})
         except Exception:
