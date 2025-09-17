@@ -1,17 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-    <style id="kill-greet-bg">
-        /* 不影响“表单基本信息”那张卡，只是把最上面的欢迎区禁止背景图 */
-        .greet-card {
-            background-image: none !important;
-        }
-
-        .greet-card::before,
-        .greet-card::after {
-            content: none !important;
-        }
-    </style>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
     <title>创建新表单</title>
@@ -1179,11 +1168,6 @@
       });
     })();
     </script>
-    <style id="width-preview">
-        :root {
-            --form-width: 960px;
-        }
-    </style>
 </head>
 
 <body data-appearance="light" data-site="{{ site_name or '' }}" data-tpl="{{ tpl or '' }}">
@@ -1254,6 +1238,10 @@
                                 <input id="headerImagePicker" type="file" accept="image/*">
                             </label>
                         </div>
+                        <!-- 预览（显示在问候卡标题下方） -->
+                        <img id="greetCover" alt=""
+                             style="display:none;max-width:180px;border-radius:12px;margin:8px 0 0 0">
+
                         <div class="bd">
                             <div class="row2">
                                 <input name="form_name" placeholder="表单名称 *" required value="{{ form_name or '' }}"
@@ -1269,7 +1257,7 @@
                     <!-- 分隔 -->
                     <div style="height:20px;"></div>
 
-                    <div class="card form-basic">
+                    <div class="card">
                         <div class="hd"><h2>问题设置</h2></div>
                         <div class="bd">
                             <div id="list"></div>
@@ -1600,6 +1588,9 @@ body[data-appearance="dark"] .form-basic::after{
 })();
 </script>
 
+
+
+
 <style id="greet-cover-style">
   /* 问候卡背景图 */
   .greet-card.has-cover{ position:relative; overflow:hidden; }
@@ -1749,46 +1740,6 @@ body[data-appearance="dark"] .form-basic::after{
         filter: brightness(1.05);
     }
 </style>
-<style id="intro-plain">
-    /* 标题区 = 纯文本，不要卡片、不要阴影、不要背景图 */
-    .form-intro {
-        padding: 16px 0 8px;
-        background: none !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-    }
-
-    .form-intro::before,
-    .form-intro::after {
-        content: none !important;
-    }
-
-    /* 左对齐的标题与描述（可按需微调字号） */
-    .form-title {
-        margin: 0 0 4px 0;
-        font-size: 28px;
-        line-height: 1.25;
-        font-weight: 800;
-    }
-
-    .form-desc {
-        margin: 0;
-        color: #6b7280;
-    }
-
-    /* 标题/描述 与 第一道题之间的细分割线（你已有 <div class="form-sep">） */
-    .form-sep {
-        height: 1px;
-        background: rgba(0, 0, 0, .06);
-        border-radius: 999px;
-        margin: 14px 0 18px;
-    }
-
-    body[data-appearance="dark"] .form-sep {
-        background: rgba(255, 255, 255, .10);
-    }
-</style>
-<head>
 
 <script id="schemaJSON" type="text/plain" data-mime="application/json">
     {{ (schema_json|default({}, true))|tojson }}
@@ -3297,43 +3248,47 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <script>
 (function(){
-  const picker = document.getElementById('headerImagePicker');
+  // 1) 输入框/上传控件联动预览
   const urlInp = document.getElementById('headerImageUrl');
+  const picker = document.getElementById('headerImagePicker');
+  const basicCard = document.querySelector('.form-basic');
+  const schemaInput = document.getElementById('schema_json');
+  const form = document.getElementById('builder');
 
-  async function uploadAsset(file){
-    const fd = new FormData();
-    fd.append('file', file);
-    const res = await fetch(location.pathname.replace(/\/create_form.*/,'') + '/admin/api/upload_asset', {
-      method:'POST', body: fd
-    });
-    const j = await res.json();
-    if(!j.ok) throw new Error(j.error||'上传失败');
-    return j.url; // <- 服务端返回的静态URL
+  function applyBg(url){
+    if (!basicCard) return;
+    if (url) basicCard.style.backgroundImage = `url("${url.replace(/"/g,'\\"')}")`;
+    else basicCard.style.removeProperty('background-image');
   }
 
-  picker?.addEventListener('change', async (e)=>{
-    const f = e.target.files && e.target.files[0];
-    if(!f) return;
-    try{
-      // 1) 上传到服务器
-      const url = await uploadAsset(f);
-
-      // 2) 把返回的 URL 写回输入框（而不是 data: 或 blob:）
-      urlInp.value = url;
-      urlInp.dispatchEvent(new Event('input', {bubbles:true}));
-
-      // 3) 立即预览（使用 URL）
-      const basicCard = document.querySelector('.form-basic');
-      if (basicCard){
-        basicCard.style.backgroundImage = `url("${url.replace(/"/g,'\\"')}")`;
-        basicCard.classList.add('has-cover');
-      }
-    }catch(err){
-      alert(err.message||'上传失败');
-      console.error(err);
-    }finally{
-      e.target.value = '';
+  // 初始化：从 schema_json 还原 header.title_image
+  try{
+    const j = JSON.parse(schemaInput.value || '{}') || {};
+    const init = j?.header?.title_image || '';
+    if (init){
+      if (urlInp) urlInp.value = init;
+      applyBg(init);
     }
+  }catch(_){}
+
+  // 输入框变化 → 立即预览（位置在“表单基本信息”卡片后面）
+  urlInp?.addEventListener('input', ()=> applyBg(urlInp.value.trim()));
+
+  // 选择文件（如果你已有后端直传，这里只负责把 blobURL 预览；真正的 URL 仍以你现有上传逻辑为准）
+  picker?.addEventListener('change', e=>{
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const blobURL = URL.createObjectURL(f);
+    applyBg(blobURL);
+  });
+
+  // 2) 提交前把值写入 schema.header.title_image（保证公共页/预览能同步）
+  form?.addEventListener('submit', ()=>{
+    let j={};
+    try{ j = JSON.parse(schemaInput.value || '{}') || {}; }catch(_){}
+    j.header = j.header || {};
+    j.header.title_image = (urlInp?.value || '').trim();
+    schemaInput.value = JSON.stringify(j);
   });
 })();
 </script>
@@ -3438,13 +3393,6 @@ document.addEventListener('DOMContentLoaded', function () {
     if (e.target?.classList?.contains('q-color')) schedule();
     if (e.target?.id === 'headerImageUrl')        schedule();
   });
-    const cover = document.getElementById('headerImageUrl')?.value?.trim();
-// 如果还是临时地址，就先别发，避免 413
-    if (cover && (cover.startsWith('data:') || cover.startsWith('blob:'))) {
-        console.warn('skip autosave: avoid posting data/blob URL');
-        return; // 等真正的上传得到 URL 再保存
-    }
-
 })();
 </script>
 
