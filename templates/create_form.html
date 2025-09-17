@@ -3035,7 +3035,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const html = await res.text();
 
             // 仍然放到你原来的弹窗里显示
-            root.innerHTML = '<iframe id="previewFrame" title="预览" style="width:100%;height:70vh;border:0;border-radius:16px;overflow:hidden;"></iframe>';
+            root.innerHTML = '<iframe id="previewFrame" title="预览" style="width:100vw;height:100vh;border:0;border-radius:0;display:block;"></iframe>';
             root.querySelector('#previewFrame').srcdoc = html;
             modal.classList.add('show');
         });
@@ -3269,6 +3269,61 @@ async function readJSONSafely(res){
   document.addEventListener('input', (e)=>{
     if (e.target?.classList?.contains('q-color')) schedule();
     if (e.target?.id === 'headerImageUrl') schedule();
+  });
+})();
+</script>
+
+<style id="preview-only-iframe">
+  /* 预览弹窗本体：去掉全局 .modal 的 16px 内边距，让内容顶满 */
+  #previewModal{
+    padding: 0;
+    background: rgba(0,0,0,.45); /* 保留半透明蒙层 */
+  }
+  /* 去掉卡片外观，铺满视口 */
+  #previewModal .box{
+    background: transparent;
+    max-width: none;
+    width: 100vw;
+    max-height: none;
+    height: 100vh;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: hidden; /* 不要外层滚动条 */
+  }
+  /* 隐藏你原来那行“表单预览/关闭”头部 */
+  #previewModal .box > div:first-child{
+    display: none;
+  }
+  /* 让 iframe 填满视口，只剩“下面那层” */
+  #previewRoot,
+  #previewRoot iframe{
+    width: 100vw;
+    height: 100vh;
+    display: block;
+    border: 0;
+  }
+</style>
+
+<script>
+(function(){
+  const modal = document.getElementById('previewModal');
+  if (!modal) return;
+
+  // 点黑色蒙层关闭（只在点到最外层时关闭，避免点到 iframe 也关闭）
+  modal.addEventListener('click', function(e){
+    if (e.target === modal) modal.classList.remove('show');
+  });
+
+  // 如果你保留了那个“✖”按钮，也让它能关闭（可选）
+  document.getElementById('closePreview')?.addEventListener('click', function(){
+    modal.classList.remove('show');
+  });
+
+  // ESC 关闭
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') modal.classList.remove('show');
   });
 })();
 </script>
