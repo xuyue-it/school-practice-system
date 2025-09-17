@@ -243,63 +243,119 @@
       background-repeat: no-repeat !important;
     }
   </style>
+    <style id="intro-card">
+        .form-intro {
+            position: relative;
+            margin: 0; /* 让它紧贴容器左侧 */
+            padding: 20px 24px 14px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(17, 24, 39, .08), 0 4px 14px rgba(17, 24, 39, .06);
+        }
 
-  <!-- ① 新增：intro-cover-style -->
-  <style id="intro-cover-style">
-    .form-intro.has-cover{ position:relative; overflow:hidden; border-radius:20px; padding:20px; }
-    .form-intro.has-cover::before{
-      content:""; position:absolute; inset:0; z-index:0; border-radius:20px;
-      background-image:
-        linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.86)),
-        var(--intro-cover-image, none);
-      background-size: cover, cover;
-      background-position: center, center;
-      pointer-events:none;
-    }
-    body[data-appearance="dark"] .form-intro.has-cover::before{
-      background-image:
-        linear-gradient(180deg, rgba(11,18,32,.64), rgba(11,18,32,.64)),
-        var(--intro-cover-image, none);
-    }
+        body[data-appearance="dark"] .form-intro {
+            background: rgba(17, 24, 39, .65);
+        }
 
-    .form-intro.has-cover > * {
-        position: relative;
-        z-index: 1;
-    }
+        .form-title {
+            margin: 0 0 6px 0;
+            font-size: 28px;
+            line-height: 1.25;
+            font-weight: 800;
+            text-align: left;
+        }
 
-    .form-intro {
-        background: #fff;
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
-    }
+        .form-desc {
+            margin: 0;
+            color: #6b7280;
+            text-align: left;
+        }
 
-  </style>
-</head>
+        .form-sep {
+            height: 1px;
+            background: rgba(0, 0, 0, .06);
+            border-radius: 999px;
+            margin: 14px 0 18px;
+        }
 
-<style>
-.form-intro{
-  position:relative; overflow:hidden;
-  border-radius:20px; padding:24px 24px 10px;
-  box-shadow: 0 10px 30px rgba(17,24,39,.08), 0 4px 14px rgba(17,24,39,.06);
-  background:#fff; /* 无封面时 */
-}
-.form-intro.has-cover::after{
-  content:""; position:absolute; inset:0;
-  background:linear-gradient(180deg, rgba(255,255,255,.74), rgba(255,255,255,.80));
-  pointer-events:none;
-}
-body[data-appearance="dark"] .form-intro{ background:rgba(17,24,39,.6); }
-body[data-appearance="dark"] .form-intro.has-cover::after{
-  background:linear-gradient(180deg, rgba(17,24,39,.42), rgba(17,24,39,.58));
-}
-.form-intro > *{ position:relative; z-index:1; }
+        body[data-appearance="dark"] .form-sep {
+            background: rgba(255, 255, 255, .10);
+        }
+    </style>
+    <style id="intro-card-override">
+        /* 让标题区回到“左对齐 + 白色卡片”样式，并且压过任何旧样式 */
+        main .form-intro {
+            display: block !important;
+            margin: 0 !important; /* 靠左 */
+            padding: 20px 24px 14px !important;
+            background: #fff !important; /* 白底卡片 */
+            border-radius: 16px !important;
+            box-shadow: 0 10px 30px rgba(17, 24, 39, .08), 0 4px 14px rgba(17, 24, 39, .06) !important;
+        }
 
-/* 标题/描述和第一个题目之间的细分割线 */
-.form-sep{ height:1px; background:rgba(0,0,0,.06); border-radius:999px; margin:16px 0; }
-body[data-appearance="dark"] .form-sep{ background:rgba(255,255,255,.08); }
-</style>
+        body[data-appearance="dark"] main .form-intro {
+            background: rgba(17, 24, 39, .65) !important;
+        }
+
+        /* 标题与描述强制左对齐（有旧样式居中时用 !important 压过去） */
+        main .form-intro .form-title {
+            margin: 0 0 6px 0 !important;
+            font-size: 28px !important;
+            line-height: 1.25 !important;
+            font-weight: 800 !important;
+            text-align: left !important;
+        }
+
+        main .form-intro .form-desc {
+            margin: 0 !important;
+            color: #6b7280 !important;
+            text-align: left !important;
+        }
+
+        /* 标题区与第一题之间的分割线 */
+        main .form-sep {
+            height: 1px !important;
+            background: rgba(0, 0, 0, .06) !important;
+            border-radius: 999px !important;
+            margin: 14px 0 18px !important;
+        }
+
+        body[data-appearance="dark"] main .form-sep {
+            background: rgba(255, 255, 255, .10) !important;
+        }
+    </style>
+    <style id="intro-align">
+        /* 根据你下面那张表单卡片的宽度来设置。若你下方卡片是 960px，这里保持一致即可 */
+        :root {
+            --form-width: 910px;
+        }
+
+        /* 不一致就把 960 改成你实际的 */
+
+        main .form-intro,
+        main .form-sep {
+            max-width: var(--form-width);
+            margin-left: auto;
+            margin-right: auto; /* 居中对齐容器 */
+            width: 100%;
+        }
+
+        /* 标题卡片保持左对齐、白色卡片风格（与下方一致） */
+        main .form-intro {
+            display: block !important;
+            padding: 20px 24px 14px !important;
+            background: #fff !important;
+            border-radius: 16px !important;
+            box-shadow: 0 10px 30px rgba(17, 24, 39, .08), 0 4px 14px rgba(17, 24, 39, .06) !important;
+            text-align: left !important;
+        }
+
+        /* 避免被其他样式拉成居中/小块 */
+        main .form-intro .form-title,
+        main .form-intro .form-desc {
+            text-align: left !important;
+        }
+    </style>
 
 </head>
 
@@ -324,11 +380,8 @@ body[data-appearance="dark"] .form-sep{ background:rgba(255,255,255,.08); }
     <main>
         <section class="form-intro">
             <h1 class="form-title">{{ form_title or site_name }}</h1>
-            {% if form_desc %}
-            <p class="form-desc">{{ form_desc|safe }}</p>
-            {% endif %}
+            {% if form_desc %}<p class="form-desc">{{ form_desc|safe }}</p>{% endif %}
         </section>
-      <!-- 细分割线：仅做视觉分隔，不改变任何逻辑 -->
         <div class="form-sep"></div>
         <!-- 仅保留“表单卡片”（③ 已删除原“第一张卡片：标题+描述”） -->
       <div class="card">
@@ -436,7 +489,6 @@ body[data-appearance="dark"] .form-sep{ background:rgba(255,255,255,.08); }
       <div id="statusResult" style="font-size:14px;color:#111"></div>
     </div>
   </div>
-
   <!-- 逻辑脚本（结构保持，补全花括号/try-catch） -->
   <script>
   // 打开/关闭状态弹窗
@@ -888,28 +940,6 @@ body[data-appearance="dark"] .form-sep{ background:rgba(255,255,255,.08); }
   })();
   </script>
 
-  <!-- ④ 新增：把 header.title_image 应用到 .form-intro 背景 -->
-  <script>
-  (function(){
-    function applyBgToIntro(src){
-      const el = document.querySelector('.form-intro'); if (!el) return;
-      if (src){
-        el.classList.add('has-cover');
-        el.style.setProperty('--intro-cover-image', `url("${String(src).replace(/"/g,'\\"')}")`);
-      }else{
-        el.classList.remove('has-cover');
-        el.style.removeProperty('--intro-cover-image');
-      }
-    }
-    try{
-      const raw = window.__SCHEMA__ || document.getElementById('schemaJSON')?.textContent || '';
-      const j = typeof raw === 'string' ? JSON.parse(raw||'null') : raw;
-      const url = j?.header?.title_image;
-      if (url) applyBgToIntro(url);
-    }catch(_){}
-  })();
-  </script>
-
   <!-- 杂项优化 -->
   <script>
   (function(){
@@ -955,6 +985,37 @@ body[data-appearance="dark"] .form-sep{ background:rgba(255,255,255,.08); }
   }
 })();
 </script>
+
+<style>
+/* 标题区 = 纯文本，不要中间那块“白色小卡” */
+.form-intro{
+  padding: 16px 0 8px;
+  background: none !important;             /* 不要背景图 */
+  box-shadow: none !important;             /* 不要阴影块 */
+  border-radius: 0 !important;
+}
+.form-intro::before,
+.form-intro::after{ content:none !important; }
+
+/* 左对齐的标题和描述 */
+.form-title{
+  margin: 0 0 4px 0;
+  font-size: 28px; line-height: 1.25; font-weight: 800;
+}
+.form-desc{
+  margin: 0; color: #6b7280;               /* 灰色描述 */
+}
+
+/* 细分割线 */
+.form-sep{
+  height:1px; background:rgba(0,0,0,.06);
+  border-radius:999px; margin: 14px 0 18px;
+}
+/* 暗色模式下的分割线微调，可选 */
+body[data-appearance="dark"] .form-sep{
+  background:rgba(255,255,255,.10);
+}
+</style>
 
 </body>
 </html>
