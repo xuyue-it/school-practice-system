@@ -1462,21 +1462,31 @@
     </div>
 </div>
 
-<!-- 保存成功 Modal -->
-<div class="modal" id="linkModal" aria-hidden="true">
-    <div class="box">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-            <strong>表单已保存</strong>
-            <button class="btn icon" id="closeLink">✖</button>
-        </div>
-        <p>请把以下链接发给用户进行填写：</p>
-        <div class="row">
-            <input id="pubUrl" class="tiny" style="flex:1" readonly>
-            <button id="copyPub" class="btn primary" type="button">复制</button>
-        </div>
-        <p class="hint" style="margin-top:8px">提示：也可以在“回复”页右上方复制该链接。</p>
-    </div>
+<!-- 创建成功弹窗（中间丝滑出现） -->
+<div class="modal" id="successModal" aria-hidden="true"
+     style="display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:120">
+  <div class="box" id="successBox" style="
+    width:min(920px,92vw); max-height:86vh; border-radius:20px; overflow:hidden;
+    background:var(--glass,#ffffffee); border:1px solid var(--glass-border,#e5e7eb);
+    backdrop-filter: blur(18px) saturate(160%); box-shadow: 0 18px 36px rgba(0,0,0,.22);
+    opacity:0; transform: scale(.92) translateY(8px);">
+    <iframe id="successFrame" title="创建成功" style="width:100%;height:70vh;border:0;background:#fff"></iframe>
+  </div>
 </div>
+
+<style>
+  /* 丝滑出现动画 */
+  #successModal.show #successBox {
+    animation: popIn .22s cubic-bezier(.2, .9, .2, 1) forwards;
+  }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(.92) translateY(8px) }
+    to   { opacity: 1; transform: scale(1) translateY(0) }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #successModal.show #successBox { animation: none; opacity: 1; transform: none; }
+  }
+</style>
 
 <!-- 图集 Modal -->
 <div class="modal" id="galleryModal" aria-hidden="true">
@@ -2571,6 +2581,35 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 </style>
 
+<script id="success-modal-api">
+(function(){
+  if (window.openModal) return;
+
+  function close(){
+    const m = document.getElementById('successModal');
+    const f = document.getElementById('successFrame');
+    if (m){ m.classList.remove('show'); m.style.display='none'; }
+    if (f){ f.src='about:blank'; }
+  }
+
+  // 打开中间弹窗并加载成功页
+  window.openModal = function(url){
+    const m = document.getElementById('successModal');
+    const f = document.getElementById('successFrame');
+    if (!m || !f) { location.href = url; return; }
+    f.src = url;
+    m.classList.add('show');
+    m.style.display = 'flex';
+  };
+
+  // 点击蒙层关闭
+  document.getElementById('successModal')?.addEventListener('click', e => {
+    if (e.target.id === 'successModal') close();
+  });
+  // ESC 关闭
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+})();
+</script>
 
 <script id="submit-save">
     document.getElementById('builder')?.addEventListener('submit', async (ev) => {
@@ -2615,10 +2654,12 @@ document.addEventListener('DOMContentLoaded', function () {
             });
             const j = await readJSONSafely(res);
             if (!res.ok || j.ok === false) return alert(j.error || ('保存失败：HTTP ' + res.status));
+
             const site = j.site_name || new URLSearchParams(location.search).get('site') || '';
             const pub = j.public_url || (site ? (location.origin + '/f/' + encodeURIComponent(site)) : '');
             if (!pub) return alert('保存成功，但缺少站点名');
 
+// 旧的小弹层（复制链接用）——留着
             const $modal = document.getElementById('linkModal');
             const $inp = document.getElementById('pubUrl');
             if ($inp) {
@@ -2626,6 +2667,13 @@ document.addEventListener('DOMContentLoaded', function () {
                 $inp.setAttribute('value', pub);
             }
             if ($modal) $modal.classList.add('show');
+
+// 中间大弹层（恢复的这个）——关键一行
+            const successURL = j.success_url || (site ? (`/site/${encodeURIComponent(site)}/create_success`) : '');
+            if (successURL) {
+                (typeof openModal === 'function') ? openModal(successURL) : (location.href = successURL);
+            }
+
             document.getElementById('pubUrl')?.focus();
             // 这里沿用你原来的成功弹窗逻辑（如果你有 openModal 就用它）
         } catch (e) {
