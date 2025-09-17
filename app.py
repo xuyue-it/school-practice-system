@@ -1904,7 +1904,7 @@ def preview_form(site_name):
             schema_json=json.dumps(schema, ensure_ascii=False),  # ← 新增
             header_image=header_image,
             header_image_pos=header_image_pos,
-            preview_mode=True
+
         )
     except TemplateNotFound:
         brand = brand_dark if theme_mode == "dark" else brand_light
