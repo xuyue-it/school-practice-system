@@ -1929,11 +1929,11 @@ def preview_inline():
     if theme_mode not in ("light","dark","auto"):
         theme_mode = "auto"
 
-    # 上传配置（仅用于渲染控件外观；预览不真正上传/提交）
+    # 上传配置（预览不真正上传）
     upload_cfg = (schema.get("upload") or (schema.get("settings") or {}).get("upload") or {})
     upload_max_files = int(upload_cfg.get("max_files") or 3)
 
-    # 字段清洗（去掉描述类键）
+    # 字段清洗
     raw_fields = schema.get("fields") or []
     if not isinstance(raw_fields, list):
         raw_fields = []
@@ -1944,7 +1944,7 @@ def preview_inline():
         return g
     clean_fields = [_strip_desc(f) for f in raw_fields]
 
-    # 回退字段（用于 fallback 模板）
+    # 回退
     fields_fallback = []
     for f in clean_fields:
         fields_fallback.append({
@@ -1955,25 +1955,31 @@ def preview_inline():
             "required": bool(f.get("required", False)),
         })
 
-    # 用和公开页相同的模板渲染；site_name 给个占位，防止误写库
+    # 关键改动：传 schema（对象），并且同时传 form_name 兼容模板
     try:
+        title = form_name or schema.get("name") or "预览"
+        desc  = form_desc or (schema.get("descHTML") or schema.get("desc") or schema.get("description"))
+
         return render_template(
             "public_form.html",
-            site_name="__preview__",                       # 占位，表单提交会 404，不会写库
-            form_title=form_name or schema.get("name") or "预览",
-            form_desc=form_desc or (schema.get("descHTML") or schema.get("desc") or schema.get("description")),
+            site_name="__preview__",                 # 预览占位
+            form_title=title,                        # 你原来用的变量
+            form_name=title,                         # 兼容模板里 {{ form_name }}
+            form_desc=desc,
             fields=clean_fields,
+
             brand_light=brand_light,
             brand_dark=brand_dark,
             theme_mode=theme_mode,
             has_file=any((f.get("type") or "").lower() == "file" for f in clean_fields),
             upload_max_files=upload_max_files,
-            schema_json=json.dumps(schema, ensure_ascii=False),  # ← 新增
 
-            preview_mode=True                              # 模板可选识别（如需禁用提交）
+            schema=schema,                           # ✅ 新增：传对象，模板可用 schema.header.title_image
+            schema_json=json.dumps(schema, ensure_ascii=False),
+
+            preview_mode=True
         )
     except TemplateNotFound:
-        # 使用你已有的回退 HTML
         brand = brand_dark if theme_mode == "dark" else brand_light
         return render_template_string(
             PUBLIC_FORM_HTML,
@@ -1983,6 +1989,7 @@ def preview_inline():
             fields=fields_fallback,
             brand=brand
         )
+
 
 # ========= 公共页：保存草稿（含文件）=========
 @app.post("/site/<site_name>/draft/save")

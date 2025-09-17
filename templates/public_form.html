@@ -402,9 +402,15 @@
 
     <!-- ② 新增：把 标题+描述 放进 <main>，并把表单卡片也放进来 -->
     <main>
-        <section class="form-intro">
-            <h1 class="form-title">{{ form_title or site_name }}</h1>
-            {% if form_desc %}<p class="form-desc">{{ form_desc|safe }}</p>{% endif %}
+        <section class="form-intro {{ 'has-cover' if (schema.header and schema.header.title_image) else '' }}"
+                 {% if schema.header and schema.header.title_image %}
+                 style="--intro-cover: url('{{ schema.header.title_image|e }}')"
+                 {% endif %}>
+            <h1 class="form-title">{{ form_name }}</h1>
+            {% if form_desc %}
+            <p class="form-desc">{{ form_desc }}</p>
+            {% endif %}
+            <div class="form-sep"></div>
         </section>
         <div class="form-sep"></div>
         <!-- 仅保留“表单卡片”（③ 已删除原“第一张卡片：标题+描述”） -->
@@ -1053,5 +1059,37 @@
           background: rgba(255, 255, 255, .10);
       }
   </style>
+
+  <style id="public-intro-cover">
+      .form-intro.has-cover {
+          position: relative;
+          overflow: hidden;
+          border-radius: 16px;
+      }
+
+      .form-intro.has-cover::before {
+          content: "";
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          /* 亮色覆盖层 + 背景图 */
+          background-image: linear-gradient(180deg, rgba(255, 255, 255, .92), rgba(255, 255, 255, .86)),
+          var(--intro-cover, none);
+          background-size: cover, cover;
+          background-position: center, center;
+      }
+
+      body[data-appearance="dark"] .form-intro.has-cover::before {
+          /* 暗色覆盖层 + 背景图 */
+          background-image: linear-gradient(180deg, rgba(11, 18, 32, .64), rgba(11, 18, 32, .64)),
+          var(--intro-cover, none);
+      }
+
+      .form-intro.has-cover > * {
+          position: relative;
+          z-index: 1;
+      }
+  </style>
+
 </body>
 </html>
