@@ -1103,27 +1103,32 @@ def api_save_theme_bg(site_name):
 
     conn = get_conn(); c = conn.cursor()
     try:
+        # 1) 读库得到 schema
         c.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
         row = c.fetchone()
-        if not row:
-            conn.close()
-            return jsonify({"ok": False, "error": "表单不存在"}), 404
+        schema = row[0] if row and isinstance(row[0], dict) else (json.loads(row[0]) if row and row[0] else {})
 
-        schema = row[0] if isinstance(row[0], dict) else (json.loads(row[0]) if row[0] else {})
-        theme = schema.get("theme") if isinstance(schema.get("theme"), dict) else {}
+        # 2) 写 header.title_image（以及可选位置）
+        bg = payload.get("bg")
+        bg_pos = payload.get("bg_position")
+        header = schema.get("header") or {}
+        if bg:
+            header["title_image"] = bg
+        if bg_pos:
+            header["title_image_pos"] = bg_pos
+        schema["header"] = header
+
+        # 3) 仍然按你现有逻辑写 theme（brand_light/brand_dark/mode）
+        theme = schema.get("theme") or {}
+        theme["brand"] = brand_light or theme.get("brand", "")
+        theme["brand_dark"] = brand_dark or theme.get("brand_dark", "")
+        theme["mode"] = mode
         schema["theme"] = theme
 
-        if brand_light: theme["brand_light"] = brand_light
-        if brand_dark:  theme["brand_dark"]  = brand_dark
-        theme["mode"] = mode
-
-        # 永久忽略并清理这些键
-        for k in ("bg", "bg_position", "notifications"):
-            schema.pop(k, None)
-            theme.pop(k, None)
-
+        # 4) 回写
         c.execute("UPDATE form_defs SET schema_json=%s WHERE site_name=%s", (Json(schema), site_name))
         conn.commit()
+
         return jsonify({"ok": True})
     except Exception as e:
         conn.rollback()

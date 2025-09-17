@@ -1,6 +1,14 @@
 <!doctype html>
 <html lang="zh" class="no-js" data-theme="{{ theme_mode or 'system' }}">
 <head>
+    <style id="form-width">
+        :root {
+            --form-width: 960px;
+        }
+
+        /* 你要多少就统一改多少 */
+    </style>
+
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <title>{{ form_title or site_name }} · 表单</title>
@@ -86,7 +94,7 @@
       border-bottom: 1px solid rgba(15,23,42,.08);
     }
     .brandbar{
-      max-width: 960px; margin: 0 auto; padding: 14px 20px;
+      max-width: var(--form-width);
       display:flex; align-items:center; gap:14px;
     }
     .brandbar .spacer{flex:1}
@@ -107,15 +115,7 @@
     .btn-ghost:hover{filter:brightness(1.03)}
 
     main{ display:grid; place-items:start center; padding:32px 16px 40px }
-    .card{
-      width:min(960px, 100%);
-      background: var(--card);
-      backdrop-filter: blur(16px) saturate(130%);
-      border: 1px solid rgba(15,23,42,.08);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      overflow: clip;
-    }
+    .card:root{ --form-width: 960px; }
     .hero{
       padding: 28px 26px 18px;
       background: linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,.3));
@@ -325,11 +325,6 @@
         }
     </style>
     <style id="intro-align">
-        /* 根据你下面那张表单卡片的宽度来设置。若你下方卡片是 960px，这里保持一致即可 */
-        :root {
-            --form-width: 910px;
-        }
-
         /* 不一致就把 960 改成你实际的 */
 
         main .form-intro,
@@ -962,60 +957,79 @@
     }
   </style>
 
-<script>
-(function(){
-  // schema 优先从 window.__SCHEMA__ 或 #schemaJSON 取
-  let j = null;
-  try{
-    j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent||'null');
-  }catch(_){}
-  const cover = j?.header?.title_image || '';
-  const intro = document.querySelector('.form-intro');
-  if (intro){
-    if (cover){
-      intro.style.backgroundImage = `url("${cover.replace(/"/g,'\\"')}")`;
-      intro.style.backgroundSize = 'cover';
-      intro.style.backgroundPosition = 'center';
-      intro.style.backgroundRepeat = 'no-repeat';
-      intro.classList.add('has-cover');
-    }else{
-      intro.style.removeProperty('background-image');
-      intro.classList.remove('has-cover');
-    }
-  }
-})();
-</script>
+  <script>
+      (function () {
+          // schema 优先从 window.__SCHEMA__ 或 #schemaJSON 取
+          let j = null;
+          try {
+              j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent || 'null');
+          } catch (_) {
+          }
+          const cover = j?.header?.title_image || '';
+          const intro = document.querySelector('.form-intro');
+          if (intro) {
+              if (cover) {
+                  intro.style.backgroundImage = `url("${cover.replace(/"/g, '\\"')}")`;
+                  intro.style.backgroundSize = 'cover';
+                  intro.style.backgroundPosition = 'center';
+                  intro.style.backgroundRepeat = 'no-repeat';
+                  intro.classList.add('has-cover');
+              } else {
+                  intro.style.removeProperty('background-image');
+                  intro.classList.remove('has-cover');
+              }
+          }
+      })();
+  </script>
 
-<style>
-/* 标题区 = 纯文本，不要中间那块“白色小卡” */
-.form-intro{
-  padding: 16px 0 8px;
-  background: none !important;             /* 不要背景图 */
-  box-shadow: none !important;             /* 不要阴影块 */
-  border-radius: 0 !important;
-}
-.form-intro::before,
-.form-intro::after{ content:none !important; }
+  <style>
+      :root {
+          --intro-cover-image: none; /* 兜底 */
+          --intro-cover-pos: center; /* 兜底 */
+      }
 
-/* 左对齐的标题和描述 */
-.form-title{
-  margin: 0 0 4px 0;
-  font-size: 28px; line-height: 1.25; font-weight: 800;
-}
-.form-desc{
-  margin: 0; color: #6b7280;               /* 灰色描述 */
-}
+      /* 标题区 = 纯文本，不要中间那块白卡 */
+      .form-intro {
+          padding: 16px 0 8px;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          background-color: transparent !important;
+      }
 
-/* 细分割线 */
-.form-sep{
-  height:1px; background:rgba(0,0,0,.06);
-  border-radius:999px; margin: 14px 0 18px;
-}
-/* 暗色模式下的分割线微调，可选 */
-body[data-appearance="dark"] .form-sep{
-  background:rgba(255,255,255,.10);
-}
-</style>
+      /* 有封面图时 */
+      .form-intro.has-cover {
+          /* 一行写齐：图片/位置/大小/是否平铺 */
+          background: var(--intro-cover-image) var(--intro-cover-pos) / cover no-repeat !important;
+      }
 
+      .form-intro::before,
+      .form-intro::after {
+          content: none !important;
+      }
+
+      .form-title {
+          margin: 0 0 4px 0;
+          font-size: 28px;
+          line-height: 1.25;
+          font-weight: 800;
+      }
+
+      .form-desc {
+          margin: 0;
+          color: #6b7280;
+      }
+
+      /* 分割线（可选） */
+      .form-sep {
+          height: 1px;
+          background: rgba(0, 0, 0, .06);
+          border-radius: 999px;
+          margin: 14px 0 18px;
+      }
+
+      body[data-appearance="dark"] .form-sep {
+          background: rgba(255, 255, 255, .10);
+      }
+  </style>
 </body>
 </html>
