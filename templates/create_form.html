@@ -3356,5 +3356,52 @@ async function readJSONSafely(res){
   }
 </style>
 
+<style id="kill-preview-shell-hard">
+  /* 蒙层仍然半透明，保持居中 */
+  #previewModal {
+    padding: 0 16px !important;
+    background: rgba(0,0,0,.45) !important;
+    z-index: 10000 !important;
+  }
+
+  /* 把外层白色卡片壳彻底干掉 */
+  #previewModal.modal > .box,
+  #previewModal > .box {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: none !important;
+    color: inherit !important;
+    /* 中间弹窗的尺寸与圆角，仅用于裁切内部内容 */
+    width: min(980px, 92vw) !important;
+    height: 86vh !important;
+    border-radius: 18px !important;
+    overflow: hidden !important;
+  }
+  #previewModal.modal > .box::before,
+  #previewModal.modal > .box::after,
+  #previewModal > .box::before,
+  #previewModal > .box::after {
+    content: none !important;
+  }
+
+  /* 只保留 iframe 内容，隐藏“表单预览/✖”那行 */
+  #previewModal.modal > .box > *:not(#previewRoot),
+  #previewModal > .box > *:not(#previewRoot) {
+    display: none !important;
+  }
+
+  /* 让 iframe 正好铺满中间弹窗 */
+  #previewRoot,
+  #previewRoot iframe {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+</style>
+
 </body>
 </html>
