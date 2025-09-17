@@ -12,24 +12,20 @@ from jinja2 import TemplateNotFound
 from psycopg2.extras import Json
 import json
 import re
-import psycopg2
 import pandas as pd
 import io
 import smtplib
 from email.header import Header
 from email.utils import formataddr
 from email.mime.text import MIMEText
-import time, uuid, os
-from werkzeug.utils import secure_filename
 from pathlib import Path
 from uuid import uuid4
 from psycopg2.pool import SimpleConnectionPool
-import os, psycopg2
-from flask import render_template, request, abort
-from time import time
 import unicodedata
 import time
 from werkzeug.exceptions import RequestEntityTooLarge
+import os, uuid
+from werkzeug.utils import secure_filename
 # ========== Flask 应用 ==========
 app = Flask(__name__)
 try:
@@ -94,7 +90,7 @@ def inject_asset():
     import os
     def asset(path):
         full = os.path.join(app.static_folder, path)
-        v = str(int(os.path.getmtime(full))) if os.path.exists(full) else str(int(time()))
+        v = str(int(os.path.getmtime(full))) if os.path.exists(full) else str(int(time.time()))
         return url_for("static", filename=path, v=v)
     return {"asset": asset}
 
@@ -1046,37 +1042,48 @@ def site_admin(site_name):
         theme_mode=theme_mode,
     )
 
-@app.route("/site/<site_name>/admin/api/upload_asset", methods=["POST"])
-@admin_required
-def api_upload_asset(site_name):
+ALLOWED_EXTS = {"png","jpg","jpeg","gif","webp","svg","pdf","mp4","webm"}
+
+def _allowed(fname):
+    return "." in fname and fname.rsplit(".",1)[1].lower() in ALLOWED_EXTS
+
+def _upload_asset_impl(site=None):
     f = request.files.get("file")
     if not f or not f.filename:
-        return jsonify({"ok": False, "error": "未选择文件"}), 400
+        return jsonify(ok=False, error="no file"), 400
+    if not _allowed(f.filename):
+        return jsonify(ok=False, error="type not allowed"), 400
 
-    # 读取 schema 的白名单
-    conn = get_conn(); c = conn.cursor()
-    c.execute("SELECT schema_json FROM form_defs WHERE site_name=%s", (site_name,))
-    row = c.fetchone(); conn.close()
-    schema = row[0] if row and isinstance(row[0], dict) else (json.loads(row[0]) if row and row[0] else {})
-    upload_cfg = (schema.get("upload") or (schema.get("settings") or {}).get("upload") or {})
-    allowed = set(x.strip().lower() for x in str(upload_cfg.get("allowed_file_types","")).split(",") if x.strip())
+    ext = f.filename.rsplit(".", 1)[1].lower()
+    name = f"{uuid.uuid4().hex}.{ext}"
 
-    ext = Path(f.filename).suffix.lower().lstrip(".")
-    if allowed and ext not in allowed:
-        return jsonify({"ok": False, "error": f"不允许的文件类型: .{ext}"}), 400
+    if site:  # 站点内上传 —— 统一到 UPLOAD_FOLDER/<site>
+        folder = os.path.join(app.config["UPLOAD_FOLDER"], site)
+        url = f"/site/{site}/uploads/{name}"
+    else:     # 全局静态仍放 static/uploads
+        folder = os.path.join(app.static_folder, "uploads")
+        url = f"/static/uploads/{name}"
 
-    filename = secure_filename(f.filename)
-    folder = os.path.join(app.config["UPLOAD_FOLDER"], site_name)
     os.makedirs(folder, exist_ok=True)
-    path = os.path.join(folder, filename)
-    f.save(path)
-    url = url_for("site_uploaded_file", site_name=site_name, filename=filename, _external=True)
-    return jsonify({"ok": True, "filename": filename, "url": url})
+    f.save(os.path.join(folder, secure_filename(name)))
+    return jsonify(ok=True, url=url), 200
+
+
+
+@app.post("/admin/api/upload_asset")
+@admin_required
+def upload_asset_root():
+    return _upload_asset_impl(site=None)
+
+@app.post("/site/<site>/admin/api/upload_asset")
+@admin_required
+def upload_asset_site(site):
+    return _upload_asset_impl(site=site)
 
 @app.route("/site/<site_name>/admin/api/delete_asset", methods=["POST"])
 @admin_required
 def api_delete_asset(site_name):
-    name = (request.json or {}).get("filename", "")
+    name = (request.get_json(silent=True) or {}).get("filename", "")
     safe = secure_filename(name)
     if not safe or "/" in name or safe != name:
         return jsonify({"ok": False, "error": "非法文件名"}), 400
@@ -1646,7 +1653,7 @@ def public_submit(site_name):
             ext = Path(f.filename).suffix.lower().lstrip(".")
             if allowed and ext not in allowed:
                 continue
-            uniq = f"{int(time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
+            uniq = f"{int(time.time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
             abs_path = os.path.join(site_folder, uniq)
             f.save(abs_path)
             saved_urls.append(f"/site/{site_name}/uploads/{uniq}")
@@ -2000,7 +2007,7 @@ def save_public_draft(site_name):
             ext = Path(f.filename).suffix.lower().lstrip(".")
             if allowed and ext not in allowed:
                 continue
-            uniq = f"{int(time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
+            uniq = f"{int(time.time())}_{uuid4().hex[:8]}_{secure_filename(f.filename)}"
             abs_path = os.path.join(site_folder, uniq)
             f.save(abs_path)
             urls.append(f"/site/{site_name}/uploads/{uniq}")
