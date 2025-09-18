@@ -1538,24 +1538,6 @@ body[data-appearance="dark"] .form-basic::after{
 .form-basic > *{ position:relative; z-index:1; } /* 内容在遮罩之上 */
 </style>
 
-<style>
-  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:1000}
-  .modal.show{display:flex}
-  .modal .box{background:#fffffffa;border:1px solid #e8eef6;border-radius:16px;padding:18px;box-shadow:0 18px 36px rgba(0,0,0,.22);width:min(680px,92vw)}
-  /* 让“保存成功”的弹窗更合适一点宽度 */
-  #linkModal .box{width:min(720px,92vw)}
-</style>
-
-<style>
-    .modal {
-        display: none;
-    }
-
-    .modal.show {
-        display: flex;
-    }
-</style>
-
 <style id="anti-garble">
   /* 永远隐藏数据页里的占位行，避免“乱码”闪一下 */
   #tab-responses .muted { display: none !important; }
@@ -1799,47 +1781,6 @@ body[data-appearance="dark"] .form-basic::after{
         filter: brightness(1.05);
     }
 </style>
-<style id="intro-plain">
-    .form-intro {
-        padding: 16px 0 8px;
-        background: none !important;
-        box-shadow: none !important;
-        border-radius: 0 !important;
-    }
-
-    .form-intro:not(.has-cover)::before,
-    .form-intro:not(.has-cover)::after {
-        content: none !important;
-    }
-
-    /* 左对齐的标题与描述（可按需微调字号） */
-    .form-title {
-        margin: 0 0 4px 0;
-        font-size: 28px;
-        line-height: 1.25;
-        font-weight: 800;
-    }
-
-    .form-desc {
-        margin: 0;
-        color: #6b7280;
-    }
-
-    /* 标题/描述 与 第一道题之间的细分割线（你已有 <div class="form-sep">） */
-    .form-sep {
-        height: 1px;
-        background: rgba(0, 0, 0, .06);
-        border-radius: 999px;
-        margin: 14px 0 18px;
-    }
-
-    body[data-appearance="dark"] .form-sep {
-        background: rgba(255, 255, 255, .10);
-    }
-</style>
-<script id="schemaJSON" type="text/plain" data-mime="application/json">
-    {{ (schema_json|default({}, true))|tojson }}
-</script>
 
 <script>
     /** —— 回复数据表：按 schema 的“题目名称”渲染列 + 文件预览 + 列名“操作” —— */
