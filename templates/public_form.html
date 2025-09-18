@@ -245,6 +245,8 @@
       background-repeat: no-repeat !important;
     }
   </style>
+
+
     <style id="equal-form-width">
         :root {
             --form-width: 910px;
@@ -289,16 +291,45 @@
       </div>
     </header>
 
-      <!-- ② 新增：把 标题+描述 放进 <main>，并把表单卡片也放进来 -->
-      <main>
-          <!-- 封面图样式（只对有封面时生效） -->
-          <section class="form-intro {% if header_image %}has-cover{% endif %}"
-                   {% if header_image %}style="--intro-cover:url('{{ header_image }}')" {% endif %}>
-          <h1 class=" form-title">{{ form_title or form_name }}</h1>
-          {% if form_desc %}<p class="form-desc">{{ form_desc|safe }}</p>{% endif %}
-          <div class="form-sep"></div>
-          </section>
+    <!-- ② 新增：把 标题+描述 放进 <main>，并把表单卡片也放进来 -->
+    <main>
+        <!-- 封面图样式（只对有封面时生效） -->
+        <style>
+            .form-intro.has-cover {
+                position: relative;
+                overflow: hidden;
+                border-radius: 18px;
+            }
 
+            .form-intro.has-cover::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background-image: var(--intro-cover);
+                background-size: cover;
+                background-position: center;
+                opacity: .22; /* 亮色下透明度，可按需微调 */
+                background-position: var(--intro-pos, center), var(--intro-pos, center);
+            }
+
+            body[data-appearance="dark"] .form-intro.has-cover::before {
+                opacity: .28;
+            }
+
+            .form-intro.has-cover > * {
+                position: relative;
+                z-index: 1;
+            }
+        </style>
+
+        <section class="form-intro {% if header_image %}has-cover{% endif %}"
+         style="{% if header_image %}--intro-cover:url('{{ header_image }}'); --intro-pos: {{ header_image_pos or 'center' }};{% endif %}">
+        <h1 class="form-title">{{ form_title or form_name }}</h1>
+            {% if form_desc %}<p class="form-desc">{{ form_desc|safe }}</p>{% endif %}
+            <div class="form-sep"></div>
+        </section>
+
+        <div class="form-sep"></div>
         <!-- 仅保留“表单卡片”（③ 已删除原“第一张卡片：标题+描述”） -->
       <div class="card">
         <div class="hero">
@@ -881,6 +912,50 @@
   <script id="schemaJSON" type="application/json+jinja">{{ schema_json|safe }}</script>
   {% endif %}
 
+
+
+  <style>
+      /* 标题区 = 纯文本，不要中间那块“白色小卡” */
+      /* 只有“没有封面”时才清掉背景/阴影 */
+      .form-intro:not(.has-cover) {
+          padding: 16px 0 8px;
+          background: none;
+          box-shadow: none;
+          border-radius: 0;
+      }
+
+
+      .form-intro:not(.has-cover)::before,
+      .form-intro:not(.has-cover)::after { content: none !important; }
+
+
+      /* 左对齐的标题和描述 */
+      .form-title {
+          margin: 0 0 4px 0;
+          font-size: 28px;
+          line-height: 1.25;
+          font-weight: 800;
+      }
+
+      .form-desc {
+          margin: 0;
+          color: #6b7280; /* 灰色描述 */
+      }
+
+      /* 细分割线 */
+      .form-sep {
+          height: 1px;
+          background: rgba(0, 0, 0, .06);
+          border-radius: 999px;
+          margin: 14px 0 18px;
+      }
+
+      /* 暗色模式下的分割线微调，可选 */
+      body[data-appearance="dark"] .form-sep {
+          background: rgba(255, 255, 255, .10);
+      }
+  </style>
+
   <style id="public-intro-cover">
       .form-intro.has-cover {
           position: relative;
@@ -889,72 +964,110 @@
       }
 
       .form-intro.has-cover::before {
-          content: ""; /* ← 必须有 */
-          position: absolute; /* ← 必须有 */
-          inset: 0; /* ← 覆盖整个容器 */
-          pointer-events: none;
           background-image: linear-gradient(180deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .70)),
           var(--intro-cover, none);
           background-size: cover, cover;
-          background-position: center, var(--title-pos-x, 50%) var(--title-pos-y, 50%);
-          opacity: var(--title-cover-opacity, .72);
+          background-position: var(--intro-pos, center), var(--intro-pos, center);
       }
 
       body[data-appearance="dark"] .form-intro.has-cover::before {
-          content: ""; /* 冗余无妨，保持一致 */
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
           background-image: linear-gradient(180deg, rgba(11, 18, 32, .46), rgba(11, 18, 32, .46)),
           var(--intro-cover, none);
           background-size: cover, cover;
-          background-position: center, var(--title-pos-x, 50%) var(--title-pos-y, 50%);
+          background-position: var(--intro-pos, center), var(--intro-pos, center);
       }
+
 
       .form-intro.has-cover > * {
           position: relative;
           z-index: 1;
       }
   </style>
-
-  <script id="public-intro-init">
+<script>
 (function () {
   let j = null;
-  try { j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent || 'null'); } catch(_) {}
+  try {
+    j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent || 'null');
+  } catch(_) {}
 
+  // 更健壮的取图路径（多处兜底）
   const cover =
     j?.header?.title_image ||
     j?.display?.title_image ||
     j?.display?.cover_image ||
     j?.title_image ||
-    j?.cover_image || '';
+    j?.cover_image ||
+    '';
 
-  const pos = j?.header?.title_image_pos || j?.display?.title_image_pos || '50% 50%';
+  const pos = j?.header?.title_image_pos || j?.display?.title_image_pos || 'center';
+
   const intro = document.querySelector('.form-intro');
   if (!intro) return;
 
   if (cover) {
-    intro.style.setProperty('--intro-cover', `url("${String(cover).replace(/"/g, '\\"')}")`);
-    (function syncXY(p) {
-      let px = 50, py = 50;
-      if (typeof p === 'string') {
-        const s = p.split(/\s+/);
-        px = parseFloat(String(s[0] || '50').replace('%', '')) || 50;
-        py = parseFloat(String(s[1] || '50').replace('%', '')) || 50;
-      }
-      document.documentElement.style.setProperty('--title-pos-x', px + '%');
-      document.documentElement.style.setProperty('--title-pos-y', py + '%');
-    })(pos);
+    // ✅ 关键：给 CSS 变量赋值，而不是 backgroundImage
+    intro.style.setProperty('--intro-cover', `url("${cover.replace(/"/g, '\\"')}")`);
+    intro.style.setProperty('--intro-pos', pos);
     intro.classList.add('has-cover');
   } else {
-    intro.classList.remove('has-cover');
     intro.style.removeProperty('--intro-cover');
+    intro.classList.remove('has-cover');
   }
 })();
 </script>
 
-
 <input type="hidden" id="schema_json" value='{{ schema_json|tojson }}'>
+<style id="pub-cover">
+  :root{ --title-pos-x:50%; --title-pos-y:50%; --title-cover-opacity:.72; --title-cover-img:none; }
+
+  /* 你公开页标题容器的类名，如果是别的（比如 .form-header），把 .form-intro 改成你的 */
+  .form-intro.has-cover{
+    position:relative;
+    background-image: var(--title-cover-img);
+    background-size: cover;
+    background-position: var(--title-pos-x) var(--title-pos-y);
+  }
+  .form-intro.has-cover::before{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background: linear-gradient(180deg,
+      rgba(255,255,255,var(--title-cover-opacity)),
+      rgba(255,255,255,var(--title-cover-opacity)));
+  }
+  body[data-appearance="dark"] .form-intro.has-cover::before{
+    background: linear-gradient(180deg,
+      rgba(11,18,32,calc(var(--title-cover-opacity)*.9)),
+      rgba(11,18,32,calc(var(--title-cover-opacity)*1)));
+  }
+</style>
+
+<script id="pub-cover-init">
+(function(){
+  function readSchema(){
+    try{
+      const el=document.getElementById('schema_json');
+      const raw=el?.value||el?.getAttribute('value')||'';
+      return JSON.parse(raw||'{}')||{};
+    }catch{ return {}; }
+  }
+  const j=readSchema();
+  const img=j?.header?.title_image;
+  const pos=(j?.header?.title_image_pos||'').split(/\s+/);
+  const op = j?.header?.title_image_opacity;
+
+  if(img){
+    document.documentElement.style.setProperty('--title-cover-img', `url("${String(img).replace(/"/g,'\\"')}")`);
+    document.querySelector('.form-intro')?.classList.add('has-cover');
+  }
+  if(pos.length===2){
+    const [x,y]=pos.map(s=>parseFloat(String(s).replace('%',''))||50);
+    document.documentElement.style.setProperty('--title-pos-x', x+'%');
+    document.documentElement.style.setProperty('--title-pos-y', y+'%');
+  }
+  if(typeof op==='number'){
+    document.documentElement.style.setProperty('--title-cover-opacity', String(op));
+  }
+})();
+</script>
 
 </body>
 </html>

@@ -3,14 +3,15 @@
 <head>
     <style id="kill-greet-bg">
         .greet-card:not(.has-cover) {
-            background-image: none;
+            background-image: none !important;
         }
 
         .greet-card:not(.has-cover)::before,
         .greet-card:not(.has-cover)::after {
-            content: none;
+            content: none !important;
         }
     </style>
+
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
     <title>创建新表单</title>
@@ -1246,13 +1247,14 @@
                             <button type="button" class="bg-clear" id="bgClear" aria-label="移除背景">✖</button>
                         </div>
                         <!-- 标题封面图（可选） -->
-                        <div class="row" style="align-items:flex-start; gap:10px; margin-top:10px; position:relative; z-index:2">
+                        <div class="row" style="align-items:flex-start; gap:10px; margin-top:10px">
                             <div style="flex:1; min-width:280px">
                                 <input id="headerImageUrl" class="tiny"
                                        placeholder="表单基本信息的背景图 URL（或用右侧上传）">
                             </div>
-                            <label class="btn icon" for="headerImagePicker" style="height:42px">📷</label>
-                            <input id="headerImagePicker" type="file" accept="image/*" hidden>
+                            <label class="btn icon" style="height:42px">📷
+                                <input id="headerImagePicker" type="file" accept="image/*">
+                            </label>
                         </div>
                         <div class="bd">
                             <div class="row2">
@@ -1523,6 +1525,39 @@
 <!-- 你的逻辑脚本（不变） -->
 <script src="{{ asset('builder.js') }}" defer></script>
 
+<style>
+/* 让背景图有柔和的玻璃质感遮罩，并保证内容可读 */
+.form-basic::after{
+  content:"";
+  position:absolute; inset:0;
+  /* 你可以改这条渐变提高/降低透明度 */
+  background:linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,255,255,.72));
+  pointer-events:none;
+}
+body[data-appearance="dark"] .form-basic::after{
+  background:linear-gradient(180deg, rgba(17,24,39,.42), rgba(17,24,39,.56));
+}
+.form-basic > *{ position:relative; z-index:1; } /* 内容在遮罩之上 */
+</style>
+
+<style>
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:1000}
+  .modal.show{display:flex}
+  .modal .box{background:#fffffffa;border:1px solid #e8eef6;border-radius:16px;padding:18px;box-shadow:0 18px 36px rgba(0,0,0,.22);width:min(680px,92vw)}
+  /* 让“保存成功”的弹窗更合适一点宽度 */
+  #linkModal .box{width:min(720px,92vw)}
+</style>
+
+<style>
+    .modal {
+        display: none;
+    }
+
+    .modal.show {
+        display: flex;
+    }
+</style>
+
 <style id="anti-garble">
   /* 永远隐藏数据页里的占位行，避免“乱码”闪一下 */
   #tab-responses .muted { display: none !important; }
@@ -1766,6 +1801,47 @@
         filter: brightness(1.05);
     }
 </style>
+<style id="intro-plain">
+    .form-intro {
+        padding: 16px 0 8px;
+        background: none !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+
+    .form-intro::before,
+    .form-intro::after {
+        content: none !important;
+    }
+
+    /* 左对齐的标题与描述（可按需微调字号） */
+    .form-title {
+        margin: 0 0 4px 0;
+        font-size: 28px;
+        line-height: 1.25;
+        font-weight: 800;
+    }
+
+    .form-desc {
+        margin: 0;
+        color: #6b7280;
+    }
+
+    /* 标题/描述 与 第一道题之间的细分割线（你已有 <div class="form-sep">） */
+    .form-sep {
+        height: 1px;
+        background: rgba(0, 0, 0, .06);
+        border-radius: 999px;
+        margin: 14px 0 18px;
+    }
+
+    body[data-appearance="dark"] .form-sep {
+        background: rgba(255, 255, 255, .10);
+    }
+</style>
+<script id="schemaJSON" type="text/plain" data-mime="application/json">
+    {{ (schema_json|default({}, true))|tojson }}
+</script>
 
 <script>
     /** —— 回复数据表：按 schema 的“题目名称”渲染列 + 文件预览 + 列名“操作” —— */
@@ -3187,9 +3263,9 @@ async function readJSONSafely(res){
   }
 
   // 触发自动保存
-    document.addEventListener('input', (e) => {
-        if (e.target?.id === 'headerImageUrl' || e.target?.id === 'schema_json') schedule();
-    });
+  document.addEventListener('input', (e)=>{
+    if (e.target?.id === 'headerImageUrl') schedule();
+  });
 })();
 </script>
 
@@ -3250,52 +3326,40 @@ async function readJSONSafely(res){
   new MutationObserver(refreshTools).observe(card,{attributes:true,attributeFilter:['style','class']});
   refreshTools();
 
-// 拖动定位（新：绝对坐标算法，按下立即定位，XY 都可调）
-    (function () {
-        const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-        const toPercent = (val) => Math.round(val * 100) + '%';
+  // 拖动定位
+  let dragging=false, startX=0, startY=0, posX=50, posY=50;
+  function curPos(){
+    const cs=getComputedStyle(document.documentElement);
+    return {
+      x: parseFloat(cs.getPropertyValue('--title-pos-x'))||50,
+      y: parseFloat(cs.getPropertyValue('--title-pos-y'))||50
+    };
+  }
+  card.addEventListener('mousedown', (e)=>{
+    if(!card.classList.contains('has-cover')) return;
+    dragging=true; card.classList.add('dragging');
+    startX=e.clientX; startY=e.clientY;
+    const p=curPos(); posX=p.x; posY=p.y;
+    document.body.style.userSelect='none';
+    document.documentElement.style.setProperty('--bg-move','grabbing');
+  });
+  window.addEventListener('mousemove', (e)=>{
+    if(!dragging) return;
+    const dx=e.clientX-startX, dy=e.clientY-startY;
+    const box=card.getBoundingClientRect();
+    const nx=posX+(dx/box.width)*100;
+    const ny=posY+(dy/box.height)*100;
+    document.documentElement.style.setProperty('--title-pos-x', Math.max(0,Math.min(100,nx))+'%');
+    document.documentElement.style.setProperty('--title-pos-y', Math.max(0,Math.min(100,ny))+'%');
+  });
+  window.addEventListener('mouseup', ()=>{
+    if(!dragging) return;
+    dragging=false; card.classList.remove('dragging');
+    document.body.style.userSelect='';
+    document.documentElement.style.removeProperty('--bg-move');
+    const p=curPos(); setPos(p.x,p.y); // 持久化
+  });
 
-        function setFromEvent(e) {
-            const box = card.getBoundingClientRect();
-            if (box.width <= 0 || box.height <= 0) return;
-            const x = clamp((e.clientX - box.left) / box.width, 0, 1);
-            const y = clamp((e.clientY - box.top) / box.height, 0, 1);
-            document.documentElement.style.setProperty('--title-pos-x', toPercent(x));
-            document.documentElement.style.setProperty('--title-pos-y', toPercent(y));
-        }
-
-        let dragging = false;
-
-        card.addEventListener('pointerdown', (e) => {
-            if (!card.classList.contains('has-cover')) return;
-            dragging = true;             // ★ 新增：开启拖动
-            card.setPointerCapture(e.pointerId);
-            card.classList.add('dragging');
-            document.documentElement.style.setProperty('--bg-move', 'grabbing');
-            setFromEvent(e);             // 按下立刻定位到点击处
-            // ⬅ 按下立刻定位到点击处
-        });
-
-        card.addEventListener('pointermove', (e) => {
-            if (!dragging) return;
-            setFromEvent(e);             // ⬅ 拖动过程中实时定位
-        });
-
-        const end = (e) => {
-            if (!dragging) return;
-            dragging = false;
-            card.classList.remove('dragging');
-            document.documentElement.style.removeProperty('--bg-move');
-            // 持久化当前位置到 schema（沿用你原来的 setPos）
-            const cs = getComputedStyle(document.documentElement);
-            const px = parseFloat(cs.getPropertyValue('--title-pos-x')) || 50;
-            const py = parseFloat(cs.getPropertyValue('--title-pos-y')) || 50;
-            setPos(px, py);
-        };
-        card.addEventListener('pointerup', end);
-        card.addEventListener('pointercancel', end);
-        card.addEventListener('pointerleave', end);
-    })();
 })();
 </script>
 
@@ -3433,78 +3497,6 @@ location.href = successURL;   // 直接跳成功页
     border-radius: 0 !important;
   }
 </style>
-
-<script>
-(() => {
-  const card = document.querySelector('.form-basic');
-  const schemaInput = document.getElementById('schema_json');
-  if (!card || !schemaInput) return;
-
-  let dragging = false, start = {x:0,y:0}, startPos = {x:50,y:50};
-
-  const getPos = () => ({
-    x: parseFloat(getComputedStyle(card).getPropertyValue('--title-pos-x')) || 50,
-    y: parseFloat(getComputedStyle(card).getPropertyValue('--title-pos-y')) || 50
-  });
-  const clamp = v => Math.max(0, Math.min(100, v));
-  const setPos = (x,y) => {
-    card.style.setProperty('--title-pos-x', clamp(x) + '%');
-    card.style.setProperty('--title-pos-y', clamp(y) + '%');
-  };
-
-  card.addEventListener('mousedown', e => {
-    if (!card.classList.contains('has-cover')) return;
-    dragging = true;
-    start = {x: e.clientX, y: e.clientY};
-    startPos = getPos();
-    // 按下处直接定位一次
-    const rect = card.getBoundingClientRect();
-    setPos(((e.clientX-rect.left)/rect.width)*100, ((e.clientY-rect.top)/rect.height)*100);
-  });
-
-  window.addEventListener('mousemove', e => {
-    if (!dragging) return;
-    const rect = card.getBoundingClientRect();
-    const dx = (e.clientX - start.x) / rect.width * 100;
-    const dy = (e.clientY - start.y) / rect.height * 100;
-    setPos(startPos.x + dx, startPos.y + dy);
-  });
-
-    window.addEventListener('mouseup', () => {
-        if (!dragging) return;
-        dragging = false;
-        try {
-            const j = JSON.parse(schemaInput.value || '{}') || {};
-            const px = getComputedStyle(card).getPropertyValue('--title-pos-x').trim() || '50%';
-            const py = getComputedStyle(card).getPropertyValue('--title-pos-y').trim() || '50%';
-
-            // 兼容旧格式（对象）
-            (j.header ||= {}).title_pos = {x: px, y: py};
-            // ✅ 公开/预览使用的字符串格式（关键）
-            j.header.title_image_pos = `${px} ${py}`;
-
-            schemaInput.value = JSON.stringify(j);
-            // ✅ 触发编辑器/自动保存
-            schemaInput.dispatchEvent(new Event('input', {bubbles: true}));
-            schemaInput.dispatchEvent(new Event('change', {bubbles: true}));
-        } catch (_) {
-        }
-    });
-})();
-</script>
-
-<script id="picker-fallback">
-(() => {
-  const lab = document.querySelector('label.btn.icon[for="headerImagePicker"]');
-  const inp = document.getElementById('headerImagePicker');
-  if (!lab || !inp) return;
-  lab.addEventListener('click', (e) => {
-    // 某些浏览器 label->file 可能不触发，手动兜底
-    if (typeof inp.showPicker === 'function') { try { inp.showPicker(); return; } catch {} }
-    inp.click();
-  });
-})();
-</script>
 
 </body>
 </html>
