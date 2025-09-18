@@ -3544,15 +3544,25 @@ location.href = successURL;   // 直接跳成功页
     setPos(startPos.x + dx, startPos.y + dy);
   });
 
-  window.addEventListener('mouseup', () => {
-    if (!dragging) return; dragging = false;
-    // 持久化到 schema_json
-    try {
-      schemaInput.value = JSON.stringify(j);
-      schemaInput.dispatchEvent(new Event('input', {bubbles:true}));
-      schemaInput.dispatchEvent(new Event('change',{bubbles:true}));
-    } catch(_) {}
-  });
+    window.addEventListener('mouseup', () => {
+        if (!dragging) return;
+        dragging = false;
+        try {
+            const j = JSON.parse(schemaInput.value || '{}') || {};
+            const px = getComputedStyle(card).getPropertyValue('--title-pos-x').trim() || '50%';
+            const py = getComputedStyle(card).getPropertyValue('--title-pos-y').trim() || '50%';
+
+            // 兼容旧格式（对象）
+            (j.header ||= {}).title_pos = {x: px, y: py};
+            // 公开/预览优先读取的字符串格式
+            j.header.title_image_pos = `${px} ${py}`;
+
+            schemaInput.value = JSON.stringify(j);
+            schemaInput.dispatchEvent(new Event('input', {bubbles: true}));
+            schemaInput.dispatchEvent(new Event('change', {bubbles: true}));
+        } catch (_) {
+        }
+    });
 })();
 </script>
 
