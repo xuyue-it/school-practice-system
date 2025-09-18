@@ -1523,21 +1523,6 @@
 <!-- 你的逻辑脚本（不变） -->
 <script src="{{ asset('builder.js') }}" defer></script>
 
-<style>
-/* 让背景图有柔和的玻璃质感遮罩，并保证内容可读 */
-.form-basic::after{
-  content:"";
-  position:absolute; inset:0;
-  /* 你可以改这条渐变提高/降低透明度 */
-  background:linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,255,255,.72));
-  pointer-events:none;
-}
-body[data-appearance="dark"] .form-basic::after{
-  background:linear-gradient(180deg, rgba(17,24,39,.42), rgba(17,24,39,.56));
-}
-.form-basic > *{ position:relative; z-index:1; } /* 内容在遮罩之上 */
-</style>
-
 <style id="anti-garble">
   /* 永远隐藏数据页里的占位行，避免“乱码”闪一下 */
   #tab-responses .muted { display: none !important; }
