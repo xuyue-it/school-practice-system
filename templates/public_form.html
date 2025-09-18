@@ -1079,6 +1079,9 @@
           var(--intro-cover, none);
           background-size: cover, cover;
           background-position: var(--intro-pos, center), var(--intro-pos, center);
+          background-position: center, var(--title-pos-x, 50%) var(--title-pos-y, 50%);
+          /* 用变量控制明显度；默认与创建页一致 */
+          opacity: var(--title-cover-opacity, .72);
       }
 
       body[data-appearance="dark"] .form-intro.has-cover::before {
@@ -1176,6 +1179,56 @@
   }
   if(typeof op==='number'){
     document.documentElement.style.setProperty('--title-cover-opacity', String(op));
+  }
+})();
+</script>
+
+<script id="apply-cover">
+(function () {
+  // 1) 取 schema（按你页面现状任选其一）
+  var raw = document.getElementById('schemaJSON')?.textContent
+         || window.schema_json
+         || window.schema
+         || '';
+  var j = {};
+  try { j = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {}); } catch {}
+
+  var cover = j?.header?.title_image || '';
+  // 兼容两种存法：'50% 50%' 或 {x:50,y:50}
+  var pos   = j?.header?.title_image_pos || j?.header?.title_pos || '50% 50%';
+  var px, py;
+  if (typeof pos === 'string') {
+    var p = pos.split(/\s+/);
+    px = parseFloat(String(p[0]||'50').replace('%','')) || 50;
+    py = parseFloat(String(p[1]||'50').replace('%','')) || 50;
+  } else {
+    px = +pos.x || 50; py = +pos.y || 50;
+  }
+  var op = (typeof j?.header?.title_image_opacity === 'number')
+           ? j.header.title_image_opacity
+           : (typeof j?.header?.title_opacity === 'number' ? j.header.title_opacity : .72);
+
+  // 2) 应用到公共页的封面节点
+  var el = document.querySelector('.form-intro');
+  if (!el) return;
+
+  if (cover) {
+    el.classList.add('has-cover');
+    // 用于 ::before 的自定义属性（第二层背景图）
+    el.style.setProperty('--greet-cover', `url("${String(cover).replace(/"/g,'\\"')}")`);
+    el.style.setProperty('--title-pos-x', (px) + '%');
+    el.style.setProperty('--title-pos-y', (py) + '%');
+    el.style.setProperty('--title-cover-opacity', op);
+
+    // 兜底：即使 ::before 被别的样式盖掉，也让元素本身显示背景
+    el.style.backgroundImage   = `url("${String(cover).replace(/"/g,'\\"')}")`;
+    el.style.backgroundPosition= `${px}% ${py}%`;
+    el.style.backgroundRepeat  = 'no-repeat';
+    el.style.backgroundSize    = 'cover';
+  } else {
+    el.classList.remove('has-cover');
+    el.style.removeProperty('--greet-cover');
+    el.style.backgroundImage = 'none';
   }
 })();
 </script>
