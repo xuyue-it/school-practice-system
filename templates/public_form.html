@@ -432,10 +432,37 @@
                 z-index: 1;
             }
         </style>
+        <style>
+            .form-intro.has-cover {
+                position: relative;
+                overflow: hidden;
+                border-radius: 18px;
+            }
+
+            .form-intro.has-cover::before {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background-image: var(--intro-cover);
+                background-size: cover;
+                background-position: var(--intro-pos, center);
+                opacity: .22; /* 亮色默认 */
+            }
+
+            body[data-appearance="dark"] .form-intro.has-cover::before {
+                opacity: .28;
+            }
+
+            .form-intro.has-cover > * {
+                position: relative;
+                z-index: 1;
+            }
+        </style>
+
 
         <section class="form-intro {% if header_image %}has-cover{% endif %}"
-         style="{% if header_image %}--intro-cover:url('{{ header_image }}'); --intro-pos: {{ header_image_pos or 'center' }};{% endif %}">
-        <h1 class="form-title">{{ form_title or form_name }}</h1>
+                 style="{% if header_image %}--intro-cover:url('{{ header_image }}'); --intro-pos: {{ header_image_pos or 'center' }};{% endif %}">
+            <h1 class="form-title">{{ form_title or form_name }}</h1>
             {% if form_desc %}<p class="form-desc">{{ form_desc|safe }}</p>{% endif %}
             <div class="form-sep"></div>
         </section>
