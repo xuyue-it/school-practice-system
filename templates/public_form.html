@@ -1127,5 +1127,58 @@
 })();
 </script>
 
+<input type="hidden" id="schema_json" value='{{ schema_json|tojson }}'>
+<style id="pub-cover">
+  :root{ --title-pos-x:50%; --title-pos-y:50%; --title-cover-opacity:.72; --title-cover-img:none; }
+
+  /* 你公开页标题容器的类名，如果是别的（比如 .form-header），把 .form-intro 改成你的 */
+  .form-intro.has-cover{
+    position:relative;
+    background-image: var(--title-cover-img);
+    background-size: cover;
+    background-position: var(--title-pos-x) var(--title-pos-y);
+  }
+  .form-intro.has-cover::before{
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background: linear-gradient(180deg,
+      rgba(255,255,255,var(--title-cover-opacity)),
+      rgba(255,255,255,var(--title-cover-opacity)));
+  }
+  body[data-appearance="dark"] .form-intro.has-cover::before{
+    background: linear-gradient(180deg,
+      rgba(11,18,32,calc(var(--title-cover-opacity)*.9)),
+      rgba(11,18,32,calc(var(--title-cover-opacity)*1)));
+  }
+</style>
+
+<script id="pub-cover-init">
+(function(){
+  function readSchema(){
+    try{
+      const el=document.getElementById('schema_json');
+      const raw=el?.value||el?.getAttribute('value')||'';
+      return JSON.parse(raw||'{}')||{};
+    }catch{ return {}; }
+  }
+  const j=readSchema();
+  const img=j?.header?.title_image;
+  const pos=(j?.header?.title_image_pos||'').split(/\s+/);
+  const op = j?.header?.title_image_opacity;
+
+  if(img){
+    document.documentElement.style.setProperty('--title-cover-img', `url("${String(img).replace(/"/g,'\\"')}")`);
+    document.querySelector('.form-intro')?.classList.add('has-cover');
+  }
+  if(pos.length===2){
+    const [x,y]=pos.map(s=>parseFloat(String(s).replace('%',''))||50);
+    document.documentElement.style.setProperty('--title-pos-x', x+'%');
+    document.documentElement.style.setProperty('--title-pos-y', y+'%');
+  }
+  if(typeof op==='number'){
+    document.documentElement.style.setProperty('--title-cover-opacity', String(op));
+  }
+})();
+</script>
+
 </body>
 </html>

@@ -1240,8 +1240,12 @@
             <div class="tab active" id="tab-questions">
                 <div class="dash-grid">
                     <div class="card form-basic"
-                         style="background-size:cover;background-position:center;background-repeat:no-repeat; position:relative; overflow:hidden;">
+                         style="background-size:cover;background-position:var(--title-pos-x,50%) var(--title-pos-y,50%);background-repeat:no-repeat; position:relative; overflow:hidden;">
                         <div class="hd"><h2>表单基本信息</h2></div>
+                        <!-- 背景图工具条：清除 -->
+                        <div class="bg-tools" id="bgTools" hidden>
+                            <button type="button" class="bg-clear" id="bgClear" aria-label="移除背景">×</button>
+                        </div>
                         <!-- 标题封面图（可选） -->
                         <div class="row" style="align-items:flex-start; gap:10px; margin-top:10px">
                             <div style="flex:1; min-width:280px">
@@ -1442,6 +1446,11 @@
 
     <!-- 右：快捷按钮栏 -->
     <div class="rail">
+        <div id="bgOpacityBox"
+             style="background:var(--glass);border:1px solid var(--glass-border);border-radius:12px;padding:8px 10px;">
+            <label for="bgOpacity" style="display:block;font-size:12px;margin-bottom:6px;">背景明显度</label>
+            <input id="bgOpacity" type="range" min="0" max="100" value="72" style="width:160px;">
+        </div>
         <button class="icon-btn" id="railAdd" title="添加问题">➕</button>
         <button class="icon-btn" id="railTitle" title="添加标题/描述">Tt</button>
         <label class="icon-btn" title="插入图片"
@@ -1566,6 +1575,33 @@ body[data-appearance="dark"] .form-basic::after{
   }
 </style>
 
+<style id="bg-tools-style">
+  :root{ --title-pos-x:50%; --title-pos-y:50%; --title-cover-opacity:.72; }
+
+  .form-basic{ cursor: var(--bg-move, default); }
+  .form-basic.dragging{ cursor: grabbing; }
+
+  .form-basic .bg-tools{
+    position:absolute; top:8px; right:8px; z-index:3; display:flex; gap:8px;
+  }
+  .form-basic .bg-clear{
+    width:28px; height:28px; border-radius:999px; border:0;
+    background:rgba(0,0,0,.6); color:#fff; font-weight:900; line-height:28px;
+    text-align:center; cursor:pointer;
+  }
+
+  /* 用变量控制遮罩透明度（不改你的配色，只把 alpha 抽成变量） */
+  .form-basic.has-cover::after{
+    background: linear-gradient(180deg,
+      rgba(255,255,255,var(--title-cover-opacity)),
+      rgba(255,255,255,var(--title-cover-opacity))) !important;
+  }
+  body[data-appearance="dark"] .form-basic.has-cover::after{
+    background: linear-gradient(180deg,
+      rgba(17,24,39,calc(var(--title-cover-opacity)*.9)),
+      rgba(17,24,39,calc(var(--title-cover-opacity)*1))) !important;
+  }
+</style>
 
 <script>
 (function(){
@@ -3230,6 +3266,126 @@ async function readJSONSafely(res){
   document.addEventListener('input', (e)=>{ 
     if (e.target?.id === 'headerImageUrl') schedule();
   });
+})();
+</script>
+
+<script id="bg-tools-script">
+(function(){
+  const card    = document.querySelector('.form-basic');
+  const urlInp  = document.getElementById('headerImageUrl');
+  const schemaEl= document.getElementById('schema_json');
+  const tools   = document.getElementById('bgTools');
+  const btnClr  = document.getElementById('bgClear');
+  if(!card || !schemaEl) return;
+
+  function readSchema(){ try{ return JSON.parse(schemaEl.value||'{}')||{} }catch{ return {} } }
+  function writeSchema(j){ try{ schemaEl.value=JSON.stringify(j); schemaEl.dispatchEvent(new Event('input',{bubbles:true})); }catch{} }
+
+  function setPos(x,y){
+    x=Math.max(0,Math.min(100,x)); y=Math.max(0,Math.min(100,y));
+    document.documentElement.style.setProperty('--title-pos-x', x+'%');
+    document.documentElement.style.setProperty('--title-pos-y', y+'%');
+    const j=readSchema(); (j.header||={}).title_image_pos=`${x}% ${y}%`; writeSchema(j);
+  }
+  function setOpacity(p){ // 0~100
+    const a=Math.max(0,Math.min(100,p))/100;
+    document.documentElement.style.setProperty('--title-cover-opacity', String(a));
+    const j=readSchema(); (j.header||={}).title_image_opacity=a; writeSchema(j);
+  }
+  function refreshTools(){
+    const bg = getComputedStyle(card).backgroundImage;
+    const has = bg && !/none/i.test(bg);
+    tools.hidden=!has; card.classList.toggle('has-cover',has);
+  }
+
+  // 从 schema 恢复位置/透明度
+  try{
+    const j=readSchema();
+    const pos=(j?.header?.title_image_pos||'').split(/\s+/);
+    const op = j?.header?.title_image_opacity;
+    if(pos.length===2){
+      const [px,py]=pos.map(s=>parseFloat(String(s).replace('%',''))||50);
+      document.documentElement.style.setProperty('--title-pos-x', px+'%');
+      document.documentElement.style.setProperty('--title-pos-y', py+'%');
+    }
+    if(typeof op==='number'){
+      document.documentElement.style.setProperty('--title-cover-opacity', String(op));
+    }
+  }catch{}
+
+  // 清除背景
+  btnClr?.addEventListener('click', ()=>{
+    if(urlInp) urlInp.value='';
+    card.style.removeProperty('background-image');
+    card.classList.remove('has-cover');
+    const j=readSchema(); if(j.header){ delete j.header.title_image; delete j.header.title_image_pos; }
+    writeSchema(j); refreshTools();
+  });
+
+  // 监听卡片 style/class，自动显示/隐藏 ×
+  new MutationObserver(refreshTools).observe(card,{attributes:true,attributeFilter:['style','class']});
+  refreshTools();
+
+  // 拖动定位
+  let dragging=false, startX=0, startY=0, posX=50, posY=50;
+  function curPos(){
+    const cs=getComputedStyle(document.documentElement);
+    return {
+      x: parseFloat(cs.getPropertyValue('--title-pos-x'))||50,
+      y: parseFloat(cs.getPropertyValue('--title-pos-y'))||50
+    };
+  }
+  card.addEventListener('mousedown', (e)=>{
+    if(!card.classList.contains('has-cover')) return;
+    dragging=true; card.classList.add('dragging');
+    startX=e.clientX; startY=e.clientY;
+    const p=curPos(); posX=p.x; posY=p.y;
+    document.body.style.userSelect='none';
+    document.documentElement.style.setProperty('--bg-move','grabbing');
+  });
+  window.addEventListener('mousemove', (e)=>{
+    if(!dragging) return;
+    const dx=e.clientX-startX, dy=e.clientY-startY;
+    const box=card.getBoundingClientRect();
+    const nx=posX+(dx/box.width)*100;
+    const ny=posY+(dy/box.height)*100;
+    document.documentElement.style.setProperty('--title-pos-x', Math.max(0,Math.min(100,nx))+'%');
+    document.documentElement.style.setProperty('--title-pos-y', Math.max(0,Math.min(100,ny))+'%');
+  });
+  window.addEventListener('mouseup', ()=>{
+    if(!dragging) return;
+    dragging=false; card.classList.remove('dragging');
+    document.body.style.userSelect='';
+    document.documentElement.style.removeProperty('--bg-move');
+    const p=curPos(); setPos(p.x,p.y); // 持久化
+  });
+
+})();
+</script>
+
+<script id="bg-opacity-range">
+(function(){
+  const rng=document.getElementById('bgOpacity');
+  const schemaEl=document.getElementById('schema_json');
+  if(!rng||!schemaEl) return;
+
+  function readSchema(){ try{ return JSON.parse(schemaEl.value||'{}')||{} }catch{ return {} } }
+  function writeSchema(j){ try{ schemaEl.value=JSON.stringify(j); schemaEl.dispatchEvent(new Event('input',{bubbles:true})); }catch{} }
+  function setOpacity(p){
+    const a=Math.max(0,Math.min(100, +p))/100;
+    document.documentElement.style.setProperty('--title-cover-opacity', String(a));
+    const j=readSchema(); (j.header||={}).title_image_opacity=a; writeSchema(j);
+  }
+
+  // 恢复
+  try{
+    const j=readSchema(); if(typeof j?.header?.title_image_opacity==='number'){
+      rng.value=String(Math.round(j.header.title_image_opacity*100));
+      setOpacity(rng.value);
+    }
+  }catch{}
+
+  rng.addEventListener('input', ()=>setOpacity(rng.value));
 })();
 </script>
 
