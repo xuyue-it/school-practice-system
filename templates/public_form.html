@@ -393,7 +393,7 @@
         <div class="title">{{ form_title or site_name }}</div>
         <div class="sub">在线表单</div>
         <div class="spacer"></div>
-        <button class="btn-ghost" id="btnCheck" type="button">查看状态</button>
+        <button class="btn-ghost" id="btnCheck" type="button" style="display:none">查询状态</button>
         <button class="btn-ghost" id="btnTheme" type="button" title="切换亮/暗">🌗</button>
         <div class="actions">
           <button class="btn" type="button" id="btnDraft">保存</button>
@@ -419,11 +419,11 @@
                   background-image: var(--intro-cover);
                   background-size: cover;
                   background-position: var(--intro-pos, center);
-                  opacity: var(--intro-mask, .22); /* 亮色默认 */
+                  opacity: var(--intro-mask, .0); /* 亮色默认 */
               }
 
               body[data-appearance="dark"] .form-intro.has-cover::before {
-                  opacity: var(--intro-mask, .28); /* 暗色默认 */
+                  opacity: var(--intro-mask, .0); /* 暗色默认 */
               }
 
               .form-intro.has-cover > * {
@@ -1146,6 +1146,31 @@
           const mask = j?.header?.title_image_opacity;
           if (typeof mask === 'number' && isFinite(mask)) {
               intro.style.setProperty('--intro-mask', String(mask));
+          }
+      })();
+  </script>
+
+  <script>
+      (function () {
+          // 读取 schema：预览时也会有 window.__SCHEMA__
+          let schema = null;
+          try {
+              schema = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent || 'null');
+          } catch (_) {
+          }
+
+          const btn = document.getElementById('btnCheck');
+          if (!btn) return;
+
+          // 兼容两种可能结构：submission.require_review 或 settings.submission.require_review
+          const enabled = !!(schema?.submission?.require_review || schema?.settings?.submission?.require_review);
+
+          if (enabled) {
+              btn.style.display = '';            // 显示
+              btn.textContent = '查询状态';       // 统一用你的文案
+          } else {
+              // 不需要就移除（也可以保留隐藏，这里选择更干净）
+              btn.remove();
           }
       })();
   </script>
