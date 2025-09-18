@@ -446,11 +446,11 @@
                 background-image: var(--intro-cover);
                 background-size: cover;
                 background-position: var(--intro-pos, center);
-                opacity: .22; /* 亮色默认 */
+                opacity: var(--intro-mask, .22); /* 亮色默认值 */
             }
 
             body[data-appearance="dark"] .form-intro.has-cover::before {
-                opacity: .28;
+                opacity: var(--intro-mask, .28); /* 暗色默认值 */
             }
 
             .form-intro.has-cover > * {
@@ -1123,44 +1123,44 @@
   </style>
 <script>
 (function () {
+  // 1) 取 schema（两种来源：内联的 schemaJSON，或 window.__SCHEMA__）
   let j = null;
   try {
     j = window.__SCHEMA__ || JSON.parse(document.getElementById('schemaJSON')?.textContent || 'null');
-  } catch(_) {}
+  } catch (_) {}
 
-  // 更健壮的取图路径（多处兜底）
+  // 2) 取封面、位置（多处兼容）
   const cover =
     j?.header?.title_image ||
     j?.display?.title_image ||
     j?.display?.cover_image ||
     j?.title_image ||
-    j?.cover_image ||
-    '';
+    j?.cover_image || '';
 
   const pos = j?.header?.title_image_pos || j?.display?.title_image_pos || 'center';
 
+  // 3) 应用到首卡
   const intro = document.querySelector('.form-intro');
   if (!intro) return;
 
   if (cover) {
-    // ✅ 关键：给 CSS 变量赋值，而不是 backgroundImage
-    intro.style.setProperty('--intro-cover', `url("${cover.replace(/"/g, '\\"')}")`);
+    // 为避免引号破坏 CSS 字符串，先转义双引号
+    intro.style.setProperty('--intro-cover', `url("${String(cover).replace(/"/g, '\\"')}")`);
     intro.style.setProperty('--intro-pos', pos);
     intro.classList.add('has-cover');
   } else {
     intro.style.removeProperty('--intro-cover');
     intro.classList.remove('has-cover');
-
-      /* ★ 新增：同步“背景明显度”（0~1），用于控制 ::before 的不透明度 */
-  const mask = (typeof j?.header?.title_image_opacity === 'number')
-               ? j.header.title_image_opacity
-               : null;
-  if (mask !== null) {
-    intro.style.setProperty('--intro-mask', String(mask));
   }
+
+  // 4) 同步“背景明显度”（0~1）
+  const op = j?.header?.title_image_opacity;
+  if (typeof op === 'number' && isFinite(op)) {
+    intro.style.setProperty('--intro-mask', String(op));
   }
 })();
 </script>
+
 
 </body>
 </html>
