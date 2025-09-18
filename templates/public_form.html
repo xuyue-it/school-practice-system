@@ -419,12 +419,12 @@
                 background-image: var(--intro-cover);
                 background-size: cover;
                 background-position: center;
-                opacity: .22; /* 亮色下透明度，可按需微调 */
+                opacity: var(--intro-mask, .22);  /* 亮色默认 .22 */
                 background-position: var(--intro-pos, center), var(--intro-pos, center);
             }
 
             body[data-appearance="dark"] .form-intro.has-cover::before {
-                opacity: .28;
+                opacity: var(--intro-mask, .28);
             }
 
             .form-intro.has-cover > * {
@@ -1123,6 +1123,14 @@
   } else {
     intro.style.removeProperty('--intro-cover');
     intro.classList.remove('has-cover');
+
+      /* ★ 新增：同步“背景明显度”（0~1），用于控制 ::before 的不透明度 */
+  const mask = (typeof j?.header?.title_image_opacity === 'number')
+               ? j.header.title_image_opacity
+               : null;
+  if (mask !== null) {
+    intro.style.setProperty('--intro-mask', String(mask));
+  }
   }
 })();
 </script>
