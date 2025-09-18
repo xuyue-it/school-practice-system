@@ -3554,10 +3554,11 @@ location.href = successURL;   // 直接跳成功页
 
             // 兼容旧格式（对象）
             (j.header ||= {}).title_pos = {x: px, y: py};
-            // 公开/预览优先读取的字符串格式
+            // ✅ 公开/预览使用的字符串格式（关键）
             j.header.title_image_pos = `${px} ${py}`;
 
             schemaInput.value = JSON.stringify(j);
+            // ✅ 触发编辑器/自动保存
             schemaInput.dispatchEvent(new Event('input', {bubbles: true}));
             schemaInput.dispatchEvent(new Event('change', {bubbles: true}));
         } catch (_) {

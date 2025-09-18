@@ -416,14 +416,17 @@
                 content: "";
                 position: absolute;
                 inset: 0;
-                background-image: var(--intro-cover);
-                background-size: cover;
-                background-position: center;
-                opacity: .22; /* 亮色下透明度，可按需微调 */
-                background-position: var(--intro-pos, center), var(--intro-pos, center);
+                background-image: linear-gradient(180deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .70)), var(--intro-cover, none);
+                background-size: cover, cover;
+                /* ✅ 统一使用 X/Y 两个变量，支持上下+左右拖动 */
+                background-position: center, var(--title-pos-x, 50%) var(--title-pos-y, 50%);
+                opacity: .22;
             }
 
             body[data-appearance="dark"] .form-intro.has-cover::before {
+                background-image: linear-gradient(180deg, rgba(11, 18, 32, .46), rgba(11, 18, 32, .46)), var(--intro-cover, none);
+                background-size: cover, cover;
+                background-position: center, var(--title-pos-x, 50%) var(--title-pos-y, 50%);
                 opacity: .28;
             }
 
@@ -432,6 +435,7 @@
                 z-index: 1;
             }
         </style>
+
 
         <section class="form-intro {% if header_image %}has-cover{% endif %}"
          style="{% if header_image %}--intro-cover:url('{{ header_image }}'); --intro-pos: {{ header_image_pos or 'center' }};{% endif %}">
@@ -1078,7 +1082,6 @@
           background-image: linear-gradient(180deg, rgba(255, 255, 255, .78), rgba(255, 255, 255, .70)),
           var(--intro-cover, none);
           background-size: cover, cover;
-          background-position: var(--intro-pos, center), var(--intro-pos, center);
           background-position: center, var(--title-pos-x, 50%) var(--title-pos-y, 50%);
           /* 用变量控制明显度；默认与创建页一致 */
           opacity: var(--title-cover-opacity, .72);
@@ -1088,7 +1091,7 @@
           background-image: linear-gradient(180deg, rgba(11, 18, 32, .46), rgba(11, 18, 32, .46)),
           var(--intro-cover, none);
           background-size: cover, cover;
-          background-position: var(--intro-pos, center), var(--intro-pos, center);
+          background-position: center, var(--title-pos-x, 50%) var(--title-pos-y, 50%);
       }
 
 
@@ -1118,28 +1121,23 @@
   const intro = document.querySelector('.form-intro');
   if (!intro) return;
 
-  if (cover) {
-    // ✅ 关键：给 CSS 变量赋值，而不是 backgroundImage
-      intro.style.setProperty('--intro-cover', `url("${cover.replace(/"/g, '\\"')}")`);
-      intro.style.setProperty('--intro-pos', pos);
+    if (cover) {
+        intro.style.setProperty('--intro-cover', `url("${cover.replace(/"/g, '\\"')}")`);
 
-// ★ 同步另一套变量（兼容旧样式）
-      (function syncXY(p) {
-          var px = 50, py = 50;
-          if (typeof p === 'string') {
-              var s = p.split(/\s+/);
-              px = parseFloat(String(s[0] || '50').replace('%', '')) || 50;
-              py = parseFloat(String(s[1] || '50').replace('%', '')) || 50;
-          }
-          document.documentElement.style.setProperty('--title-pos-x', px + '%');
-          document.documentElement.style.setProperty('--title-pos-y', py + '%');
-      })(pos);
+        // ★ 同步另一套变量（兼容旧样式/不同 CSS 写法）
+        (function syncXY(p) {
+            var px = 50, py = 50;
+            if (typeof p === 'string') {
+                var s = p.split(/\s+/);
+                px = parseFloat(String(s[0] || '50').replace('%', '')) || 50;
+                py = parseFloat(String(s[1] || '50').replace('%', '')) || 50;
+            }
+            document.documentElement.style.setProperty('--title-pos-x', px + '%');
+            document.documentElement.style.setProperty('--title-pos-y', py + '%');
+        })(pos);
 
-      intro.classList.add('has-cover');
-  } else {
-    intro.style.removeProperty('--intro-cover');
-    intro.classList.remove('has-cover');
-  }
+        intro.classList.add('has-cover');
+    }
 })();
 </script>
 
@@ -1150,7 +1148,6 @@
   /* 你公开页标题容器的类名，如果是别的（比如 .form-header），把 .form-intro 改成你的 */
   .form-intro.has-cover{
     position:relative;
-    background-image: var(--title-cover-img);
     background-size: cover;
     background-position: var(--title-pos-x) var(--title-pos-y);
   }
@@ -1166,85 +1163,6 @@
       rgba(11,18,32,calc(var(--title-cover-opacity)*1)));
   }
 </style>
-
-<script id="pub-cover-init">
-(function(){
-  function readSchema(){
-    try{
-      const el=document.getElementById('schema_json');
-      const raw=el?.value||el?.getAttribute('value')||'';
-      return JSON.parse(raw||'{}')||{};
-    }catch{ return {}; }
-  }
-  const j=readSchema();
-  const img=j?.header?.title_image;
-  const pos=(j?.header?.title_image_pos||'').split(/\s+/);
-  const op = j?.header?.title_image_opacity;
-
-  if(img){
-    document.documentElement.style.setProperty('--title-cover-img', `url("${String(img).replace(/"/g,'\\"')}")`);
-    document.querySelector('.form-intro')?.classList.add('has-cover');
-  }
-  if(pos.length===2){
-    const [x,y]=pos.map(s=>parseFloat(String(s).replace('%',''))||50);
-    document.documentElement.style.setProperty('--title-pos-x', x+'%');
-    document.documentElement.style.setProperty('--title-pos-y', y+'%');
-  }
-  if(typeof op==='number'){
-    document.documentElement.style.setProperty('--title-cover-opacity', String(op));
-  }
-})();
-</script>
-
-<script id="apply-cover">
-(function () {
-  // 1) 取 schema（按你页面现状任选其一）
-  var raw = document.getElementById('schemaJSON')?.textContent
-         || window.schema_json
-         || window.schema
-         || '';
-  var j = {};
-  try { j = typeof raw === 'string' ? JSON.parse(raw || '{}') : (raw || {}); } catch {}
-
-  var cover = j?.header?.title_image || '';
-  // 兼容两种存法：'50% 50%' 或 {x:50,y:50}
-  var pos   = j?.header?.title_image_pos || j?.header?.title_pos || '50% 50%';
-  var px, py;
-  if (typeof pos === 'string') {
-    var p = pos.split(/\s+/);
-    px = parseFloat(String(p[0]||'50').replace('%','')) || 50;
-    py = parseFloat(String(p[1]||'50').replace('%','')) || 50;
-  } else {
-    px = +pos.x || 50; py = +pos.y || 50;
-  }
-  var op = (typeof j?.header?.title_image_opacity === 'number')
-           ? j.header.title_image_opacity
-           : (typeof j?.header?.title_opacity === 'number' ? j.header.title_opacity : .72);
-
-  // 2) 应用到公共页的封面节点
-  var el = document.querySelector('.form-intro');
-  if (!el) return;
-
-  if (cover) {
-    el.classList.add('has-cover');
-    // 用于 ::before 的自定义属性（第二层背景图）
-    el.style.setProperty('--greet-cover', `url("${String(cover).replace(/"/g,'\\"')}")`);
-    el.style.setProperty('--title-pos-x', (px) + '%');
-    el.style.setProperty('--title-pos-y', (py) + '%');
-    el.style.setProperty('--title-cover-opacity', op);
-
-    // 兜底：即使 ::before 被别的样式盖掉，也让元素本身显示背景
-    el.style.backgroundImage   = `url("${String(cover).replace(/"/g,'\\"')}")`;
-    el.style.backgroundPosition= `${px}% ${py}%`;
-    el.style.backgroundRepeat  = 'no-repeat';
-    el.style.backgroundSize    = 'cover';
-  } else {
-    el.classList.remove('has-cover');
-    el.style.removeProperty('--greet-cover');
-    el.style.backgroundImage = 'none';
-  }
-})();
-</script>
 
 </body>
 </html>
