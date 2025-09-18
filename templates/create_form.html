@@ -602,20 +602,43 @@
             color: #111827
         }
 
-        /* 右侧快捷栏 */
+        /* 右侧快捷栏：统一列宽 */
         .rail {
+            width: 64px; /* 跟主布局右列一致 */
             position: sticky;
             top: 92px;
             display: flex;
             flex-direction: column;
             gap: 12px;
-            height: fit-content
+            height: fit-content;
         }
 
+        /* 子元素占满这列 */
+        .rail > * {
+            width: 100%;
+            box-sizing: border-box;
+            justify-content: center;
+        }
+
+        /* 右栏里的 icon 样式保持一致 */
         .rail .icon-btn {
             background: var(--glass);
             border: 1px solid var(--glass-border);
-            box-shadow: var(--shadow-soft)
+            box-shadow: var(--shadow-soft);
+        }
+
+        /* 右栏中的“保存表单”等按钮，等宽对齐到列宽 */
+        .rail .btn,
+        .rail .save-form,
+        .rail .save-form-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            width: 100% !important; /* 防止被全局 .btn 覆盖 */
+            padding: 10px; /* 与 .icon-btn 一致 */
+            border-radius: 12px;
+            white-space: nowrap;
         }
 
         /* 模态与 Toast（保持逻辑） */
