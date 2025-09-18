@@ -2,16 +2,16 @@
 <html lang="zh">
 <head>
     <style id="kill-greet-bg">
-        .greet-card:not(.has-cover) {
+        /* 不影响“表单基本信息”那张卡，只是把最上面的欢迎区禁止背景图 */
+        .greet-card {
             background-image: none !important;
         }
 
-        .greet-card:not(.has-cover)::before,
-        .greet-card:not(.has-cover)::after {
+        .greet-card::before,
+        .greet-card::after {
             content: none !important;
         }
     </style>
-
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
     <title>创建新表单</title>
@@ -1013,6 +1013,16 @@
             -webkit-text-stroke-width: 0 !important;
         }
     </style>
+    <style id="qtitle-color-style">
+        /* 题目颜色选择器按钮外观 */
+        #tab-questions .q-tools .q-color {
+            width: 38px;
+            height: 32px;
+            padding: 0;
+            border-radius: 8px;
+            border: 1px solid #e8eef6;
+        }
+    </style>
 
 
     <!-- ★★★ 合并后的 responses-guard：仅在“数据”Tab时放行 /admin/api/responses ★★★ -->
@@ -1240,12 +1250,8 @@
             <div class="tab active" id="tab-questions">
                 <div class="dash-grid">
                     <div class="card form-basic"
-                         style="background-size:cover;background-position:var(--title-pos-x,50%) var(--title-pos-y,50%);background-repeat:no-repeat; position:relative; overflow:hidden;">
+                         style="background-size:cover;background-position:center;background-repeat:no-repeat; position:relative; overflow:hidden;">
                         <div class="hd"><h2>表单基本信息</h2></div>
-                        <!-- 背景图工具条：清除 -->
-                        <div class="bg-tools" id="bgTools" hidden>
-                            <button type="button" class="bg-clear" id="bgClear" aria-label="移除背景">✖</button>
-                        </div>
                         <!-- 标题封面图（可选） -->
                         <div class="row" style="align-items:flex-start; gap:10px; margin-top:10px">
                             <div style="flex:1; min-width:280px">
@@ -1446,11 +1452,6 @@
 
     <!-- 右：快捷按钮栏 -->
     <div class="rail">
-        <div id="bgOpacityBox"
-             style="background:var(--glass);border:1px solid var(--glass-border);border-radius:12px;padding:8px 10px;">
-            <label for="bgOpacity" style="display:block;font-size:12px;margin-bottom:6px;">背景明显度</label>
-            <input id="bgOpacity" type="range" min="0" max="100" value="72" style="width:160px;">
-        </div>
         <button class="icon-btn" id="railAdd" title="添加问题">➕</button>
         <button class="icon-btn" id="railTitle" title="添加标题/描述">Tt</button>
         <label class="icon-btn" title="插入图片"
@@ -1471,31 +1472,21 @@
     </div>
 </div>
 
-<!-- 创建成功弹窗（中间丝滑出现） -->
-<div class="modal" id="successModal" aria-hidden="true"
-     style="display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:120">
-  <div class="box" id="successBox" style="
-    width:min(920px,92vw); max-height:86vh; border-radius:20px; overflow:hidden;
-    background:var(--glass,#ffffffee); border:1px solid var(--glass-border,#e5e7eb);
-    backdrop-filter: blur(18px) saturate(160%); box-shadow: 0 18px 36px rgba(0,0,0,.22);
-    opacity:0; transform: scale(.92) translateY(8px);">
-    <iframe id="successFrame" title="创建成功" style="width:100%;height:70vh;border:0;background:#fff"></iframe>
-  </div>
+<!-- 保存成功 Modal -->
+<div class="modal" id="linkModal" aria-hidden="true">
+    <div class="box">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+            <strong>表单已保存</strong>
+            <button class="btn icon" id="closeLink">✖</button>
+        </div>
+        <p>请把以下链接发给用户进行填写：</p>
+        <div class="row">
+            <input id="pubUrl" class="tiny" style="flex:1" readonly>
+            <button id="copyPub" class="btn primary" type="button">复制</button>
+        </div>
+        <p class="hint" style="margin-top:8px">提示：也可以在“回复”页右上方复制该链接。</p>
+    </div>
 </div>
-
-<style>
-  /* 丝滑出现动画 */
-  #successModal.show #successBox {
-    animation: popIn .22s cubic-bezier(.2, .9, .2, 1) forwards;
-  }
-  @keyframes popIn {
-    from { opacity: 0; transform: scale(.92) translateY(8px) }
-    to   { opacity: 1; transform: scale(1) translateY(0) }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    #successModal.show #successBox { animation: none; opacity: 1; transform: none; }
-  }
-</style>
 
 <!-- 图集 Modal -->
 <div class="modal" id="galleryModal" aria-hidden="true">
@@ -1541,14 +1532,6 @@ body[data-appearance="dark"] .form-basic::after{
 </style>
 
 <style>
-  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:1000}
-  .modal.show{display:flex}
-  .modal .box{background:#fffffffa;border:1px solid #e8eef6;border-radius:16px;padding:18px;box-shadow:0 18px 36px rgba(0,0,0,.22);width:min(680px,92vw)}
-  /* 让“保存成功”的弹窗更合适一点宽度 */
-  #linkModal .box{width:min(720px,92vw)}
-</style>
-
-<style>
     .modal {
         display: none;
     }
@@ -1575,33 +1558,6 @@ body[data-appearance="dark"] .form-basic::after{
   }
 </style>
 
-<style id="bg-tools-style">
-  :root{ --title-pos-x:50%; --title-pos-y:50%; --title-cover-opacity:.72; }
-
-  .form-basic{ cursor: var(--bg-move, default); }
-  .form-basic.dragging{ cursor: grabbing; }
-
-  .form-basic .bg-tools{
-    position:absolute; top:8px; right:8px; z-index:3; display:flex; gap:8px;
-  }
-  .form-basic .bg-clear{
-    width:28px; height:28px; border-radius:999px; border:0;
-    background:rgba(0,0,0,.6); color:#fff; font-weight:900; line-height:28px;
-    text-align:center; cursor:pointer;
-  }
-
-  /* 用变量控制遮罩透明度（不改你的配色，只把 alpha 抽成变量） */
-  .form-basic.has-cover::after{
-    background: linear-gradient(180deg,
-      rgba(255,255,255,var(--title-cover-opacity)),
-      rgba(255,255,255,var(--title-cover-opacity))) !important;
-  }
-  body[data-appearance="dark"] .form-basic.has-cover::after{
-    background: linear-gradient(180deg,
-      rgba(17,24,39,calc(var(--title-cover-opacity)*.9)),
-      rgba(17,24,39,calc(var(--title-cover-opacity)*1))) !important;
-  }
-</style>
 
 <script>
 (function(){
@@ -1802,6 +1758,7 @@ body[data-appearance="dark"] .form-basic::after{
     }
 </style>
 <style id="intro-plain">
+    /* 标题区 = 纯文本，不要卡片、不要阴影、不要背景图 */
     .form-intro {
         padding: 16px 0 8px;
         background: none !important;
@@ -1839,6 +1796,8 @@ body[data-appearance="dark"] .form-basic::after{
         background: rgba(255, 255, 255, .10);
     }
 </style>
+<head>
+
 <script id="schemaJSON" type="text/plain" data-mime="application/json">
     {{ (schema_json|default({}, true))|tojson }}
 </script>
@@ -2353,11 +2312,8 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         // 其它：iframe 预览
         else {
-            const sandbox = 'allow-forms allow-downloads allow-popups-to-escape-sandbox';
-            body.innerHTML = `<iframe src="${safe}" sandbox="${sandbox}" referrerpolicy="no-referrer"
-    style="width:100%;height:70vh;border:0;border-radius:12px;background:#fff"></iframe>`;
+            body.innerHTML = `<iframe src="${safe}" style="width:100%;height:70vh;border:0;border-radius:12px;background:#fff"></iframe>`;
         }
-
 
         modal.classList.add('show');
         modal.style.display = 'flex';
@@ -2582,14 +2538,26 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
   // 数据更新 → 若当前在“图表”页，自动重绘（补齐缺失的收口）
-    let __chartRaf;
-    document.addEventListener('responses:updated', () => {
-        if (!document.getElementById('tab-charts')?.classList.contains('active')) return;
-        cancelAnimationFrame(__chartRaf);
-        __chartRaf = requestAnimationFrame(() => refreshCharts(true));
-    });
+  document.addEventListener('responses:updated', ()=>{
+    if (document.getElementById('tab-charts')?.classList.contains('active')){
+      refreshCharts(true);
+    }
+  });
 })();
 </script>
+
+
+<!-- 创建成功弹窗（中间丝滑出现） -->
+<div class="modal" id="successModal" aria-hidden="true"
+     style="display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:120">
+    <div class="box" id="successBox" style="
+      width:min(920px,92vw); max-height:86vh; border-radius:20px; overflow:hidden;
+      background:var(--glass,#ffffffee); border:1px solid var(--glass-border,#e5e7eb);
+      backdrop-filter: blur(18px) saturate(160%); box-shadow: 0 18px 36px rgba(0,0,0,.22);
+      opacity:0; transform: scale(.92) translateY(8px);">
+        <iframe id="successFrame" title="创建成功" style="width:100%;height:70vh;border:0;background:#fff"></iframe>
+    </div>
+</div>
 
 <style>
     /* 丝滑出现动画 */
@@ -2617,107 +2585,117 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 </style>
 
-<script id="success-modal-api">
-(function(){
-  if (window.openModal) return;
 
-  function close(){
-    const m = document.getElementById('successModal');
-    const f = document.getElementById('successFrame');
-    if (m){ m.classList.remove('show'); m.style.display='none'; }
-    if (f){ f.src='about:blank'; }
-  }
+<script>
+    (function () {
+        const form = document.getElementById('builder');
+        if (!form) return;
 
-  // 打开中间弹窗并加载成功页
-  window.openModal = function(url){
-    const m = document.getElementById('successModal');
-    const f = document.getElementById('successFrame');
-    if (!m || !f) { location.href = url; return; }
-    f.src = url;
-    m.classList.add('show');
-    m.style.display = 'flex';
-  };
+        const modal = document.getElementById('successModal');
+        const frame = document.getElementById('successFrame');
 
-  // 点击蒙层关闭
-  document.getElementById('successModal')?.addEventListener('click', e => {
-    if (e.target.id === 'successModal') close();
-  });
-  // ESC 关闭
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
-})();
-</script>
-
-<script id="submit-save">
-    document.getElementById('builder')?.addEventListener('submit', async (ev) => {
-        ev.preventDefault();
-        const form = ev.currentTarget;
-
-        // 只发必要字段，避免把 file 带上
-        const fd = new FormData();
-        const nameEl = form.querySelector('[name="form_name"]');
-        const siteEl = form.querySelector('[name="site_name"]');
-        const descEl = form.querySelector('[name="form_desc"]');
-        const schemaEl = document.getElementById('schema_json');
-
-        fd.append('form_name', nameEl?.value || '');
-        fd.append('site_name', siteEl?.value || '');
-        fd.append('form_desc', descEl?.value || '');
-        fd.append('schema_json', schemaEl?.value || '{}');
-
-        try {
-            const raw = fd.get('schema_json') || '{}';
-            const schema = JSON.parse(raw);
-
-            // 按你现有逻辑把背景图/题目颜色/审核开关写回 schema
-            const cover = document.getElementById('headerImageUrl')?.value?.trim();
-            if (cover && !cover.startsWith('data:') && !cover.startsWith('blob:')) {
-                (schema.header ||= {}).title_image = cover;
-            }
-            const sw = document.querySelector('[data-skey="submission.require_review"]');
-            (schema.submission ||= {}).require_review = !!sw?.checked;
-
-            fd.set('schema_json', JSON.stringify(schema));
-        } catch (e) {
-            console.warn(e);
+        function openModal(url) {
+            frame.removeAttribute('srcdoc');
+            frame.src = url + (url.includes('?') ? '&' : '?') + 'embed=1';
+            modal.style.display = 'flex';
+            requestAnimationFrame(() => modal.classList.add('show'));
+            document.body.style.overflow = 'hidden';
         }
-        const u = new URL(form.action, location.origin);
-        u.searchParams.set('ajax', '1');
-        try {
-            const res = await fetch(u, {
-                method: 'POST',
-                body: fd,
-                headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
-            });
-            const j = await readJSONSafely(res);
-            if (!res.ok || j.ok === false) return alert(j.error || ('保存失败：HTTP ' + res.status));
 
-            const site = j.site_name || new URLSearchParams(location.search).get('site') || '';
-            const pub = j.public_url || (site ? (location.origin + '/f/' + encodeURIComponent(site)) : '');
-            if (!pub) return alert('保存成功，但缺少站点名');
-
-// 旧的小弹层（复制链接用）——留着
-            const $modal = document.getElementById('linkModal');
-            const $inp = document.getElementById('pubUrl');
-            if ($inp) {
-                $inp.value = pub;
-                $inp.setAttribute('value', pub);
-            }
-            if ($modal) $modal.classList.add('show');
-
-// 中间大弹层（恢复的这个）——关键一行
-            const successURL = j.success_url || (site ? (`/site/${encodeURIComponent(site)}/create_success`) : '');
-            if (successURL) {
-                (typeof openModal === 'function') ? openModal(successURL) : (location.href = successURL);
-            }
-
-            document.getElementById('pubUrl')?.focus();
-            // 这里沿用你原来的成功弹窗逻辑（如果你有 openModal 就用它）
-        } catch (e) {
-            alert('保存失败：' + e.message);
+        function closeModal() {
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            frame.src = 'about:blank';
+            document.body.style.overflow = '';
         }
-    }, true);
-</script>
 
+        modal.addEventListener('click', e => {
+            if (e.target === modal) closeModal();
+        });
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') closeModal();
+        });
+
+        // 用 fetch 发送表单（仅展示“卡片成功页”，无任何兜底 srcdoc）
+        form.addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const fd = new FormData(form);
+            // —— 把 标题图片 / 题目颜色 / 审核开关 写入 schema_json —— //
+            try {
+                const rawSchema = fd.get('schema_json') || '{}';
+                const schema = JSON.parse(rawSchema || '{}') || {};
+
+                // 1) 标题图片（如果你有 #greetCover 或 #headerImageUrl，没的话这段不会报错）
+                const cover = document.getElementById('greetCover')?.dataset?.url
+                    || document.getElementById('headerImageUrl')?.value?.trim();
+                if (cover) {
+                    schema.header = schema.header || {};
+                    schema.header.title_image = cover; // 可是 dataURL 或外链
+                } else if (schema.header && 'title_image' in schema.header) {
+                    delete schema.header.title_image;
+                }
+
+                // 2) 题目颜色：以字段 key 为键（从 #list .qcard 的 data-qColor 里收集）
+                const cards = Array.from(document.querySelectorAll('#list .qcard'));
+                const colorMap = {};
+                cards.forEach(c => {
+                    const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+                    const col = c.dataset.qColor;
+                    if (key && col) colorMap[key] = col;
+                });
+                if (Object.keys(colorMap).length) {
+                    schema.display = schema.display || {};
+                    schema.display.question_colors = colorMap;
+                } else if (schema.display && schema.display.question_colors) {
+                    delete schema.display.question_colors;
+                }
+
+                // 3) 审核开关（设置 → 提交限制 → “开启审核流程”）
+                const sw = document.querySelector('[data-skey="submission.require_review"]');
+                const requireReview = !!sw?.checked;
+                schema.submission = schema.submission || {};
+                schema.submission.require_review = requireReview;
+
+                // 写回到要提交的表单字段
+                fd.set('schema_json', JSON.stringify(schema));
+            } catch (e) {
+                console.warn('注入 schema_json 失败：', e);
+            }
+
+            const u = new URL(form.action, location.origin);
+            u.searchParams.set('ajax', '1');
+
+            try {
+                const res = await fetch(u, {
+                    method: 'POST',
+                    body: fd,
+                    headers: {'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}
+                });
+                const j = await res.json();
+
+                if (!res.ok || j.ok === false) {
+                    alert(j.error || ('保存失败：HTTP ' + res.status));
+                    return;
+                }
+
+                // 优先用后端给的 success_url；没有就用 site_name 拼 /create_success
+                const successURL =
+                    j.success_url ||
+                    (j.site_name ? ('/site/' + encodeURIComponent(j.site_name) + '/create_success') : null);
+
+                if (!successURL) {
+                    alert('保存成功，但缺少成功页链接'); // 不再使用任何 srcdoc 兜底
+                    return;
+                }
+                openModal(successURL);
+
+            } catch (e) {
+                console.error(e);
+                alert('保存失败：' + e.message);
+            }
+        }, true);
+    })();
+</script>
 
 <script id="live-theme-sync">
     (function () {
@@ -3083,32 +3061,192 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 
+
 <script>
     (function () {
         const btn = document.getElementById('btnPreview');
         const modal = document.getElementById('previewModal');
+        const close = document.getElementById('closePreview');
         const root = document.getElementById('previewRoot');
-        const form = document.getElementById('builder');
-        const schemaInput = document.getElementById('schema_json');
-        if (!btn || !modal || !root || !form || !schemaInput) return;
 
-        btn.addEventListener('click', async () => {
-            // 只发必要字段：不使用 new FormData(form)，避免把 file 一起带上
-            const fd = new FormData();
-            fd.append('form_name', form.querySelector('[name="form_name"]')?.value || '');
-            fd.append('form_desc', form.querySelector('[name="form_desc"]')?.value || '');
-            fd.append('schema_json', schemaInput.value || '{}');
-
-            // 你项目现有的预览路由是 /preview（app.py 里），用这个即可
-            const res = await fetch('/preview', {method: 'POST', body: fd});
-            const html = await res.text();
-
-            // 仍然放到你原来的弹窗里显示
-            root.innerHTML = '<iframe id="previewFrame" title="预览" style="width:100%;height:70vh;border:0;border-radius:12px;display:block;"></iframe>';
-            root.querySelector('#previewFrame').srcdoc = html;
+        function show(html) {
+            if (!modal || !root) return;
+            root.innerHTML =
+                '<iframe title="表单预览" style="width:100%;height:70vh;border:0;background:#fff;border-radius:12px"></iframe>';
+            const ifr = root.querySelector('iframe');
+            ifr.srcdoc = html;
+            modal.style.display = 'flex';
             modal.classList.add('show');
+        }
+
+        function hide() {
+            if (!modal || !root) return;
+            modal.classList.remove('show');
+            modal.style.display = 'none';
+            root.innerHTML = '';
+        }
+
+        close?.addEventListener('click', hide);
+        modal?.addEventListener('click', (e) => {
+            if (e.target === modal) hide();
+        });
+
+        async function getSchema() {
+            // 优先取构建器实时 schema（如果 builder.js 暴露了）
+            if (window.builder && typeof window.builder.getSchema === 'function') {
+                try {
+                    return window.builder.getSchema() || {fields: []};
+                } catch (_) {
+                }
+            }
+            // 次选：隐藏域
+            try {
+                const raw = document.getElementById('schema_json')?.value || '{}';
+                return JSON.parse(raw);
+            } catch (_) {
+                return {fields: []};
+            }
+        }
+
+        btn?.addEventListener('click', async () => {
+            const formName = document.querySelector('[name="form_name"]')?.value?.trim() || '';
+            const formDesc = document.querySelector('[name="form_desc"]')?.value || '';
+
+            const schema = await getSchema();
+            try {
+                const cover = document.getElementById('greetCover')?.dataset?.url
+                    || document.getElementById('headerImageUrl')?.value?.trim();
+                if (cover) {
+                    (schema.header ||= {}).title_image = cover;
+                } else if (schema.header && 'title_image' in schema.header) {
+                    delete schema.header.title_image;
+                }
+
+                const colorMap = {};
+                document.querySelectorAll('#list .qcard').forEach(c => {
+                    const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+                    const col = c.dataset.qColor;
+                    if (key && col) colorMap[key] = col;
+                });
+                if (Object.keys(colorMap).length) {
+                    (schema.display ||= {}).question_colors = colorMap;
+                } else if (schema.display && schema.display.question_colors) {
+                    delete schema.display.question_colors;
+                }
+
+                const sw = document.querySelector('[data-skey="submission.require_review"]');
+                (schema.submission ||= {}).require_review = !!sw?.checked;
+            } catch {
+            }
+
+            const fd = new FormData();
+            fd.append('form_name', formName);
+            fd.append('form_desc', formDesc);
+            fd.append('schema_json', JSON.stringify(schema));
+
+            try {
+                const res = await fetch('/preview', {method: 'POST', body: fd, headers: {'Accept': 'text/html'}});
+                const html = await res.text();
+                show(html);
+            } catch (e) {
+                alert('预览加载失败：' + (e?.message || e));
+            }
         });
     })();
+</script>
+
+<script id="qtitle-color-tools">
+(function(){
+  const LIST = document.getElementById('list');
+
+  function getKey(card){
+    return card.dataset.key || card.getAttribute('data-key') || card.querySelector('[name]')?.name || '';
+  }
+  function setTitleColor(card, color){
+    const t = card.querySelector('.q-title');
+    if (t) t.style.setProperty('color', color, 'important'); // 抵消全局 !important
+  }
+  function ensureColorTool(card){
+    if (!card || card.querySelector('.q-color')) return;
+
+    const tools = card.querySelector('.q-tools') || card.querySelector('.q-footer') || card;
+    const inp = document.createElement('input');
+    inp.type = 'color';
+    inp.className = 'q-color';
+    inp.title = '题目文字颜色';
+    inp.value = card.dataset.qColor || '#0e1726';
+
+    // 从 schema_json 恢复该题颜色
+    try{
+      const raw = document.getElementById('schemaJSON')?.textContent
+               || document.getElementById('schema_json')?.value || '';
+      const j = JSON.parse(raw || 'null');
+      const map = j?.display?.question_colors || {};
+      const key = getKey(card);
+      if (key && map[key]) {
+        inp.value = map[key];
+        card.dataset.qColor = map[key];
+      }
+    }catch(_){}
+
+    setTitleColor(card, inp.value);
+
+    inp.addEventListener('input', ()=>{
+      setTitleColor(card, inp.value);
+      card.dataset.qColor = inp.value; // 保存时会被收集进 schema.display.question_colors
+    });
+
+    tools.prepend(inp);
+  }
+
+  // 现有题卡
+  LIST?.querySelectorAll('.qcard').forEach(ensureColorTool);
+
+  // 监听新加入的题卡
+  try{
+    new MutationObserver(muts=>{
+      muts.forEach(m=>{
+        m.addedNodes && m.addedNodes.forEach(n=>{
+          if (n.nodeType===1 && n.classList?.contains('qcard')) ensureColorTool(n);
+        });
+      });
+    }).observe(LIST, {childList:true});
+  }catch(_){}
+})();
+</script>
+
+<script id="qtitle-color-autosave">
+(function(){
+  function writeSchema(mut){
+    const inp = document.getElementById('schema_json');
+    let j = {};
+    try{ j = JSON.parse(inp.value || '{}') || {}; }catch(_){}
+    mut(j);
+    inp.value = JSON.stringify(j);
+    inp.dispatchEvent(new Event('input',  {bubbles:true}));
+    inp.dispatchEvent(new Event('change', {bubbles:true}));
+  }
+  function collectColors(){
+    const map = {};
+    document.querySelectorAll('#list .qcard').forEach(c=>{
+      const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+      const col = c.dataset.qColor;
+      if (key && col) map[key] = col;
+    });
+    return map;
+  }
+  // 监听颜色选择器变化，实时写入 schema_json
+  document.addEventListener('input', e=>{
+    if (!(e.target instanceof HTMLInputElement)) return;
+    if (!e.target.classList?.contains('q-color')) return;
+    const map = collectColors();
+    writeSchema(j=>{
+      j.display = j.display || {};
+      if (Object.keys(map).length) j.display.question_colors = map;
+      else if (j.display && j.display.question_colors) delete j.display.question_colors;
+    });
+  });
+})();
 </script>
 
 <script id="review-toggle">
@@ -3152,27 +3290,18 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-<script>
-document.addEventListener('DOMContentLoaded', ()=>{
-  const list = document.querySelector('.tabs.vertical');
-  if (!list) return;
-  list.setAttribute('role','tablist');
-  list.querySelectorAll('button').forEach(btn=>{
-    const key = btn.dataset.tab;
-    const panel = document.getElementById('tab-'+key);
-    btn.setAttribute('role','tab');
-    btn.setAttribute('aria-selected', btn.classList.contains('active')?'true':'false');
-    if (panel){
-      panel.setAttribute('role','tabpanel');
-      btn.setAttribute('aria-controls','tab-'+key);
-    }
-    btn.addEventListener('click', ()=>{
-      list.querySelectorAll('button').forEach(b=>b.setAttribute('aria-selected','false'));
-      btn.setAttribute('aria-selected','true');
-    });
-  });
-});
-</script>
+<style>
+  /* 背景图放在“表单基本信息”卡片后面 */
+  #basicCard.has-cover { position: relative; }
+  #basicCard.has-cover::before{
+    content:"";
+    position: absolute; inset: 0;
+    background: var(--greet-cover-image) center/cover no-repeat;
+    opacity: .18;              /* 透一点，文字清晰 */
+    pointer-events: none;
+  }
+  #basicCard .bd{ position: relative; } /* 让内容在背景之上 */
+</style>
 
 <script>
 (function(){
@@ -3182,9 +3311,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
   async function uploadAsset(file){
     const fd = new FormData();
     fd.append('file', file);
-    const base = new URL('{{ url_for("create_form") }}', location.origin).pathname.replace(/\/create_form.*/,'');
-    const res  = await fetch(base + '/admin/api/upload_asset', { method:'POST', body: fd });
-    const j = await readJSONSafely(res);
+    const res = await fetch(location.pathname.replace(/\/create_form.*/,'') + '/admin/api/upload_asset', {
+      method:'POST', body: fd
+    });
+    const j = await res.json();
     if(!j.ok) throw new Error(j.error||'上传失败');
     return j.url; // <- 服务端返回的静态URL
   }
@@ -3217,286 +3347,114 @@ document.addEventListener('DOMContentLoaded', ()=>{
 </script>
 
 <script>
-async function readJSONSafely(res){
-  const ct = (res.headers.get('content-type') || '').toLowerCase();
-  const txt = await res.text(); // 先读文本，再决定
-  if (ct.includes('application/json')){
-    try { return JSON.parse(txt); } catch(_) {}
-  }
-  // 非 JSON（多半是 413 或代理/服务器的 HTML 报错页）
-  const brief = txt.replace(/\s+/g,' ').slice(0,300);
-  throw new Error(brief || ('HTTP ' + res.status));
-}
-</script>
-
-<script id="autosave-unified">
 (function(){
   const form = document.getElementById('builder');
-  const schemaEl = document.getElementById('schema_json');
-  if (!form || !schemaEl) return;
+  const schemaInput = document.getElementById('schema_json');
+  let timer = null;
 
-  let timer;
-  const schedule = ()=>{ clearTimeout(timer); timer = setTimeout(save, 800); };
+  async function doSave(){
+    if (!form) return;
+    const fd = new FormData(form);
 
-  async function save(){
-    // 只发必要字段
-    const fd = new FormData();
-    fd.append('form_name', form.querySelector('[name="form_name"]')?.value || '');
-    fd.append('site_name', form.querySelector('[name="site_name"]')?.value || '');
-    fd.append('form_desc', form.querySelector('[name="form_desc"]')?.value || '');
+    // 注入：标题图片 + 题目颜色 + 审核开关（与你提交按钮的组装保持一致）
+    try{
+      const raw = fd.get('schema_json') || '{}';
+      const schema = JSON.parse(raw || '{}') || {};
 
-    // 合并 schema：封面图/题目颜色/审核开关
-    let schema = {};
-    try { schema = JSON.parse(schemaEl.value || '{}') || {}; } catch {}
-    const cover = document.getElementById('headerImageUrl')?.value?.trim();
-    if (cover && !/^data:|^blob:/i.test(cover)) (schema.header ||= {}).title_image = cover;
-    const sw = document.querySelector('[data-skey="submission.require_review"]');
-    (schema.submission ||= {}).require_review = !!sw?.checked;
+      const cover = document.getElementById('greetCover')?.dataset?.url
+                 || document.getElementById('headerImageUrl')?.value?.trim();
+      if (cover) (schema.header ||= {}).title_image = cover;
+      // 题目颜色
+      const colorMap = {};
+      document.querySelectorAll('#list .qcard').forEach(c=>{
+        const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+        const col = c.dataset.qColor;
+        if (key && col) colorMap[key]=col;
+      });
+      if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
+      else if (schema.display && schema.display.question_colors) delete schema.display.question_colors;
 
-    fd.append('schema_json', JSON.stringify(schema));
+      // 审核开关
+      const sw = document.querySelector('[data-skey="submission.require_review"]');
+      (schema.submission ||= {}).require_review = !!sw?.checked;
+
+      fd.set('schema_json', JSON.stringify(schema));
+    }catch(_){}
+
+    // 走 ajax 保存（与你“保存表单”按钮相同的接口）
+    const u = new URL(form.action, location.origin);
+    u.searchParams.set('ajax','1');
+    try{
+      const res = await fetch(u, { method:'POST', body: fd, headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} });
+      // 不弹窗、不跳成功页；只要成功即可
+      if (!res.ok) console.warn('autosave http', res.status);
+    }catch(e){
+      console.warn('autosave failed', e);
+    }
+  }
+
+  function schedule(){
+    clearTimeout(timer);
+    timer = setTimeout(doSave, 800); // 800ms 防抖
+  }
+
+  // 触发自动保存的时机：题目颜色变动 + 标题图地址变动
+  document.addEventListener('input', (e)=>{
+    if (e.target?.classList?.contains('q-color')) schedule();
+    if (e.target?.id === 'headerImageUrl')        schedule();
+  });
+})();
+</script>
+
+<script id="autosave">
+(function(){
+  const form = document.getElementById('builder');
+  const schemaInput = document.getElementById('schema_json');
+  let timer=null;
+
+  async function doSave(){
+    if(!form) return;
+    const fd = new FormData(form);
+
+    // 合并最新封面与题目颜色
+    try{
+      const raw = fd.get('schema_json')||'{}';
+      const schema = JSON.parse(raw||'{}')||{};
+      const cover = document.getElementById('headerImageUrl')?.value?.trim();
+      if (cover) (schema.header ||= {}).title_image = cover;
+
+      // 采集题目颜色（与你现有结构保持一致）
+      const colorMap = {};
+      document.querySelectorAll('#list .qcard').forEach(c=>{
+        const key = c.dataset.key || c.getAttribute('data-key') || c.querySelector('[name]')?.name || '';
+        const col = c.dataset.qColor;
+        if (key && col) colorMap[key]=col;
+      });
+      if (Object.keys(colorMap).length) (schema.display ||= {}).question_colors = colorMap;
+
+      fd.set('schema_json', JSON.stringify(schema));
+    }catch(_){}
 
     const u = new URL(form.action, location.origin);
     u.searchParams.set('ajax','1');
-    try {
-      await fetch(u, { method:'POST', body:fd, headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'} });
-    } catch {}
+    try{ await fetch(u, {method:'POST', body:fd, headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}}); }catch(_){}
   }
 
-  // 触发自动保存
-  document.addEventListener('input', (e)=>{
-    if (e.target?.id === 'headerImageUrl') schedule();
+  function schedule(){ clearTimeout(timer); timer=setTimeout(doSave,800); }
+
+  document.addEventListener('input', e=>{
+    if (e.target?.classList?.contains('q-color')) schedule();
+    if (e.target?.id === 'headerImageUrl')        schedule();
   });
-})();
-</script>
-
-<script id="bg-tools-script">
-(function(){
-  const card    = document.querySelector('.form-basic');
-  const urlInp  = document.getElementById('headerImageUrl');
-  const schemaEl= document.getElementById('schema_json');
-  const tools   = document.getElementById('bgTools');
-  const btnClr  = document.getElementById('bgClear');
-  if(!card || !schemaEl) return;
-
-  function readSchema(){ try{ return JSON.parse(schemaEl.value||'{}')||{} }catch{ return {} } }
-  function writeSchema(j){ try{ schemaEl.value=JSON.stringify(j); schemaEl.dispatchEvent(new Event('input',{bubbles:true})); }catch{} }
-
-  function setPos(x,y){
-    x=Math.max(0,Math.min(100,x)); y=Math.max(0,Math.min(100,y));
-    document.documentElement.style.setProperty('--title-pos-x', x+'%');
-    document.documentElement.style.setProperty('--title-pos-y', y+'%');
-    const j=readSchema(); (j.header||={}).title_image_pos=`${x}% ${y}%`; writeSchema(j);
-  }
-  function setOpacity(p){ // 0~100
-    const a=Math.max(0,Math.min(100,p))/100;
-    document.documentElement.style.setProperty('--title-cover-opacity', String(a));
-    const j=readSchema(); (j.header||={}).title_image_opacity=a; writeSchema(j);
-  }
-  function refreshTools(){
-    const bg = getComputedStyle(card).backgroundImage;
-    const has = bg && !/none/i.test(bg);
-    tools.hidden=!has; card.classList.toggle('has-cover',has);
-  }
-
-  // 从 schema 恢复位置/透明度
-  try{
-    const j=readSchema();
-    const pos=(j?.header?.title_image_pos||'').split(/\s+/);
-    const op = j?.header?.title_image_opacity;
-    if(pos.length===2){
-      const [px,py]=pos.map(s=>parseFloat(String(s).replace('%',''))||50);
-      document.documentElement.style.setProperty('--title-pos-x', px+'%');
-      document.documentElement.style.setProperty('--title-pos-y', py+'%');
+    const cover = document.getElementById('headerImageUrl')?.value?.trim();
+// 如果还是临时地址，就先别发，避免 413
+    if (cover && (cover.startsWith('data:') || cover.startsWith('blob:'))) {
+        console.warn('skip autosave: avoid posting data/blob URL');
+        return; // 等真正的上传得到 URL 再保存
     }
-    if(typeof op==='number'){
-      document.documentElement.style.setProperty('--title-cover-opacity', String(op));
-    }
-  }catch{}
-
-  // 清除背景
-  btnClr?.addEventListener('click', ()=>{
-    if(urlInp) urlInp.value='';
-    card.style.removeProperty('background-image');
-    card.classList.remove('has-cover');
-    const j=readSchema(); if(j.header){ delete j.header.title_image; delete j.header.title_image_pos; }
-    writeSchema(j); refreshTools();
-  });
-
-  // 监听卡片 style/class，自动显示/隐藏 ×
-  new MutationObserver(refreshTools).observe(card,{attributes:true,attributeFilter:['style','class']});
-  refreshTools();
-
-  // 拖动定位
-  let dragging=false, startX=0, startY=0, posX=50, posY=50;
-  function curPos(){
-    const cs=getComputedStyle(document.documentElement);
-    return {
-      x: parseFloat(cs.getPropertyValue('--title-pos-x'))||50,
-      y: parseFloat(cs.getPropertyValue('--title-pos-y'))||50
-    };
-  }
-  card.addEventListener('mousedown', (e)=>{
-    if(!card.classList.contains('has-cover')) return;
-    dragging=true; card.classList.add('dragging');
-    startX=e.clientX; startY=e.clientY;
-    const p=curPos(); posX=p.x; posY=p.y;
-    document.body.style.userSelect='none';
-    document.documentElement.style.setProperty('--bg-move','grabbing');
-  });
-  window.addEventListener('mousemove', (e)=>{
-    if(!dragging) return;
-    const dx=e.clientX-startX, dy=e.clientY-startY;
-    const box=card.getBoundingClientRect();
-    const nx=posX+(dx/box.width)*100;
-    const ny=posY+(dy/box.height)*100;
-    document.documentElement.style.setProperty('--title-pos-x', Math.max(0,Math.min(100,nx))+'%');
-    document.documentElement.style.setProperty('--title-pos-y', Math.max(0,Math.min(100,ny))+'%');
-  });
-  window.addEventListener('mouseup', ()=>{
-    if(!dragging) return;
-    dragging=false; card.classList.remove('dragging');
-    document.body.style.userSelect='';
-    document.documentElement.style.removeProperty('--bg-move');
-    const p=curPos(); setPos(p.x,p.y); // 持久化
-  });
 
 })();
 </script>
-
-<script id="bg-opacity-range">
-(function(){
-  const rng=document.getElementById('bgOpacity');
-  const schemaEl=document.getElementById('schema_json');
-  if(!rng||!schemaEl) return;
-
-  function readSchema(){ try{ return JSON.parse(schemaEl.value||'{}')||{} }catch{ return {} } }
-  function writeSchema(j){ try{ schemaEl.value=JSON.stringify(j); schemaEl.dispatchEvent(new Event('input',{bubbles:true})); }catch{} }
-  function setOpacity(p){
-    const a=Math.max(0,Math.min(100, +p))/100;
-    document.documentElement.style.setProperty('--title-cover-opacity', String(a));
-    const j=readSchema(); (j.header||={}).title_image_opacity=a; writeSchema(j);
-  }
-
-  // 恢复
-  try{
-    const j=readSchema(); if(typeof j?.header?.title_image_opacity==='number'){
-      rng.value=String(Math.round(j.header.title_image_opacity*100));
-      setOpacity(rng.value);
-    }
-  }catch{}
-
-  rng.addEventListener('input', ()=>setOpacity(rng.value));
-})();
-</script>
-
-<script>
-(function(){
-  const modal = document.getElementById('previewModal');
-  if (!modal) return;
-
-  // 点黑色蒙层关闭（只在点到最外层时关闭，避免点到 iframe 也关闭）
-  modal.addEventListener('click', function(e){
-    if (e.target === modal) modal.classList.remove('show');
-  });
-
-  // 如果你保留了那个“✖”按钮，也让它能关闭（可选）
-  document.getElementById('closePreview')?.addEventListener('click', function(){
-    modal.classList.remove('show');
-  });
-
-  // ESC 关闭
-  document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape') modal.classList.remove('show');
-  });
-})();
-</script>
-
-location.href = successURL;   // 直接跳成功页
-
-
-<style id="preview-centered-iframe">
-  /* 保留黑色半透明蒙层与居中 */
-  #previewModal {
-    padding: 0 16px !important;
-    background: rgba(0, 0, 0, .45) !important;
-    z-index: 10000 !important;
-  }
-  /* 去掉外层白色卡片壳：无背景、无边框、无阴影、无内边距 */
-  #previewModal .box{
-    background: transparent !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-
-    /* 仍作为“中间弹窗”显示：固定尺寸+圆角裁切内容 */
-    width: min(980px, 92vw) !important;
-    height: 86vh !important;
-    max-width: none !important;
-    max-height: none !important;
-    border-radius: 18px !important;
-    overflow: hidden !important;
-  }
-  /* 只保留 iframe 内容，隐藏标题那行等 */
-  #previewModal .box > *:not(#previewRoot){
-    display: none !important;
-  }
-  /* 让 iframe 正好铺满这个中间弹窗 */
-  #previewRoot,
-  #previewRoot iframe{
-    width: 100% !important;
-    height: 100% !important;
-    display: block !important;
-    border: 0 !important;
-    border-radius: 0 !important; /* 需要的话也可保留圆角 */
-  }
-</style>
-
-<style id="kill-preview-shell-hard">
-  /* 蒙层仍然半透明，保持居中 */
-  #previewModal {
-    padding: 0 16px !important;
-    background: rgba(0,0,0,.45) !important;
-    z-index: 10000 !important;
-  }
-
-  /* 把外层白色卡片壳彻底干掉 */
-  #previewModal.modal > .box,
-  #previewModal > .box {
-    background: transparent !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    max-width: none !important;
-    color: inherit !important;
-    /* 中间弹窗的尺寸与圆角，仅用于裁切内部内容 */
-    width: min(980px, 92vw) !important;
-    height: 86vh !important;
-    border-radius: 18px !important;
-    overflow: hidden !important;
-  }
-  #previewModal.modal > .box::before,
-  #previewModal.modal > .box::after,
-  #previewModal > .box::before,
-  #previewModal > .box::after {
-    content: none !important;
-  }
-
-  /* 只保留 iframe 内容，隐藏“表单预览/✖”那行 */
-  #previewModal.modal > .box > *:not(#previewRoot),
-  #previewModal > .box > *:not(#previewRoot) {
-    display: none !important;
-  }
-
-  /* 让 iframe 正好铺满中间弹窗 */
-  #previewRoot,
-  #previewRoot iframe {
-    width: 100% !important;
-    height: 100% !important;
-    display: block !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-  }
-</style>
 
 </body>
 </html>

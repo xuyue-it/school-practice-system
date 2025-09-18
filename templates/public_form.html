@@ -245,8 +245,119 @@
       background-repeat: no-repeat !important;
     }
   </style>
+    <style id="intro-card">
+        .form-intro {
+            position: relative;
+            margin: 0; /* 让它紧贴容器左侧 */
+            padding: 20px 24px 14px;
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(17, 24, 39, .08), 0 4px 14px rgba(17, 24, 39, .06);
+        }
 
+        body[data-appearance="dark"] .form-intro {
+            background: rgba(17, 24, 39, .65);
+        }
 
+        .form-title {
+            margin: 0 0 6px 0;
+            font-size: 28px;
+            line-height: 1.25;
+            font-weight: 800;
+            text-align: left;
+        }
+
+        .form-desc {
+            margin: 0;
+            color: #6b7280;
+            text-align: left;
+        }
+
+        .form-sep {
+            height: 1px;
+            background: rgba(0, 0, 0, .06);
+            border-radius: 999px;
+            margin: 14px 0 18px;
+        }
+
+        body[data-appearance="dark"] .form-sep {
+            background: rgba(255, 255, 255, .10);
+        }
+    </style>
+    <style id="intro-card-override">
+        /* 让标题区回到“左对齐 + 白色卡片”样式，并且压过任何旧样式 */
+        main .form-intro {
+            display: block !important;
+            margin: 0 !important; /* 靠左 */
+            padding: 20px 24px 14px !important;
+            background: #fff !important; /* 白底卡片 */
+            border-radius: 16px !important;
+            box-shadow: 0 10px 30px rgba(17, 24, 39, .08), 0 4px 14px rgba(17, 24, 39, .06) !important;
+        }
+
+        body[data-appearance="dark"] main .form-intro {
+            background: rgba(17, 24, 39, .65) !important;
+        }
+
+        /* 标题与描述强制左对齐（有旧样式居中时用 !important 压过去） */
+        main .form-intro .form-title {
+            margin: 0 0 6px 0 !important;
+            font-size: 28px !important;
+            line-height: 1.25 !important;
+            font-weight: 800 !important;
+            text-align: left !important;
+        }
+
+        main .form-intro .form-desc {
+            margin: 0 !important;
+            color: #6b7280 !important;
+            text-align: left !important;
+        }
+
+        /* 标题区与第一题之间的分割线 */
+        main .form-sep {
+            height: 1px !important;
+            background: rgba(0, 0, 0, .06) !important;
+            border-radius: 999px !important;
+            margin: 14px 0 18px !important;
+        }
+
+        body[data-appearance="dark"] main .form-sep {
+            background: rgba(255, 255, 255, .10) !important;
+        }
+    </style>
+    <style id="intro-align">
+        /* 根据你下面那张表单卡片的宽度来设置。若你下方卡片是 960px，这里保持一致即可 */
+        :root {
+            --form-width: 960px;
+        }
+
+        /* 不一致就把 960 改成你实际的 */
+
+        main .form-intro,
+        main .form-sep {
+            max-width: var(--form-width);
+            margin-left: auto;
+            margin-right: auto; /* 居中对齐容器 */
+            width: 100%;
+        }
+
+        /* 标题卡片保持左对齐、白色卡片风格（与下方一致） */
+        main .form-intro {
+            display: block !important;
+            padding: 20px 24px 14px !important;
+            background: #fff !important;
+            border-radius: 16px !important;
+            box-shadow: 0 10px 30px rgba(17, 24, 39, .08), 0 4px 14px rgba(17, 24, 39, .06) !important;
+            text-align: left !important;
+        }
+
+        /* 避免被其他样式拉成居中/小块 */
+        main .form-intro .form-title,
+        main .form-intro .form-desc {
+            text-align: left !important;
+        }
+    </style>
     <style id="equal-form-width">
         :root {
             --form-width: 910px;
@@ -1012,59 +1123,6 @@
   } else {
     intro.style.removeProperty('--intro-cover');
     intro.classList.remove('has-cover');
-  }
-})();
-</script>
-
-<input type="hidden" id="schema_json" value='{{ schema_json|tojson }}'>
-<style id="pub-cover">
-  :root{ --title-pos-x:50%; --title-pos-y:50%; --title-cover-opacity:.72; --title-cover-img:none; }
-
-  /* 你公开页标题容器的类名，如果是别的（比如 .form-header），把 .form-intro 改成你的 */
-  .form-intro.has-cover{
-    position:relative;
-    background-image: var(--title-cover-img);
-    background-size: cover;
-    background-position: var(--title-pos-x) var(--title-pos-y);
-  }
-  .form-intro.has-cover::before{
-    content:""; position:absolute; inset:0; pointer-events:none;
-    background: linear-gradient(180deg,
-      rgba(255,255,255,var(--title-cover-opacity)),
-      rgba(255,255,255,var(--title-cover-opacity)));
-  }
-  body[data-appearance="dark"] .form-intro.has-cover::before{
-    background: linear-gradient(180deg,
-      rgba(11,18,32,calc(var(--title-cover-opacity)*.9)),
-      rgba(11,18,32,calc(var(--title-cover-opacity)*1)));
-  }
-</style>
-
-<script id="pub-cover-init">
-(function(){
-  function readSchema(){
-    try{
-      const el=document.getElementById('schema_json');
-      const raw=el?.value||el?.getAttribute('value')||'';
-      return JSON.parse(raw||'{}')||{};
-    }catch{ return {}; }
-  }
-  const j=readSchema();
-  const img=j?.header?.title_image;
-  const pos=(j?.header?.title_image_pos||'').split(/\s+/);
-  const op = j?.header?.title_image_opacity;
-
-  if(img){
-    document.documentElement.style.setProperty('--title-cover-img', `url("${String(img).replace(/"/g,'\\"')}")`);
-    document.querySelector('.form-intro')?.classList.add('has-cover');
-  }
-  if(pos.length===2){
-    const [x,y]=pos.map(s=>parseFloat(String(s).replace('%',''))||50);
-    document.documentElement.style.setProperty('--title-pos-x', x+'%');
-    document.documentElement.style.setProperty('--title-pos-y', y+'%');
-  }
-  if(typeof op==='number'){
-    document.documentElement.style.setProperty('--title-cover-opacity', String(op));
   }
 })();
 </script>
