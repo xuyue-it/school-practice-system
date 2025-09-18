@@ -1120,9 +1120,22 @@
 
   if (cover) {
     // ✅ 关键：给 CSS 变量赋值，而不是 backgroundImage
-    intro.style.setProperty('--intro-cover', `url("${cover.replace(/"/g, '\\"')}")`);
-    intro.style.setProperty('--intro-pos', pos);
-    intro.classList.add('has-cover');
+      intro.style.setProperty('--intro-cover', `url("${cover.replace(/"/g, '\\"')}")`);
+      intro.style.setProperty('--intro-pos', pos);
+
+// ★ 同步另一套变量（兼容旧样式）
+      (function syncXY(p) {
+          var px = 50, py = 50;
+          if (typeof p === 'string') {
+              var s = p.split(/\s+/);
+              px = parseFloat(String(s[0] || '50').replace('%', '')) || 50;
+              py = parseFloat(String(s[1] || '50').replace('%', '')) || 50;
+          }
+          document.documentElement.style.setProperty('--title-pos-x', px + '%');
+          document.documentElement.style.setProperty('--title-pos-y', py + '%');
+      })(pos);
+
+      intro.classList.add('has-cover');
   } else {
     intro.style.removeProperty('--intro-cover');
     intro.classList.remove('has-cover');

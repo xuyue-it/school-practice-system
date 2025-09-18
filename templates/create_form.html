@@ -3261,9 +3261,9 @@ async function readJSONSafely(res){
   }
 
   // 触发自动保存
-  document.addEventListener('input', (e)=>{ 
-    if (e.target?.id === 'headerImageUrl') schedule();
-  });
+    document.addEventListener('input', (e) => {
+        if (e.target?.id === 'headerImageUrl' || e.target?.id === 'schema_json') schedule();
+    });
 })();
 </script>
 
@@ -3342,11 +3342,12 @@ async function readJSONSafely(res){
 
         card.addEventListener('pointerdown', (e) => {
             if (!card.classList.contains('has-cover')) return;
-            dragging = true;
+            dragging = true;             // ★ 新增：开启拖动
             card.setPointerCapture(e.pointerId);
             card.classList.add('dragging');
             document.documentElement.style.setProperty('--bg-move', 'grabbing');
-            setFromEvent(e);             // ⬅ 按下立刻定位到点击处
+            setFromEvent(e);             // 按下立刻定位到点击处
+            // ⬅ 按下立刻定位到点击处
         });
 
         card.addEventListener('pointermove', (e) => {
@@ -3547,11 +3548,6 @@ location.href = successURL;   // 直接跳成功页
     if (!dragging) return; dragging = false;
     // 持久化到 schema_json
     try {
-      const j = JSON.parse(schemaInput.value || '{}') || {};
-      (j.header ||= {}).title_pos = {
-        x: getComputedStyle(card).getPropertyValue('--title-pos-x').trim(),
-        y: getComputedStyle(card).getPropertyValue('--title-pos-y').trim()
-      };
       schemaInput.value = JSON.stringify(j);
       schemaInput.dispatchEvent(new Event('input', {bubbles:true}));
       schemaInput.dispatchEvent(new Event('change',{bubbles:true}));
