@@ -3,15 +3,14 @@
 <head>
     <style id="kill-greet-bg">
         .greet-card:not(.has-cover) {
-            background-image: none !important;
+            background-image: none;
         }
 
         .greet-card:not(.has-cover)::before,
         .greet-card:not(.has-cover)::after {
-            content: none !important;
+            content: none;
         }
     </style>
-
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
     <title>创建新表单</title>
@@ -1809,8 +1808,8 @@ body[data-appearance="dark"] .form-basic::after{
         border-radius: 0 !important;
     }
 
-    .form-intro::before,
-    .form-intro::after {
+    .form-intro:not(.has-cover)::before,
+    .form-intro:not(.has-cover)::after {
         content: none !important;
     }
 
@@ -3326,40 +3325,51 @@ async function readJSONSafely(res){
   new MutationObserver(refreshTools).observe(card,{attributes:true,attributeFilter:['style','class']});
   refreshTools();
 
-  // 拖动定位
-  let dragging=false, startX=0, startY=0, posX=50, posY=50;
-  function curPos(){
-    const cs=getComputedStyle(document.documentElement);
-    return {
-      x: parseFloat(cs.getPropertyValue('--title-pos-x'))||50,
-      y: parseFloat(cs.getPropertyValue('--title-pos-y'))||50
-    };
-  }
-  card.addEventListener('mousedown', (e)=>{
-    if(!card.classList.contains('has-cover')) return;
-    dragging=true; card.classList.add('dragging');
-    startX=e.clientX; startY=e.clientY;
-    const p=curPos(); posX=p.x; posY=p.y;
-    document.body.style.userSelect='none';
-    document.documentElement.style.setProperty('--bg-move','grabbing');
-  });
-  window.addEventListener('mousemove', (e)=>{
-    if(!dragging) return;
-    const dx=e.clientX-startX, dy=e.clientY-startY;
-    const box=card.getBoundingClientRect();
-    const nx=posX+(dx/box.width)*100;
-    const ny=posY+(dy/box.height)*100;
-    document.documentElement.style.setProperty('--title-pos-x', Math.max(0,Math.min(100,nx))+'%');
-    document.documentElement.style.setProperty('--title-pos-y', Math.max(0,Math.min(100,ny))+'%');
-  });
-  window.addEventListener('mouseup', ()=>{
-    if(!dragging) return;
-    dragging=false; card.classList.remove('dragging');
-    document.body.style.userSelect='';
-    document.documentElement.style.removeProperty('--bg-move');
-    const p=curPos(); setPos(p.x,p.y); // 持久化
-  });
+// 拖动定位（新：绝对坐标算法，按下立即定位，XY 都可调）
+    (function () {
+        const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+        const toPercent = (val) => Math.round(val * 100) + '%';
 
+        function setFromEvent(e) {
+            const box = card.getBoundingClientRect();
+            if (box.width <= 0 || box.height <= 0) return;
+            const x = clamp((e.clientX - box.left) / box.width, 0, 1);
+            const y = clamp((e.clientY - box.top) / box.height, 0, 1);
+            document.documentElement.style.setProperty('--title-pos-x', toPercent(x));
+            document.documentElement.style.setProperty('--title-pos-y', toPercent(y));
+        }
+
+        let dragging = false;
+
+        card.addEventListener('pointerdown', (e) => {
+            if (!card.classList.contains('has-cover')) return;
+            dragging = true;
+            card.setPointerCapture(e.pointerId);
+            card.classList.add('dragging');
+            document.documentElement.style.setProperty('--bg-move', 'grabbing');
+            setFromEvent(e);             // ⬅ 按下立刻定位到点击处
+        });
+
+        card.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            setFromEvent(e);             // ⬅ 拖动过程中实时定位
+        });
+
+        const end = (e) => {
+            if (!dragging) return;
+            dragging = false;
+            card.classList.remove('dragging');
+            document.documentElement.style.removeProperty('--bg-move');
+            // 持久化当前位置到 schema（沿用你原来的 setPos）
+            const cs = getComputedStyle(document.documentElement);
+            const px = parseFloat(cs.getPropertyValue('--title-pos-x')) || 50;
+            const py = parseFloat(cs.getPropertyValue('--title-pos-y')) || 50;
+            setPos(px, py);
+        };
+        card.addEventListener('pointerup', end);
+        card.addEventListener('pointercancel', end);
+        card.addEventListener('pointerleave', end);
+    })();
 })();
 </script>
 
@@ -3497,6 +3507,59 @@ location.href = successURL;   // 直接跳成功页
     border-radius: 0 !important;
   }
 </style>
+
+<script>
+(() => {
+  const card = document.querySelector('.form-basic');
+  const schemaInput = document.getElementById('schema_json');
+  if (!card || !schemaInput) return;
+
+  let dragging = false, start = {x:0,y:0}, startPos = {x:50,y:50};
+
+  const getPos = () => ({
+    x: parseFloat(getComputedStyle(card).getPropertyValue('--title-pos-x')) || 50,
+    y: parseFloat(getComputedStyle(card).getPropertyValue('--title-pos-y')) || 50
+  });
+  const clamp = v => Math.max(0, Math.min(100, v));
+  const setPos = (x,y) => {
+    card.style.setProperty('--title-pos-x', clamp(x) + '%');
+    card.style.setProperty('--title-pos-y', clamp(y) + '%');
+  };
+
+  card.addEventListener('mousedown', e => {
+    if (!card.classList.contains('has-cover')) return;
+    dragging = true;
+    start = {x: e.clientX, y: e.clientY};
+    startPos = getPos();
+    // 按下处直接定位一次
+    const rect = card.getBoundingClientRect();
+    setPos(((e.clientX-rect.left)/rect.width)*100, ((e.clientY-rect.top)/rect.height)*100);
+  });
+
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const rect = card.getBoundingClientRect();
+    const dx = (e.clientX - start.x) / rect.width * 100;
+    const dy = (e.clientY - start.y) / rect.height * 100;
+    setPos(startPos.x + dx, startPos.y + dy);
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return; dragging = false;
+    // 持久化到 schema_json
+    try {
+      const j = JSON.parse(schemaInput.value || '{}') || {};
+      (j.header ||= {}).title_pos = {
+        x: getComputedStyle(card).getPropertyValue('--title-pos-x').trim(),
+        y: getComputedStyle(card).getPropertyValue('--title-pos-y').trim()
+      };
+      schemaInput.value = JSON.stringify(j);
+      schemaInput.dispatchEvent(new Event('input', {bubbles:true}));
+      schemaInput.dispatchEvent(new Event('change',{bubbles:true}));
+    } catch(_) {}
+  });
+})();
+</script>
 
 </body>
 </html>
