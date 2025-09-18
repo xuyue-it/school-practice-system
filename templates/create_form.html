@@ -3506,5 +3506,109 @@ location.href = successURL;   // 直接跳成功页
 })();
 </script>
 
+<!-- AUTOSAVE: 粘贴到 create_form.html 的 </body> 前一行 -->
+<script>
+(function(){
+  // ===== 上下文 =====
+  var USER_ID = window.CURRENT_USER_ID || (document.body.dataset.uid || 'anon');
+  var SITE = (document.body.dataset.site || new URLSearchParams(location.search).get('site') || '').trim();
+  var DRAFT_KEY = `draft:${USER_ID}:site:${SITE||'__new__'}`;
+  window.schema = window.schema || {};
+  var DIRTY=false, TIMER=null;
+
+  function ensureHeader(){ window.schema.header = window.schema.header || {}; return window.schema.header; }
+  function markDirty(){
+    try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({header: window.schema.header||{}})); }catch(_){}
+    if (TIMER) clearTimeout(TIMER);
+    TIMER = setTimeout(serverSave, 800);
+    DIRTY = true;
+  }
+  async function serverSave(){
+    if (!DIRTY || !SITE) return;
+    DIRTY = false;
+    let url = `/site/${encodeURIComponent(SITE)}/admin/api/save_schema`;
+    try{
+      const res = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schema:window.schema})});
+      if (!res.ok) throw 0;
+    }catch(_){
+      // 兜底路径（若你的保存接口是这个）
+      await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/schema`, {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({schema:window.schema})
+      }).catch(()=>{});
+    }
+  }
+  document.addEventListener('visibilitychange', function(){
+    if (document.visibilityState==='hidden' && SITE){
+      try{
+        const blob = new Blob([JSON.stringify({schema:window.schema})], {type:'application/json'});
+        navigator.sendBeacon(`/site/${encodeURIComponent(SITE)}/admin/api/save_schema`, blob);
+      }catch(_){}
+    }
+  });
+  window.addEventListener('beforeunload', function(){
+    try{ localStorage.setItem(DRAFT_KEY, JSON.stringify({header: window.schema.header||{}})); }catch(_){}
+  });
+
+  // ===== 通用选择器（零配置）：支持 name=... 或 data-role=... =====
+  function $cover(){ return document.querySelector('[name="title_image"], [data-role="title-image"]'); }
+  function $opacity(){ return document.querySelector('[name="title_image_opacity"], [data-role="title-image-opacity"]'); }
+  function $pos(){ return document.querySelector('[name="title_image_pos"], [data-role="title-image-pos"]'); }
+
+  // 把当前控件值写入 schema.header
+  function syncFromControls(){
+    var h = ensureHeader();
+    var c = $cover(), o = $opacity(), p = $pos();
+    if (c && typeof c.value === 'string') { h.title_image = (c.value || c.dataset.url || '').trim(); }
+    if (o && o.value != null) {
+      var v = Math.max(0, Math.min(1, Number(o.value)));
+      h.title_image_opacity = isFinite(v) ? v : 0.72;
+    }
+    if (p && typeof p.value === 'string') { h.title_image_pos = p.value || 'center'; }
+  }
+
+  // 首次加载：恢复本地草稿
+  try{
+    var draft = localStorage.getItem(DRAFT_KEY);
+    if (draft) {
+      var d = JSON.parse(draft);
+      window.schema.header = Object.assign({}, window.schema.header, d.header||{});
+    }
+  }catch(_){}
+  // 回填到控件（若控件存在）
+  (function restoreControls(){
+    var h = window.schema.header||{};
+    var c = $cover(), o = $opacity(), p = $pos();
+    if (c && h.title_image && !c.value) c.value = h.title_image;
+    if (o && typeof h.title_image_opacity === 'number') o.value = h.title_image_opacity;
+    if (p && h.title_image_pos) p.value = h.title_image_pos;
+  })();
+
+  // 事件委托：监听全局 input/change（控件动态渲染也能捕捉到）
+  document.addEventListener('input', onEvt, true);
+  document.addEventListener('change', onEvt, true);
+  function onEvt(e){
+    var t = e.target;
+    if (!t) return;
+    if (
+      t.matches('[name="title_image"], [data-role="title-image"]') ||
+      t.matches('[name="title_image_opacity"], [data-role="title-image-opacity"]') ||
+      t.matches('[name="title_image_pos"], [data-role="title-image-pos"]')
+    ){
+      syncFromControls();
+      markDirty();
+    }
+  }
+
+  // 兜底：有些上传器是异步回填 value，这里轮询几次
+  var tries = 0;
+  var poll = setInterval(function(){
+    tries++;
+    syncFromControls(); markDirty();
+    if (tries >= 5) clearInterval(poll);
+  }, 1200);
+})();
+</script>
+
+
 </body>
 </html>
