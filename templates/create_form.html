@@ -1394,10 +1394,9 @@
                 </div>
             </div>
 
-            <!-- Tab 4：图表 -->
+            <!-- Tab 4：图表（固定两张） -->
             <div class="tab" id="tab-charts">
                 <div class="dash-grid">
-                    <!-- ① 顶部：固定的两张图表（通过率 & 提交时间） -->
                     <div class="card" style="grid-column:1/-1">
                         <div class="hd"><h2>表单数据图表</h2></div>
                         <div class="bd">
@@ -3765,5 +3764,113 @@ location.href = successURL;   // 直接跳成功页
         });
     })();
 </script>
+
+<script>
+  (function () {
+    const SITE = document.body.dataset.site || '';
+    let chartsInited = false;
+    let chartObjs = [];
+
+    document.querySelectorAll('.tabs button').forEach(b => {
+      b.addEventListener('click', () => {
+        if (b.dataset.tab === 'charts') ensureCharts();
+      });
+    });
+    if (document.querySelector('.tabs button.active')?.dataset.tab === 'charts') ensureCharts();
+
+    async function ensureCharts() {
+      if (chartsInited) return;
+      const root = document.getElementById('chartsRoot');
+      if (!root) return;
+
+      if (!SITE) {
+        root.innerHTML = `<div style="grid-column:1/-1;color:#6b7f99;background:#fff;border:1px solid #e8eef6;border-radius:14px;padding:16px;text-align:center">
+          保存表单并生成站点后，才能查看图表。
+        </div>`;
+        return;
+      }
+
+      chartsInited = true;
+      try {
+        const res = await fetch(`/site/${encodeURIComponent(SITE)}/admin/api/charts`, {credentials: 'same-origin'});
+        const j = await res.json();
+        if (!res.ok || !j.ok) throw new Error(j.error || res.status);
+
+        root.innerHTML = '';
+
+        const c1 = addCard(root, '提交趋势（近 14 天）', 'lineDaily');
+        const c2 = addCard(root, '状态分布', 'pieStatus');
+        const c3 = addCard(root, '选择题分布', 'barField', true);
+
+        if (Array.isArray(j.daily) && j.daily.length) {
+          chartObjs.push(new Chart(c1, {
+            type: 'line',
+            data: { labels: j.daily.map(x => x.date), datasets: [{ label: '提交数', data: j.daily.map(x => x.count), tension: .3 }] },
+            options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+          }));
+        } else {
+          showEmpty(c1, '暂无数据');
+        }
+
+        if (Array.isArray(j.status) && j.status.length) {
+          chartObjs.push(new Chart(c2, {
+            type: 'doughnut',
+            data: { labels: j.status.map(x => x.name), datasets: [{ data: j.status.map(x => x.count) }] },
+            options: { responsive: true }
+          }));
+        } else {
+          showEmpty(c2, '暂无数据');
+        }
+
+        if (j.field && Array.isArray(j.field.data) && j.field.data.length) {
+          chartObjs.push(new Chart(c3, {
+            type: 'bar',
+            data: {
+              labels: j.field.data.map(x => x.value),
+              datasets: [{ label: j.field.label || j.field.key, data: j.field.data.map(x => x.count) }]
+            },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } }
+          }));
+        } else {
+          c3.canvas.closest('.chart-card').style.display = 'none';
+        }
+      } catch (e) {
+        root.innerHTML = `<div style="grid-column:1/-1;color:#b91c1c;background:#fee2e2;border:1px solid #fecaca;border-radius:14px;padding:12px">
+          图表数据加载失败：${e.message}
+        </div>`;
+        chartsInited = false;
+      }
+    }
+
+    function addCard(root, title, canvasId, full = false) {
+      const card = document.createElement('div');
+      card.className = 'chart-card';
+      if (full) card.style.gridColumn = '1/-1';
+      card.style.background = '#fff';
+      card.style.border = '1px solid #e8eef6';
+      card.style.borderRadius = '14px';
+      card.innerHTML = `
+        <div style="padding:12px 14px;font-weight:800;color:#0e1726">${title}</div>
+        <div style="padding:0 14px 14px"><canvas id="${canvasId}" height="120"></canvas></div>`;
+      root.appendChild(card);
+      return document.getElementById(canvasId).getContext('2d');
+    }
+
+    function showEmpty(ctx, msg) {
+      const wrap = ctx.canvas.parentElement;
+      wrap.innerHTML = `<div style="min-height:200px;display:flex;align-items:center;justify-content:center;color:#6b7f99">${msg}</div>`;
+    }
+
+    window.refreshCharts = function (force = false) {
+      if (force) {
+        chartObjs.forEach(c => { try { c.destroy() } catch{} });
+        chartObjs = [];
+        chartsInited = false;
+      }
+      ensureCharts();
+    };
+  })();
+</script>
+
 </body>
 </html>
